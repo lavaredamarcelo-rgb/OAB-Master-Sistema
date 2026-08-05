@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Test</title>
+<style>
+body { font-family: system-ui; padding: 20px; }
+.test { color: green; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="test">✅ Arquivo carregando corretamente</div>
+<p>Se você vir esta mensagem, o HTML está sendo servido sem problemas.</p>
+<script>
+console.log('JavaScript funciona');
+const test = document.querySelector('.test');
+test.textContent += ' - JavaScript OK!';
+</script>
+</body>
+</html>
