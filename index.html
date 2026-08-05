@@ -1643,7 +1643,12 @@ function upTatArq(inp){ upFile(inp,50,async f=>{ await enviaArquivo(f,'tatica',n
   log('taticas',`Material tático anexado: ${f.name}`); await recarrega(); toast('Material anexado'); }); }
 
 /* ================= FINANCEIRO AVANÇADO (Lançador Rápido + Editor Período + Gestor Importações) ================= */
+// Funções temporariamente removidas por issue de sintaxe - serão reimplementadas
 function abrirLancadorRapido(){
+  toast('Feature em desenvolvimento');
+}
+/*
+function abrirLancadorRapidoOLD(){
   toast('Lançador rápido em desenvolvimento');
   return;
   modal(`<h2>➕ Novo Lançamento de Entrada</h2>
@@ -1678,6 +1683,10 @@ async function salvaLancamentoRapido(){
   fecha(); await recarrega(); toast('Lançamento registrado!');
 }
 function abrirEditorPeriodo(){
+  toast('Feature em desenvolvimento');
+}
+/*
+function abrirEditorPeriodoOLD(){
   toast('Editor de período em desenvolvimento');
   return;
   const dataIni=subState.editorIni||hoje().slice(0,7)+'-01';
@@ -1732,6 +1741,10 @@ async function salvaEditorPeriodo(){
   fecha();
 }
 function abrirGestorImportacoes(){
+  toast('Feature em desenvolvimento');
+}
+/*
+function abrirGestorImportacoesOLD(){
   toast('Gestor de importações em desenvolvimento');
   return;
   const ativos=db.lotes.filter(l=>l.status==='ativo');
