@@ -3484,7 +3484,7 @@ async function salvaRecorrenteDespesa(){
   const anoAtual=new Date().getFullYear();
   const rows=[];
   for(let mes=1;mes<=12;mes++){
-    const dataStr=`${anoAtual}-${String(mes).padStart(2,'0')}-${String(venc).padStart(2,'0')};
+    const dataStr=`${anoAtual}-${String(mes).padStart(2,'0')}-${String(venc).padStart(2,'0')}`;
     rows.push({data:dataStr,item,categoria:cat,qtd:1,valor,fornecedor:fornec,obs,status:'pendente',tipo_recorrencia:'mensal',mes_referencia:mes,ano_referencia:anoAtual,tipo_lancamento:'recorrente',quem:me?.nome||'Sistema'});
   }
   await q(sb.from('despesas').insert(rows));
