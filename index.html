@@ -645,13 +645,12 @@
     <script>
         const SUPABASE_URL = 'https://pzodgfsekqpumvgigeii.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b2RnZnNla3FwdW12Z2lnZWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjA0MTM5NDEsImV4cCI6MjAzNTk4OTk0MX0.SGQR_fLXrHXHZ6yRp3lR2xS5qR_xZ0xZ0xZ0xZ0xZ0xZ';
-        let supabaseClient = null;
         let currentUser = null;
 
         function initSupabase() {
-            if (window.supabase) {
-                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            }
+            // window.supabase é criado pelo CDN
+            if (!window.supabase) return;
+            window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
         async function handleLogin() {
@@ -665,7 +664,7 @@
 
             try {
                 showAuthLoading('login', true);
-                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                const { data, error } = await window.supabase.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
@@ -693,7 +692,7 @@
 
             try {
                 showAuthLoading('signup', true);
-                const { data, error } = await supabaseClient.auth.signUp({
+                const { data, error } = await window.supabase.auth.signUp({
                     email: email,
                     password: password,
                     options: {
@@ -716,7 +715,7 @@
 
         async function handleLogout() {
             try {
-                await supabaseClient.auth.signOut();
+                await window.supabase.auth.signOut();
                 currentUser = null;
                 document.getElementById('authPage').style.display = 'flex';
                 document.getElementById('mainPage').style.display = 'none';
