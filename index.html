@@ -646,12 +646,13 @@
         const SUPABASE_URL = 'https://pzodgfsekqpumvgigeii.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b2RnZnNla3FwdW12Z2lnZWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjA0MTM5NDEsImV4cCI6MjAzNTk4OTk0MX0.SGQR_fLXrHXHZ6yRp3lR2xS5qR_xZ0xZ0xZ0xZ0xZ0xZ';
         let currentUser = null;
+        let supabaseClient = null;
 
-        function initSupabase() {
-            // window.supabase é criado pelo CDN
-            if (!window.supabase) return;
-            window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        }
+        window.addEventListener('load', function() {
+            if (window.supabase) {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+        });
 
         async function handleLogin() {
             const email = document.getElementById('loginEmail').value;
@@ -664,7 +665,8 @@
 
             try {
                 showAuthLoading('login', true);
-                const { data, error } = await window.supabase.auth.signInWithPassword({
+                if (!supabaseClient) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
@@ -692,7 +694,8 @@
 
             try {
                 showAuthLoading('signup', true);
-                const { data, error } = await window.supabase.auth.signUp({
+                if (!supabaseClient) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                const { data, error } = await supabaseClient.auth.signUp({
                     email: email,
                     password: password,
                     options: {
@@ -715,7 +718,8 @@
 
         async function handleLogout() {
             try {
-                await window.supabase.auth.signOut();
+                if (!supabaseClient) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                await supabaseClient.auth.signOut();
                 currentUser = null;
                 document.getElementById('authPage').style.display = 'flex';
                 document.getElementById('mainPage').style.display = 'none';
@@ -1484,20 +1488,6 @@
             renderTabContent('dashboard');
         }
 
-        // Inicializa supabase quando a página estiver carregada
-        document.addEventListener('DOMContentLoaded', function() {
-            // Aguarda o script do Supabase estar carregado
-            if (window.supabase) {
-                initSupabase();
-            } else {
-                // Tenta novamente após 500ms
-                setTimeout(function() {
-                    if (window.supabase) {
-                        initSupabase();
-                    }
-                }, 500);
-            }
-        });
     </script>
 </body>
 </html>
