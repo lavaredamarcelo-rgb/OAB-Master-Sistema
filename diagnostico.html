@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Diagnóstico - OAB/PA Master</title>
+<style>
+body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+.table-info { background: white; margin: 20px 0; padding: 20px; border-radius: 8px; border-left: 4px solid #B8272D; }
+.table-name { font-size: 18px; font-weight: bold; color: #B8272D; margin-bottom: 10px; }
+.columns { margin-left: 20px; font-size: 13px; }
+.column-row { padding: 5px 0; }
+.error { color: #d32f2f; }
+.success { color: #388e3c; }
+</style>
+</head>
+<body>
+
+<h1>🔍 Diagnóstico do Banco de Dados OAB/PA Master</h1>
+<p>Conectando ao banco de dados...</p>
+<div id="output"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(async () => {
+  try {
+    const URL = 'https://pzodgfsekqpumvgigeii.supabase.co';
+    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b2RnZnNla3FwdW12Z2lnZWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNjEyNzYsImV4cCI6MjA5OTgzNzI3Nn0.-tQn-ECR6t-waBBuihIesi6LhxJ3s22xORzR3OwMoeQ';
+
+    const conn = window.supabase.createClient(URL, KEY);
+    const output = document.getElementById('output');
+
+    const tabelas = [
+      'perfis', 'eventos', 'presencas', 'cobrancas', 'despesas',
+      'avaliacoes', 'metas', 'stats', 'uniformes', 'inventario',
+      'saude', 'taticas_confrontos', 'taticas_esquemas', 'taticas_notas',
+      'uniforme_numeros_historico', 'documentos', 'logs', 'config',
+      'import_lotes', 'balanco_receitas', 'patrocinadores', 'push_subs',
+      'tarefas'
+    ];
+
+    let html = '';
+
+    for (const tab of tabelas) {
+      try {
+        const { count } = await conn.from(tab).select('*', { count: 'exact', head: true });
+        const { data } = await conn.from(tab).select('*').limit(1);
+        const cols = data?.length > 0 ? Object.keys(data[0]) : ['(vazio)'];
+
+        html += `
+          <div class="table-info">
+            <div class="table-name">📊 ${tab}</div>
+            <div>Registros: <strong>${count || 0}</strong></div>
+            <div class="columns">
+              <strong>Colunas:</strong><br>
+              ${cols.map(c => `<div class="column-row">• ${c}</div>`).join('')}
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        html += `<div class="table-info"><div class="table-name">📊 ${tab}</div><div class="error">❌ ${err.message}</div></div>`;
+      }
+    }
+
+    output.innerHTML = html;
+    console.log('✅ Diagnóstico completo!');
+  } catch (err) {
+    document.getElementById('output').innerHTML = `<h2 class="error">❌ Erro: ${err.message}</h2>`;
+    console.error(err);
+  }
+})();
+</script>
+
+</body>
+</html>

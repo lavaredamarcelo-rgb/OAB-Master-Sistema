@@ -48,7 +48,7 @@ try {
   const SUPABASE_URL = 'https://pzodgfsekqpumvgigeii.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b2RnZnNla3FwdW12Z2lnZWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNjEyNzYsImV4cCI6MjA5OTgzNzI3Nn0.-tQn-ECR6t-waBBuihIesi6LhxJ3s22xORzR3OwMoeQ';
 
-  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   log('✅ Supabase client criado com sucesso');
 
   updateStatus('✅ Sistema iniciado com sucesso!', true);
