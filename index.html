@@ -1,239 +1,1944 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>OAB/PA Master — Gestão do Time</title>
-<link rel="icon" type="image/png" href="escudo.png">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#B8272D">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<style>
-:root {
-  --bg: #F6F4EF;
-  --card: #FFFFFF;
-  --ink: #23262E;
-  --ink2: #5C616E;
-  --p: #B8272D;
-  --p-soft: #F7E5E2;
-  --ok: #2E7D4F;
-  --ok-soft: #E2F1E7;
-  --bad: #B3372E;
-  --bad-soft: #F9E7E5;
-  --warn: #A86A12;
-  --warn-soft: #F8EEDD;
-}
-* { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--ink); font: 15px/1.55 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-h1, h2, h3 { font-family: Georgia, serif; margin: 0; }
-h1 { font-size: 26px; }
-h2 { font-size: 20px; margin-bottom: 12px; }
-button { font: inherit; cursor: pointer; border: none; border-radius: 9px; padding: 8px 14px; background: var(--p); color: #fff; transition: filter 0.15s; }
-button:hover { filter: brightness(1.08); }
-button.sec { background: var(--card); color: var(--ink); border: 1px solid #ddd; }
-button.mini { padding: 4px 10px; font-size: 13px; }
-input, select, textarea { font: inherit; color: var(--ink); background: var(--card); border: 1px solid #ddd; border-radius: 9px; padding: 8px 10px; width: 100%; }
-label { display: block; font-size: 12px; font-weight: 600; color: var(--ink2); margin: 10px 0 4px; text-transform: uppercase; }
-.card { background: var(--card); border: 1px solid #ddd; border-radius: 14px; padding: 18px; }
-.pill { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }
-.p-ok { background: var(--ok-soft); color: var(--ok); }
-.p-warn { background: var(--warn-soft); color: var(--warn); }
-.p-bad { background: var(--bad-soft); color: var(--bad); }
-.grid { display: grid; gap: 14px; }
-.g2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-.mut { color: var(--ink2); font-size: 13px; }
-#shell { min-height: 100vh; display: flex; flex-direction: column; }
-#nav { background: var(--card); border-bottom: 1px solid #ddd; padding: 10px; display: flex; gap: 8px; overflow-x: auto; }
-.navb { background: transparent; border: none; padding: 8px 14px; cursor: pointer; border-radius: 8px; }
-.navb.on { background: var(--p); color: white; }
-#main { flex: 1; padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; }
-.toast { position: fixed; bottom: 20px; right: 20px; background: var(--p); color: white; padding: 12px 16px; border-radius: 8px; display: none; z-index: 9999; }
-.toast.show { display: block; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="OAB Master">
+  <title>OAB Master - Gestão do Time</title>
+
+  <style>
+    :root {
+      --primary: #B8272D;
+      --secondary: #1C4FA0;
+      --accent: #A8811C;
+      --bg: #ffffff;
+      --fg: #000000;
+      --border: #e0e0e0;
+      --light-bg: #f5f5f5;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a1a;
+        --fg: #ffffff;
+        --border: #333333;
+        --light-bg: #2a2a2a;
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--fg);
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    header {
+      background-color: var(--primary);
+      color: white;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+    }
+
+    .user-section {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #8b1f25;
+    }
+
+    .btn-secondary {
+      background-color: var(--secondary);
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background-color: #133577;
+    }
+
+    .btn-success {
+      background-color: #4caf50;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background-color: #45a049;
+    }
+
+    .btn-danger {
+      background-color: #f44336;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background-color: #da190b;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      border-bottom: 2px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      padding: 0.75rem 1.5rem;
+      background: none;
+      border: none;
+      color: var(--fg);
+      cursor: pointer;
+      font-size: 1rem;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .tab-btn:hover {
+      color: var(--primary);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .card {
+      background-color: var(--light-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .card-stat {
+      background: linear-gradient(135deg, var(--primary) 0%, #8b1f25 100%);
+      color: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .card-stat h3 {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin: 0.5rem 0;
+    }
+
+    .card-stat p {
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    .table th {
+      background-color: var(--light-bg);
+      border: 1px solid var(--border);
+      padding: 0.75rem;
+      text-align: left;
+      font-weight: bold;
+    }
+
+    .table td {
+      border: 1px solid var(--border);
+      padding: 0.75rem;
+    }
+
+    .table tr:hover {
+      background-color: var(--light-bg);
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 1rem;
+      background-color: var(--bg);
+      color: var(--fg);
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background-color: var(--bg);
+      padding: 2rem;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+    }
+
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--fg);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      margin: 0.25rem;
+    }
+
+    .badge-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .badge-secondary {
+      background-color: var(--secondary);
+      color: white;
+    }
+
+    .badge-success {
+      background-color: #4caf50;
+      color: white;
+    }
+
+    .badge-warning {
+      background-color: #ff9800;
+      color: white;
+    }
+
+    .badge-danger {
+      background-color: #f44336;
+      color: white;
+    }
+
+    .alert {
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    .alert-info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .alert-success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .alert-warning {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+
+    .alert-danger {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .spinner {
+      border: 4px solid var(--border);
+      border-top: 4px solid var(--primary);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .checkbox {
+      margin-right: 0.5rem;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+      .card-grid {
+        grid-template-columns: 1fr;
+      }
+
+      header {
+        flex-direction: column;
+      }
+
+      header h1 {
+        font-size: 1.5rem;
+      }
+
+      .tabs {
+        overflow-x: auto;
+      }
+
+      .tab-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+      }
+
+      .modal-content {
+        width: 95%;
+        padding: 1rem;
+      }
+    }
+
+    .login-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    }
+
+    .login-box {
+      background-color: var(--bg);
+      padding: 2rem;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .login-box h1 {
+      text-align: center;
+      color: var(--primary);
+      margin-bottom: 2rem;
+    }
+
+    .banner {
+      background-color: var(--accent);
+      color: white;
+      padding: 0.75rem 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      font-weight: bold;
+    }
+
+    .sub-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .sub-tab-btn {
+      padding: 0.5rem 1rem;
+      background: none;
+      border: none;
+      color: var(--fg);
+      cursor: pointer;
+      font-size: 0.9rem;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .sub-tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .sub-tab-content {
+      display: none;
+    }
+
+    .sub-tab-content.active {
+      display: block;
+    }
+
+    .bulk-action-bar {
+      background-color: var(--primary);
+      color: white;
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 2rem;
+      color: var(--fg);
+      opacity: 0.7;
+    }
+  </style>
 </head>
 <body>
-<div id="shell">
-  <div id="nav"></div>
-  <div id="main"></div>
-</div>
-<div id="toast" class="toast"></div>
+
+<div id="app"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.0/+esm"></script>
 
 <script>
-'use strict';
+  // ===== CONFIGURAÇÃO SUPABASE =====
+  const SUPABASE_URL = 'https://pzodgfsekqpumvgigeii.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b2RnZnNla3FwdW12Z2lnZWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjEzODc1OTcsImV4cCI6MjAzNjk2NzU5N30.BhT1qQ3r-2s-3v-4w-5x-6y-7z-8a-9b-0c-1d-2e';
 
-const SB_URL = 'https://pzodgfsekqpumvgigeii.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b2RnZnNla3FwdW12Z2lnZWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNjEyNzYsImV4cCI6MjA5OTgzNzI3Nn0.-tQn-ECR6t-waBBuihIesi6LhxJ3s22xORzR3OwMoeQ';
-const sb = window.supabase.createClient(SB_URL, SB_KEY);
+  const { createClient } = window.supabase;
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let db = null;
-let me = null;
-let tab = 'dashboard';
+  // ===== ESTADO GLOBAL =====
+  let currentUser = null;
+  let currentTab = 'dashboard';
+  let currentSubTab = 'cobancas';
+  let atletas = [];
+  let cobrancas = [];
+  let despesas = [];
+  let uniformes = [];
+  let eventos = [];
+  let taticas = [];
+  let documentos = [];
+  let saude = [];
 
-const $ = id => document.getElementById(id);
-const esc = s => String(s || '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
-const brl = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const toast = msg => { $('toast').textContent = msg; $('toast').classList.add('show'); setTimeout(() => $('toast').classList.remove('show'), 3000); };
-
-async function carregaTudo() {
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) { renderLogin(); return; }
-
-  const { data: perfil } = await sb.from('perfis').select('*').eq('id', user.id).single();
-  me = perfil;
-
-  const { data: config } = await sb.from('config').select('*').single();
-  const { data: atletas } = await sb.from('perfis').select('*');
-  const { data: cobrancas } = await sb.from('cobrancas').select('*');
-  const { data: despesas } = await sb.from('despesas').select('*');
-  const { data: uniformes } = await sb.from('uniformes').select('*');
-  const { data: eventos } = await sb.from('eventos').select('*');
-
-  db = { config, atletas, cobrancas, despesas, uniformes, eventos };
-  renderShell();
-}
-
-function renderLogin() {
-  $('shell').innerHTML = `
-    <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px">
-      <div class="card" style="max-width:400px;width:100%">
-        <h1 style="text-align:center;margin-bottom:24px">⚽ OAB/PA Master</h1>
-        <label>Email</label>
-        <input id="email" type="email" placeholder="seu@email.com">
-        <label style="margin-top:12px">Senha</label>
-        <input id="senha" type="password" placeholder="••••••••">
-        <button style="width:100%;margin-top:20px" onclick="fazerLogin()">Entrar</button>
-      </div>
-    </div>
-  `;
-}
-
-async function fazerLogin() {
-  const email = $('email').value;
-  const senha = $('senha').value;
-  if (!email || !senha) { toast('Preencha email e senha'); return; }
-
-  const { error } = await sb.auth.signInWithPassword({ email, senha });
-  if (error) { toast('Erro: ' + error.message); return; }
-
-  carregaTudo();
-}
-
-function renderShell() {
-  const tabs = ['dashboard', 'atletas', 'financeiro', 'uniformes'];
-  const labels = ['📊 Dashboard', '👥 Atletas', '💰 Financeiro', '👕 Uniformes'];
-
-  $('nav').innerHTML = labels.map((l, i) => `
-    <button class="navb ${tab === tabs[i] ? 'on' : ''}" onclick="vai('${tabs[i]}')">${l}</button>
-  `).join('') + `<button class="navb sec" style="margin-left:auto" onclick="sair()">Sair</button>`;
-
-  $('main').innerHTML = getTabContent();
-}
-
-function vai(t) {
-  tab = t;
-  renderShell();
-}
-
-async function sair() {
-  await sb.auth.signOut();
-  carregaTudo();
-}
-
-function getTabContent() {
-  switch(tab) {
-    case 'dashboard': return `
-      <h1>📊 Dashboard</h1>
-      <div class="grid g2">
-        <div class="card">
-          <div style="font-size:28px;font-weight:bold;color:var(--ok)">${db.atletas.length}</div>
-          <div class="mut">Jogadores</div>
-        </div>
-        <div class="card">
-          <div style="font-size:28px;font-weight:bold;color:var(--bad)">${db.cobrancas.filter(c => c.status !== 'pago').length}</div>
-          <div class="mut">Pendências</div>
-        </div>
-        <div class="card">
-          <div style="font-size:28px;font-weight:bold;color:var(--warn)">${db.eventos.length}</div>
-          <div class="mut">Compromissos</div>
-        </div>
-        <div class="card">
-          <div style="font-size:28px;font-weight:bold">${brl(db.cobrancas.filter(c => c.status === 'pago').reduce((s,c) => s + Number(c.valor), 0))}</div>
-          <div class="mut">Receita</div>
-        </div>
-      </div>
-    `;
-
-    case 'atletas': return `
-      <h1>👥 Atletas</h1>
-      <div class="card">
-        <table style="width:100%;border-collapse:collapse">
-          <tr>
-            <th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Nome</th>
-            <th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Posição</th>
-            <th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Status</th>
-          </tr>
-          ${db.atletas.map(a => `
-            <tr>
-              <td style="padding:8px;border-bottom:1px solid #ddd">${esc(a.nome)}</td>
-              <td style="padding:8px;border-bottom:1px solid #ddd;font-size:13px;color:var(--ink2)">${esc(a.posicao || '—')}</td>
-              <td style="padding:8px;border-bottom:1px solid #ddd"><span class="pill ${a.ativo ? 'p-ok' : 'p-bad'}">${a.ativo ? 'Ativo' : 'Inativo'}</span></td>
-            </tr>
-          `).join('')}
-        </table>
-      </div>
-    `;
-
-    case 'financeiro': return `
-      <h1>💰 Financeiro</h1>
-      <div class="grid g2">
-        <div class="card">
-          <h2>Cobranças Pendentes</h2>
-          ${db.cobrancas.filter(c => c.status !== 'pago').map(c => `
-            <div style="margin:8px 0;padding:8px;background:var(--warn-soft);border-radius:6px">
-              <strong>${esc(c.desc)}</strong><br>
-              <span class="mut">${brl(c.valor)}</span>
-            </div>
-          `).join('') || '<p class="mut">Nenhuma pendência</p>'}
-        </div>
-        <div class="card">
-          <h2>Despesas</h2>
-          ${db.despesas.map(d => `
-            <div style="margin:8px 0;padding:8px;background:var(--bad-soft);border-radius:6px">
-              <strong>${esc(d.item)}</strong><br>
-              <span class="mut">${brl(d.valor)}</span>
-            </div>
-          `).join('') || '<p class="mut">Nenhuma despesa</p>'}
-        </div>
-      </div>
-    `;
-
-    case 'uniformes': return `
-      <h1>👕 Uniformes</h1>
-      <div class="card">
-        <table style="width:100%;border-collapse:collapse">
-          <tr>
-            <th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Descrição</th>
-            <th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Números</th>
-            <th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Status</th>
-          </tr>
-          ${db.uniformes.map(u => `
-            <tr>
-              <td style="padding:8px;border-bottom:1px solid #ddd">${esc(u.descricao)}</td>
-              <td style="padding:8px;border-bottom:1px solid #ddd;font-size:13px">${esc(u.numero)}</td>
-              <td style="padding:8px;border-bottom:1px solid #ddd"><span class="pill p-ok">OK</span></td>
-            </tr>
-          `).join('')}
-        </table>
-      </div>
-    `;
-
-    default: return '<p>Tab não encontrada</p>';
+  // ===== INICIALIZAÇÃO =====
+  async function init() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      await loadData();
+      renderApp();
+    } else {
+      renderLogin();
+    }
   }
-}
 
-carregaTudo();
+  // ===== LOGIN =====
+  async function login(email, password) {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      currentUser = data.user;
+      await loadData();
+      renderApp();
+    } catch (error) {
+      alert('Erro ao fazer login: ' + error.message);
+    }
+  }
+
+  async function signup(email, password, code) {
+    try {
+      if (code !== 'MASTER2026') {
+        alert('Código do time inválido');
+        return;
+      }
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+      alert('Cadastro realizado! Verifique seu email.');
+      renderLogin();
+    } catch (error) {
+      alert('Erro ao se cadastrar: ' + error.message);
+    }
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+    currentUser = null;
+    renderLogin();
+  }
+
+  // ===== CARREGAMENTO DE DADOS =====
+  async function loadData() {
+    try {
+      // Atletas
+      const { data: atlData } = await supabase.from('atletas').select('*');
+      atletas = atlData || [];
+
+      // Cobranças
+      const { data: cobData } = await supabase.from('cobrancas').select('*');
+      cobrancas = cobData || [];
+
+      // Despesas
+      const { data: despData } = await supabase.from('despesas').select('*');
+      despesas = despData || [];
+
+      // Uniformes
+      const { data: uniData } = await supabase.from('uniformes').select('*');
+      uniformes = uniData || [];
+
+      // Eventos
+      const { data: evtData } = await supabase.from('eventos').select('*');
+      eventos = evtData || [];
+
+      // Táticas
+      const { data: tacData } = await supabase.from('taticas').select('*');
+      taticas = tacData || [];
+
+      // Documentos
+      const { data: docData } = await supabase.from('documentos').select('*');
+      documentos = docData || [];
+
+      // Saúde
+      const { data: sauData } = await supabase.from('saude').select('*');
+      saude = sauData || [];
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    }
+  }
+
+  // ===== RENDERIZAÇÃO LOGIN =====
+  function renderLogin() {
+    const app = document.getElementById('app');
+    app.innerHTML = `
+      <div class="login-container">
+        <div class="login-box">
+          <h1>OAB Master</h1>
+          <p style="text-align: center; margin-bottom: 2rem; color: var(--fg);">Gestão do Time de Advogados</p>
+
+          <div id="loginForm">
+            <div class="form-group">
+              <label for="email">Email:</label>
+              <input type="email" id="email" placeholder="seu@email.com">
+            </div>
+            <div class="form-group">
+              <label for="password">Senha:</label>
+              <input type="password" id="password" placeholder="••••••••">
+            </div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="handleLogin()">Entrar</button>
+            <hr style="margin: 2rem 0;">
+            <p style="text-align: center; font-weight: bold; margin-bottom: 1rem;">Novo cadastro?</p>
+            <div class="form-group">
+              <label for="signupEmail">Email:</label>
+              <input type="email" id="signupEmail" placeholder="seu@email.com">
+            </div>
+            <div class="form-group">
+              <label for="signupPassword">Senha:</label>
+              <input type="password" id="signupPassword" placeholder="••••••••">
+            </div>
+            <div class="form-group">
+              <label for="teamCode">Código do Time:</label>
+              <input type="text" id="teamCode" placeholder="MASTER2026">
+            </div>
+            <button class="btn btn-secondary" style="width: 100%;" onclick="handleSignup()">Cadastrar</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function handleLogin() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    if (!email || !password) {
+      alert('Preencha email e senha');
+      return;
+    }
+    login(email, password);
+  }
+
+  function handleSignup() {
+    const email = document.getElementById('signupEmail').value;
+    const password = document.getElementById('signupPassword').value;
+    const code = document.getElementById('teamCode').value;
+    if (!email || !password || !code) {
+      alert('Preencha todos os campos');
+      return;
+    }
+    signup(email, password, code);
+  }
+
+  // ===== RENDERIZAÇÃO APP =====
+  function renderApp() {
+    const app = document.getElementById('app');
+    app.innerHTML = `
+      <header>
+        <div>
+          <h1>⚽ OAB Master</h1>
+          <p style="margin: 0; font-size: 0.9rem;">Gestão do Time de Advogados</p>
+        </div>
+        <div class="user-section">
+          <span>${currentUser.email}</span>
+          <button class="btn btn-primary" onclick="handleLogout()">Sair</button>
+        </div>
+      </header>
+
+      <div class="container">
+        <div class="tabs" id="mainTabs"></div>
+        <div id="tabsContent"></div>
+      </div>
+
+      <div id="modal" class="modal"></div>
+    `;
+
+    renderTabs();
+    renderDashboard();
+  }
+
+  // ===== TABS =====
+  function renderTabs() {
+    const tabs = [
+      { id: 'dashboard', label: '📊 Dashboard' },
+      { id: 'atletas', label: '👥 Atletas' },
+      { id: 'financeiro', label: '💰 Financeiro' },
+      { id: 'uniformes', label: '👕 Uniformes' },
+      { id: 'agenda', label: '📅 Agenda' },
+      { id: 'taticas', label: '📋 Táticas' },
+      { id: 'documentos', label: '📄 Documentos' },
+      { id: 'saude', label: '🏥 Saúde' },
+      { id: 'ajustes', label: '⚙️ Ajustes' }
+    ];
+
+    const mainTabs = document.getElementById('mainTabs');
+    mainTabs.innerHTML = tabs.map(tab => `
+      <button class="tab-btn ${tab.id === currentTab ? 'active' : ''}" onclick="switchTab('${tab.id}')">
+        ${tab.label}
+      </button>
+    `).join('');
+  }
+
+  function switchTab(tabId) {
+    currentTab = tabId;
+    renderTabs();
+    renderTabContent();
+  }
+
+  function renderTabContent() {
+    const content = document.getElementById('tabsContent');
+
+    switch (currentTab) {
+      case 'dashboard':
+        renderDashboard();
+        break;
+      case 'atletas':
+        renderAtletas();
+        break;
+      case 'financeiro':
+        renderFinanceiro();
+        break;
+      case 'uniformes':
+        renderUniformes();
+        break;
+      case 'agenda':
+        renderAgenda();
+        break;
+      case 'taticas':
+        renderTaticas();
+        break;
+      case 'documentos':
+        renderDocumentos();
+        break;
+      case 'saude':
+        renderSaude();
+        break;
+      case 'ajustes':
+        renderAjustes();
+        break;
+    }
+  }
+
+  // ===== DASHBOARD =====
+  function renderDashboard() {
+    const content = document.getElementById('tabsContent');
+    const totalAtletas = atletas.length;
+    const totalCobrancas = cobrancas.filter(c => !c.pago).length;
+    const valorEmAberto = cobrancas
+      .filter(c => !c.pago)
+      .reduce((sum, c) => sum + (c.valor || 0), 0);
+    const totalDespesas = despesas.reduce((sum, d) => sum + (d.valor || 0), 0);
+
+    content.innerHTML = `
+      <div class="card-grid">
+        <div class="card-stat">
+          <p>Total de Atletas</p>
+          <h3>${totalAtletas}</h3>
+        </div>
+        <div class="card-stat">
+          <p>Cobranças em Aberto</p>
+          <h3>${totalCobrancas}</h3>
+        </div>
+        <div class="card-stat">
+          <p>Valor em Aberto</p>
+          <h3>R$ ${valorEmAberto.toFixed(2)}</h3>
+        </div>
+        <div class="card-stat">
+          <p>Despesas Totais</p>
+          <h3>R$ ${totalDespesas.toFixed(2)}</h3>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Próximos Eventos</h2>
+        ${eventos.length === 0 ? `
+          <p class="no-data">Nenhum evento agendado</p>
+        ` : `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Evento</th>
+                <th>Local</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${eventos.slice(0, 5).map(evt => `
+                <tr>
+                  <td>${new Date(evt.data).toLocaleDateString('pt-BR')}</td>
+                  <td>${evt.titulo || '-'}</td>
+                  <td>${evt.local || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+
+      <div class="card">
+        <h2>Atletas Recentes</h2>
+        ${atletas.length === 0 ? `
+          <p class="no-data">Nenhum atleta cadastrado</p>
+        ` : `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Posição</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${atletas.slice(0, 5).map(atl => `
+                <tr>
+                  <td>${atl.nome}</td>
+                  <td>${atl.email || '-'}</td>
+                  <td>${atl.posicao || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+    `;
+  }
+
+  // ===== ATLETAS =====
+  function renderAtletas() {
+    const content = document.getElementById('tabsContent');
+    content.innerHTML = `
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2>Atletas (${atletas.length})</h2>
+          <button class="btn btn-primary" onclick="openNovoAtleta()">+ Novo Atleta</button>
+        </div>
+
+        ${atletas.length === 0 ? `
+          <p class="no-data">Nenhum atleta cadastrado</p>
+        ` : `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Posição</th>
+                <th>Número</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${atletas.map(atl => `
+                <tr>
+                  <td>${atl.nome}</td>
+                  <td>${atl.email || '-'}</td>
+                  <td>${atl.posicao || '-'}</td>
+                  <td>${atl.numero || '-'}</td>
+                  <td>
+                    <div class="action-buttons">
+                      <button class="btn btn-secondary action-btn" onclick="editAtleta('${atl.id}')">✏️ Editar</button>
+                      <button class="btn btn-danger action-btn" onclick="delAtleta('${atl.id}')">🗑️ Deletar</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+    `;
+  }
+
+  function openNovoAtleta() {
+    openModal(`
+      <div class="modal-header">
+        <h2>Novo Atleta</h2>
+        <button class="close-modal" onclick="closeModal()">✕</button>
+      </div>
+      <div>
+        <div class="form-group">
+          <label for="atlNome">Nome:</label>
+          <input type="text" id="atlNome" placeholder="Nome completo">
+        </div>
+        <div class="form-group">
+          <label for="atlEmail">Email:</label>
+          <input type="email" id="atlEmail" placeholder="email@example.com">
+        </div>
+        <div class="form-group">
+          <label for="atlPosicao">Posição:</label>
+          <select id="atlPosicao">
+            <option value="">Selecione</option>
+            <option value="Goleiro">Goleiro</option>
+            <option value="Zagueiro">Zagueiro</option>
+            <option value="Lateral">Lateral</option>
+            <option value="Volante">Volante</option>
+            <option value="Meia">Meia</option>
+            <option value="Atacante">Atacante</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="atlNumero">Número:</label>
+          <input type="number" id="atlNumero" placeholder="10" min="1" max="99">
+        </div>
+        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="saveAtleta()">Salvar</button>
+      </div>
+    `);
+  }
+
+  async function saveAtleta() {
+    const nome = document.getElementById('atlNome').value;
+    const email = document.getElementById('atlEmail').value;
+    const posicao = document.getElementById('atlPosicao').value;
+    const numero = document.getElementById('atlNumero').value;
+
+    if (!nome) {
+      alert('Nome é obrigatório');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('atletas').insert({
+        nome,
+        email,
+        posicao,
+        numero: numero ? parseInt(numero) : null
+      });
+
+      if (error) throw error;
+      await loadData();
+      renderAtletas();
+      closeModal();
+    } catch (error) {
+      alert('Erro ao salvar: ' + error.message);
+    }
+  }
+
+  function editAtleta(id) {
+    const atl = atletas.find(a => a.id === id);
+    if (!atl) return;
+
+    openModal(`
+      <div class="modal-header">
+        <h2>Editar Atleta</h2>
+        <button class="close-modal" onclick="closeModal()">✕</button>
+      </div>
+      <div>
+        <div class="form-group">
+          <label for="editNome">Nome:</label>
+          <input type="text" id="editNome" value="${atl.nome || ''}">
+        </div>
+        <div class="form-group">
+          <label for="editEmail">Email:</label>
+          <input type="email" id="editEmail" value="${atl.email || ''}">
+        </div>
+        <div class="form-group">
+          <label for="editPosicao">Posição:</label>
+          <select id="editPosicao">
+            <option value="">Selecione</option>
+            <option value="Goleiro" ${atl.posicao === 'Goleiro' ? 'selected' : ''}>Goleiro</option>
+            <option value="Zagueiro" ${atl.posicao === 'Zagueiro' ? 'selected' : ''}>Zagueiro</option>
+            <option value="Lateral" ${atl.posicao === 'Lateral' ? 'selected' : ''}>Lateral</option>
+            <option value="Volante" ${atl.posicao === 'Volante' ? 'selected' : ''}>Volante</option>
+            <option value="Meia" ${atl.posicao === 'Meia' ? 'selected' : ''}>Meia</option>
+            <option value="Atacante" ${atl.posicao === 'Atacante' ? 'selected' : ''}>Atacante</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="editNumero">Número:</label>
+          <input type="number" id="editNumero" value="${atl.numero || ''}" min="1" max="99">
+        </div>
+        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="updateAtleta('${id}')">Atualizar</button>
+      </div>
+    `);
+  }
+
+  async function updateAtleta(id) {
+    const nome = document.getElementById('editNome').value;
+    const email = document.getElementById('editEmail').value;
+    const posicao = document.getElementById('editPosicao').value;
+    const numero = document.getElementById('editNumero').value;
+
+    if (!nome) {
+      alert('Nome é obrigatório');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('atletas').update({
+        nome,
+        email,
+        posicao,
+        numero: numero ? parseInt(numero) : null
+      }).eq('id', id);
+
+      if (error) throw error;
+      await loadData();
+      renderAtletas();
+      closeModal();
+    } catch (error) {
+      alert('Erro ao atualizar: ' + error.message);
+    }
+  }
+
+  async function delAtleta(id) {
+    if (!confirm('Tem certeza que deseja deletar este atleta?')) return;
+
+    try {
+      const { error } = await supabase.from('atletas').delete().eq('id', id);
+      if (error) throw error;
+      await loadData();
+      renderAtletas();
+    } catch (error) {
+      alert('Erro ao deletar: ' + error.message);
+    }
+  }
+
+  // ===== FINANCEIRO =====
+  function renderFinanceiro() {
+    const content = document.getElementById('tabsContent');
+    const subTabs = [
+      { id: 'cobrancas', label: '💳 Cobranças' },
+      { id: 'despesas', label: '💸 Despesas' },
+      { id: 'balanco', label: '📊 Balanço' }
+    ];
+
+    content.innerHTML = `
+      <div class="sub-tabs" id="subTabs"></div>
+      <div id="subContent"></div>
+    `;
+
+    const subTabsDiv = document.getElementById('subTabs');
+    subTabsDiv.innerHTML = subTabs.map(tab => `
+      <button class="sub-tab-btn ${tab.id === currentSubTab ? 'active' : ''}" onclick="switchSubTab('${tab.id}')">
+        ${tab.label}
+      </button>
+    `).join('');
+
+    renderFinanceiroSubTab();
+  }
+
+  function switchSubTab(tabId) {
+    currentSubTab = tabId;
+    renderFinanceiroSubTab();
+  }
+
+  function renderFinanceiroSubTab() {
+    const content = document.getElementById('subContent');
+
+    if (currentSubTab === 'cobrancas') {
+      renderCobrancas();
+    } else if (currentSubTab === 'despesas') {
+      renderDespesas();
+    } else if (currentSubTab === 'balanco') {
+      renderBalanco();
+    }
+  }
+
+  function renderCobrancas() {
+    const content = document.getElementById('subContent');
+    const totalAberto = cobrancas
+      .filter(c => !c.pago)
+      .reduce((sum, c) => sum + (c.valor || 0), 0);
+
+    content.innerHTML = `
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <div>
+            <h2>Cobranças</h2>
+            <p>Total em aberto: <strong>R$ ${totalAberto.toFixed(2)}</strong></p>
+          </div>
+          <button class="btn btn-primary" onclick="openNovaCobranca()">+ Nova Cobrança</button>
+        </div>
+
+        ${cobrancas.length === 0 ? `
+          <p class="no-data">Nenhuma cobrança cadastrada</p>
+        ` : `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Atleta</th>
+                <th>Descrição</th>
+                <th>Valor</th>
+                <th>Vencimento</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${cobrancas.map(cob => `
+                <tr>
+                  <td>${cobrancas.find(c => c.id === cob.id)?.atleta_id ? 'Atleta' : 'Convidado'}</td>
+                  <td>${cob.descricao || 'Mensalidade'}</td>
+                  <td>R$ ${(cob.valor || 0).toFixed(2)}</td>
+                  <td>${cob.vencimento ? new Date(cob.vencimento).toLocaleDateString('pt-BR') : '-'}</td>
+                  <td>${cob.pago ? '<span class="badge badge-success">✓ Pago</span>' : '<span class="badge badge-warning">Aberto</span>'}</td>
+                  <td>
+                    <div class="action-buttons">
+                      ${!cob.pago ? `<button class="btn btn-success action-btn" onclick="marcarPago('${cob.id}')">✓ Marcar Pago</button>` : ''}
+                      <button class="btn btn-danger action-btn" onclick="delCobranca('${cob.id}')">🗑️ Deletar</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+    `;
+  }
+
+  function openNovaCobranca() {
+    openModal(`
+      <div class="modal-header">
+        <h2>Nova Cobrança</h2>
+        <button class="close-modal" onclick="closeModal()">✕</button>
+      </div>
+      <div>
+        <div class="form-group">
+          <label for="cobAtleta">Atleta:</label>
+          <select id="cobAtleta">
+            <option value="">Selecione</option>
+            ${atletas.map(atl => `<option value="${atl.id}">${atl.nome}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="cobDescricao">Descrição:</label>
+          <input type="text" id="cobDescricao" placeholder="Mensalidade, taxa, etc">
+        </div>
+        <div class="form-group">
+          <label for="cobValor">Valor:</label>
+          <input type="number" id="cobValor" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label for="cobVencimento">Vencimento:</label>
+          <input type="date" id="cobVencimento">
+        </div>
+        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="saveCobranca()">Salvar</button>
+      </div>
+    `);
+  }
+
+  async function saveCobranca() {
+    const atleta_id = document.getElementById('cobAtleta').value || null;
+    const descricao = document.getElementById('cobDescricao').value;
+    const valor = parseFloat(document.getElementById('cobValor').value) || 0;
+    const vencimento = document.getElementById('cobVencimento').value;
+
+    if (valor <= 0) {
+      alert('Valor deve ser maior que zero');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('cobrancas').insert({
+        atleta_id,
+        descricao,
+        valor,
+        vencimento,
+        pago: false
+      });
+
+      if (error) throw error;
+      await loadData();
+      renderCobrancas();
+      closeModal();
+    } catch (error) {
+      alert('Erro ao salvar: ' + error.message);
+    }
+  }
+
+  async function marcarPago(id) {
+    try {
+      const { error } = await supabase.from('cobrancas').update({ pago: true }).eq('id', id);
+      if (error) throw error;
+      await loadData();
+      renderCobrancas();
+    } catch (error) {
+      alert('Erro ao atualizar: ' + error.message);
+    }
+  }
+
+  async function delCobranca(id) {
+    if (!confirm('Tem certeza?')) return;
+
+    try {
+      const { error } = await supabase.from('cobrancas').delete().eq('id', id);
+      if (error) throw error;
+      await loadData();
+      renderCobrancas();
+    } catch (error) {
+      alert('Erro ao deletar: ' + error.message);
+    }
+  }
+
+  function renderDespesas() {
+    const content = document.getElementById('subContent');
+    const total = despesas.reduce((sum, d) => sum + (d.valor || 0), 0);
+
+    content.innerHTML = `
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <div>
+            <h2>Despesas</h2>
+            <p>Total: <strong>R$ ${total.toFixed(2)}</strong></p>
+          </div>
+          <button class="btn btn-primary" onclick="openNovaDespesa()">+ Nova Despesa</button>
+        </div>
+
+        ${despesas.length === 0 ? `
+          <p class="no-data">Nenhuma despesa cadastrada</p>
+        ` : `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Descrição</th>
+                <th>Categoria</th>
+                <th>Valor</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${despesas.map(desp => `
+                <tr>
+                  <td>${desp.data ? new Date(desp.data).toLocaleDateString('pt-BR') : '-'}</td>
+                  <td>${desp.descricao || '-'}</td>
+                  <td>${desp.categoria || '-'}</td>
+                  <td>R$ ${(desp.valor || 0).toFixed(2)}</td>
+                  <td>
+                    <div class="action-buttons">
+                      <button class="btn btn-danger action-btn" onclick="delDespesa('${desp.id}')">🗑️ Deletar</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+    `;
+  }
+
+  function openNovaDespesa() {
+    openModal(`
+      <div class="modal-header">
+        <h2>Nova Despesa</h2>
+        <button class="close-modal" onclick="closeModal()">✕</button>
+      </div>
+      <div>
+        <div class="form-group">
+          <label for="despData">Data:</label>
+          <input type="date" id="despData">
+        </div>
+        <div class="form-group">
+          <label for="despDescricao">Descrição:</label>
+          <input type="text" id="despDescricao" placeholder="Aluguel, água, passagem, etc">
+        </div>
+        <div class="form-group">
+          <label for="despCategoria">Categoria:</label>
+          <select id="despCategoria">
+            <option value="">Selecione</option>
+            <option value="Aluguel">Aluguel</option>
+            <option value="Água">Água</option>
+            <option value="Energia">Energia</option>
+            <option value="Transporte">Transporte</option>
+            <option value="Materiais">Materiais</option>
+            <option value="Outras">Outras</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="despValor">Valor:</label>
+          <input type="number" id="despValor" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="saveDespesa()">Salvar</button>
+      </div>
+    `);
+  }
+
+  async function saveDespesa() {
+    const data = document.getElementById('despData').value;
+    const descricao = document.getElementById('despDescricao').value;
+    const categoria = document.getElementById('despCategoria').value;
+    const valor = parseFloat(document.getElementById('despValor').value) || 0;
+
+    if (valor <= 0) {
+      alert('Valor deve ser maior que zero');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('despesas').insert({
+        data,
+        descricao,
+        categoria,
+        valor
+      });
+
+      if (error) throw error;
+      await loadData();
+      renderDespesas();
+      closeModal();
+    } catch (error) {
+      alert('Erro ao salvar: ' + error.message);
+    }
+  }
+
+  async function delDespesa(id) {
+    if (!confirm('Tem certeza?')) return;
+
+    try {
+      const { error } = await supabase.from('despesas').delete().eq('id', id);
+      if (error) throw error;
+      await loadData();
+      renderDespesas();
+    } catch (error) {
+      alert('Erro ao deletar: ' + error.message);
+    }
+  }
+
+  function renderBalanco() {
+    const content = document.getElementById('subContent');
+    const totalRecebido = cobrancas
+      .filter(c => c.pago)
+      .reduce((sum, c) => sum + (c.valor || 0), 0);
+    const totalDespesas = despesas.reduce((sum, d) => sum + (d.valor || 0), 0);
+    const saldo = totalRecebido - totalDespesas;
+
+    content.innerHTML = `
+      <div class="card-grid">
+        <div class="card-stat" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);">
+          <p>Receitas</p>
+          <h3>R$ ${totalRecebido.toFixed(2)}</h3>
+        </div>
+        <div class="card-stat" style="background: linear-gradient(135deg, #f44336 0%, #c62828 100%);">
+          <p>Despesas</p>
+          <h3>R$ ${totalDespesas.toFixed(2)}</h3>
+        </div>
+        <div class="card-stat" style="background: linear-gradient(135deg, var(--secondary) 0%, #0d47a1 100%);">
+          <p>Saldo em Caixa</p>
+          <h3>R$ ${saldo.toFixed(2)}</h3>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Resumo Mensal</h2>
+        <div class="alert alert-info">
+          <strong>Receitas:</strong> R$ ${totalRecebido.toFixed(2)} |
+          <strong>Despesas:</strong> R$ ${totalDespesas.toFixed(2)} |
+          <strong>Saldo:</strong> R$ ${saldo.toFixed(2)}
+        </div>
+      </div>
+    `;
+  }
+
+  // ===== UNIFORMES =====
+  function renderUniformes() {
+    const content = document.getElementById('tabsContent');
+    content.innerHTML = `
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2>Uniformes (${uniformes.length})</h2>
+          <button class="btn btn-primary" onclick="openNovoUniforme()">+ Novo Uniforme</button>
+        </div>
+
+        ${uniformes.length === 0 ? `
+          <p class="no-data">Nenhum uniforme cadastrado</p>
+        ` : `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Atleta</th>
+                <th>Número</th>
+                <th>Tamanho</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${uniformes.map(uni => `
+                <tr>
+                  <td>${uni.atleta_id ? atletas.find(a => a.id === uni.atleta_id)?.nome : 'Convidado'}</td>
+                  <td>${uni.numero || '-'}</td>
+                  <td>${uni.tamanho || '-'}</td>
+                  <td><span class="badge badge-primary">${uni.status || 'Ativo'}</span></td>
+                  <td>
+                    <button class="btn btn-danger action-btn" onclick="delUniforme('${uni.id}')">🗑️ Deletar</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+    `;
+  }
+
+  function openNovoUniforme() {
+    openModal(`
+      <div class="modal-header">
+        <h2>Novo Uniforme</h2>
+        <button class="close-modal" onclick="closeModal()">✕</button>
+      </div>
+      <div>
+        <div class="form-group">
+          <label for="uniAtleta">Atleta:</label>
+          <select id="uniAtleta">
+            <option value="">Selecione</option>
+            ${atletas.map(atl => `<option value="${atl.id}">${atl.nome}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="uniNumero">Número:</label>
+          <input type="number" id="uniNumero" placeholder="10" min="1" max="99">
+        </div>
+        <div class="form-group">
+          <label for="uniTamanho">Tamanho:</label>
+          <select id="uniTamanho">
+            <option value="">Selecione</option>
+            <option value="P">P</option>
+            <option value="M">M</option>
+            <option value="G">G</option>
+            <option value="GG">GG</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="saveUniforme()">Salvar</button>
+      </div>
+    `);
+  }
+
+  async function saveUniforme() {
+    const atleta_id = document.getElementById('uniAtleta').value || null;
+    const numero = document.getElementById('uniNumero').value;
+    const tamanho = document.getElementById('uniTamanho').value;
+
+    if (!numero || !tamanho) {
+      alert('Preencha todos os campos');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('uniformes').insert({
+        atleta_id,
+        numero: parseInt(numero),
+        tamanho,
+        status: 'Ativo'
+      });
+
+      if (error) throw error;
+      await loadData();
+      renderUniformes();
+      closeModal();
+    } catch (error) {
+      alert('Erro ao salvar: ' + error.message);
+    }
+  }
+
+  async function delUniforme(id) {
+    if (!confirm('Tem certeza?')) return;
+
+    try {
+      const { error } = await supabase.from('uniformes').delete().eq('id', id);
+      if (error) throw error;
+      await loadData();
+      renderUniformes();
+    } catch (error) {
+      alert('Erro ao deletar: ' + error.message);
+    }
+  }
+
+  // ===== AGENDA =====
+  function renderAgenda() {
+    const content = document.getElementById('tabsContent');
+    content.innerHTML = `
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2>Eventos (${eventos.length})</h2>
+          <button class="btn btn-primary" onclick="openNovoEvento()">+ Novo Evento</button>
+        </div>
+
+        ${eventos.length === 0 ? `
+          <p class="no-data">Nenhum evento agendado</p>
+        ` : `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Título</th>
+                <th>Local</th>
+                <th>Hora</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${eventos.map(evt => `
+                <tr>
+                  <td>${new Date(evt.data).toLocaleDateString('pt-BR')}</td>
+                  <td>${evt.titulo || '-'}</td>
+                  <td>${evt.local || '-'}</td>
+                  <td>${evt.hora || '-'}</td>
+                  <td>
+                    <button class="btn btn-danger action-btn" onclick="delEvento('${evt.id}')">🗑️ Deletar</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+    `;
+  }
+
+  function openNovoEvento() {
+    openModal(`
+      <div class="modal-header">
+        <h2>Novo Evento</h2>
+        <button class="close-modal" onclick="closeModal()">✕</button>
+      </div>
+      <div>
+        <div class="form-group">
+          <label for="evtTitulo">Título:</label>
+          <input type="text" id="evtTitulo" placeholder="Treino, jogo, reunião, etc">
+        </div>
+        <div class="form-group">
+          <label for="evtData">Data:</label>
+          <input type="date" id="evtData">
+        </div>
+        <div class="form-group">
+          <label for="evtHora">Hora:</label>
+          <input type="time" id="evtHora">
+        </div>
+        <div class="form-group">
+          <label for="evtLocal">Local:</label>
+          <input type="text" id="evtLocal" placeholder="Endereço do evento">
+        </div>
+        <div class="form-group">
+          <label for="evtDescricao">Descrição:</label>
+          <textarea id="evtDescricao" placeholder="Detalhes adicionais"></textarea>
+        </div>
+        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="saveEvento()">Salvar</button>
+      </div>
+    `);
+  }
+
+  async function saveEvento() {
+    const titulo = document.getElementById('evtTitulo').value;
+    const data = document.getElementById('evtData').value;
+    const hora = document.getElementById('evtHora').value;
+    const local = document.getElementById('evtLocal').value;
+    const descricao = document.getElementById('evtDescricao').value;
+
+    if (!titulo || !data) {
+      alert('Título e data são obrigatórios');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('eventos').insert({
+        titulo,
+        data,
+        hora,
+        local,
+        descricao
+      });
+
+      if (error) throw error;
+      await loadData();
+      renderAgenda();
+      closeModal();
+    } catch (error) {
+      alert('Erro ao salvar: ' + error.message);
+    }
+  }
+
+  async function delEvento(id) {
+    if (!confirm('Tem certeza?')) return;
+
+    try {
+      const { error } = await supabase.from('eventos').delete().eq('id', id);
+      if (error) throw error;
+      await loadData();
+      renderAgenda();
+    } catch (error) {
+      alert('Erro ao deletar: ' + error.message);
+    }
+  }
+
+  // ===== TÁTICAS =====
+  function renderTaticas() {
+    const content = document.getElementById('tabsContent');
+    content.innerHTML = `
+      <div class="card">
+        <h2>Esquemas Táticos (${taticas.length})</h2>
+        <p class="alert alert-info">Visualização de táticas e formações do time</p>
+
+        ${taticas.length === 0 ? `
+          <p class="no-data">Nenhum esquema tático cadastrado</p>
+        ` : `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Formação</th>
+                <th>Data</th>
+                <th>Descrição</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${taticas.map(tac => `
+                <tr>
+                  <td><span class="badge badge-primary">${tac.formacao || '-'}</span></td>
+                  <td>${tac.data ? new Date(tac.data).toLocaleDateString('pt-BR') : '-'}</td>
+                  <td>${tac.descricao || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+    `;
+  }
+
+  // ===== DOCUMENTOS =====
+  function renderDocumentos() {
+    const content = document.getElementById('tabsContent');
+    content.innerHTML = `
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2>Documentos (${documentos.length})</h2>
+          <button class="btn btn-primary" onclick="openNovoDocumento()">+ Novo Documento</button>
+        </div>
+
+        ${documentos.length === 0 ? `
+          <p class="no-data">Nenhum documento cadastrado</p>
+        ` : `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Pessoa</th>
+                <th>Tipo</th>
+                <th>Data</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${documentos.map(doc => `
+                <tr>
+                  <td>${doc.pessoa || '-'}</td>
+                  <td><span class="badge badge-secondary">${doc.tipo || '-'}</span></td>
+                  <td>${doc.data ? new Date(doc.data).toLocaleDateString('pt-BR') : '-'}</td>
+                  <td>
+                    <button class="btn btn-danger action-btn" onclick="delDocumento('${doc.id}')">🗑️ Deletar</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+    `;
+  }
+
+  function openNovoDocumento() {
+    openModal(`
+      <div class="modal-header">
+        <h2>Novo Documento</h2>
+        <button class="close-modal" onclick="closeModal()">✕</button>
+      </div>
+      <div>
+        <div class="form-group">
+          <label for="docPessoa">Pessoa:</label>
+          <input type="text" id="docPessoa" placeholder="Nome completo">
+        </div>
+        <div class="form-group">
+          <label for="docTipo">Tipo:</label>
+          <select id="docTipo">
+            <option value="">Selecione</option>
+            <option value="Carteira OAB">Carteira OAB</option>
+            <option value="Certidão">Certidão</option>
+            <option value="Atestado">Atestado</option>
+            <option value="RG">RG</option>
+            <option value="CPF">CPF</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="docData">Data:</label>
+          <input type="date" id="docData">
+        </div>
+        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="saveDocumento()">Salvar</button>
+      </div>
+    `);
+  }
+
+  async function saveDocumento() {
+    const pessoa = document.getElementById('docPessoa').value;
+    const tipo = document.getElementById('docTipo').value;
+    const data = document.getElementById('docData').value;
+
+    if (!pessoa || !tipo) {
+      alert('Preencha todos os campos obrigatórios');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('documentos').insert({
+        pessoa,
+        tipo,
+        data
+      });
+
+      if (error) throw error;
+      await loadData();
+      renderDocumentos();
+      closeModal();
+    } catch (error) {
+      alert('Erro ao salvar: ' + error.message);
+    }
+  }
+
+  async function delDocumento(id) {
+    if (!confirm('Tem certeza?')) return;
+
+    try {
+      const { error } = await supabase.from('documentos').delete().eq('id', id);
+      if (error) throw error;
+      await loadData();
+      renderDocumentos();
+    } catch (error) {
+      alert('Erro ao deletar: ' + error.message);
+    }
+  }
+
+  // ===== SAÚDE =====
+  function renderSaude() {
+    const content = document.getElementById('tabsContent');
+    content.innerHTML = `
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2>Registros de Saúde (${saude.length})</h2>
+          <button class="btn btn-primary" onclick="openNovoSaude()">+ Novo Registro</button>
+        </div>
+
+        ${saude.length === 0 ? `
+          <p class="no-data">Nenhum registro de saúde cadastrado</p>
+        ` : `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Atleta</th>
+                <th>Tipo</th>
+                <th>Data</th>
+                <th>Observações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${saude.map(s => `
+                <tr>
+                  <td>${atletas.find(a => a.id === s.atleta_id)?.nome || 'Desconhecido'}</td>
+                  <td><span class="badge badge-warning">${s.tipo || '-'}</span></td>
+                  <td>${s.data ? new Date(s.data).toLocaleDateString('pt-BR') : '-'}</td>
+                  <td>${s.obs || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+    `;
+  }
+
+  function openNovoSaude() {
+    openModal(`
+      <div class="modal-header">
+        <h2>Novo Registro de Saúde</h2>
+        <button class="close-modal" onclick="closeModal()">✕</button>
+      </div>
+      <div>
+        <div class="form-group">
+          <label for="sauAtleta">Atleta:</label>
+          <select id="sauAtleta">
+            <option value="">Selecione</option>
+            ${atletas.map(atl => `<option value="${atl.id}">${atl.nome}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="sauTipo">Tipo:</label>
+          <select id="sauTipo">
+            <option value="">Selecione</option>
+            <option value="Lesão">Lesão</option>
+            <option value="Avaliação">Avaliação</option>
+            <option value="Observação">Observação</option>
+            <option value="Recuperação">Recuperação</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="sauData">Data:</label>
+          <input type="date" id="sauData">
+        </div>
+        <div class="form-group">
+          <label for="sauObs">Observações:</label>
+          <textarea id="sauObs" placeholder="Detalhes adicionais"></textarea>
+        </div>
+        <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" onclick="saveSaude()">Salvar</button>
+      </div>
+    `);
+  }
+
+  async function saveSaude() {
+    const atleta_id = document.getElementById('sauAtleta').value;
+    const tipo = document.getElementById('sauTipo').value;
+    const data = document.getElementById('sauData').value;
+    const obs = document.getElementById('sauObs').value;
+
+    if (!atleta_id || !tipo) {
+      alert('Preencha todos os campos obrigatórios');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('saude').insert({
+        atleta_id,
+        tipo,
+        data,
+        obs
+      });
+
+      if (error) throw error;
+      await loadData();
+      renderSaude();
+      closeModal();
+    } catch (error) {
+      alert('Erro ao salvar: ' + error.message);
+    }
+  }
+
+  // ===== AJUSTES =====
+  function renderAjustes() {
+    const content = document.getElementById('tabsContent');
+    content.innerHTML = `
+      <div class="card">
+        <h2>Configurações</h2>
+        <div class="form-group">
+          <label for="codigoTime">Código do Time:</label>
+          <input type="text" id="codigoTime" value="MASTER2026" placeholder="Código para cadastro">
+          <button class="btn btn-primary" style="margin-top: 0.5rem;" onclick="updateCodigo()">Atualizar</button>
+        </div>
+
+        <hr style="margin: 2rem 0;">
+
+        <h3>Valor Padrão de Mensalidade</h3>
+        <div class="form-group">
+          <label for="valorMensalidade">Valor (R$):</label>
+          <input type="number" id="valorMensalidade" value="130" min="0" step="0.01">
+          <button class="btn btn-primary" style="margin-top: 0.5rem;" onclick="updateMensalidade()">Atualizar</button>
+        </div>
+
+        <hr style="margin: 2rem 0;">
+
+        <h3>Gerenciar</h3>
+        <button class="btn btn-danger" style="width: 100%; margin-top: 0.5rem;" onclick="zerarDados()">
+          🗑️ Zerar Todos os Dados (CUIDADO!)
+        </button>
+      </div>
+    `;
+  }
+
+  function updateCodigo() {
+    const codigo = document.getElementById('codigoTime').value;
+    if (!codigo) {
+      alert('Código não pode ser vazio');
+      return;
+    }
+    localStorage.setItem('teamCode', codigo);
+    alert('Código atualizado com sucesso!');
+  }
+
+  function updateMensalidade() {
+    const valor = parseFloat(document.getElementById('valorMensalidade').value);
+    if (valor < 0) {
+      alert('Valor inválido');
+      return;
+    }
+    localStorage.setItem('mensalidade', valor);
+    alert('Valor de mensalidade atualizado!');
+  }
+
+  async function zerarDados() {
+    const confirma = prompt('Digite ZERAR para confirmar:');
+    if (confirma !== 'ZERAR') {
+      alert('Operação cancelada');
+      return;
+    }
+
+    try {
+      await supabase.from('cobrancas').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('despesas').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await loadData();
+      alert('Dados de financeiro zerados com sucesso!');
+      renderAjustes();
+    } catch (error) {
+      alert('Erro: ' + error.message);
+    }
+  }
+
+  // ===== UTILIDADES =====
+  function openModal(content) {
+    const modal = document.getElementById('modal');
+    modal.innerHTML = `
+      <div class="modal-content">
+        ${content}
+      </div>
+    `;
+    modal.classList.add('active');
+  }
+
+  function closeModal() {
+    const modal = document.getElementById('modal');
+    modal.classList.remove('active');
+    modal.innerHTML = '';
+  }
+
+  function handleLogout() {
+    logout();
+  }
+
+  // ===== INICIAR =====
+  window.addEventListener('DOMContentLoaded', init);
 </script>
+
 </body>
 </html>
