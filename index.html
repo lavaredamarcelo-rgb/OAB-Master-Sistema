@@ -1675,6 +1675,7 @@ function abrirLancadorRapidoOLD(){
   <label>Observações</label><textarea id="lr_obs" style="min-height:60px" placeholder="Ex.: Referente ao período anterior, devolvido em X..."></textarea>
   <div class="row" style="margin-top:14px"><button onclick="salvaLancamentoRapido()">✓ Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
+*/
 async function salvaLancamentoRapido(){
   const data=fval('lr_data'),quem=fval('lr_quem'),tipo=fval('lr_tipo'),valor=Number(fval('lr_valor'))||0,status=fval('lr_status');
   if(!data||!quem||!tipo||valor<=0){toast('Preencha todos os campos obrigatórios');return;}
@@ -1714,6 +1715,7 @@ function abrirEditorPeriodoOLD(){
   <div class="row" style="margin-top:14px"><button onclick="salvaEditorPeriodo()">✓ Confirmar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
   editorDesenha();
 }
+*/
 function editorDesenha(){
   const ini=fval('ep_ini'),fim=fval('ep_fim');
   const cobr=db.cobrancas.filter(c=>{const v=String(c.venc);return v>=ini&&v<=fim;});
@@ -1781,6 +1783,7 @@ function abrirGestorImportacoesOLD(){
   <div class="row" style="margin-top:14px"><button class="sec" onclick="fecha()">Fechar</button></div>`);
 }
 
+*/
 /* ================= AGENDA ================= */
 function tAgenda(){
   const evs=[...db.eventos].sort((a,b)=>a.data.localeCompare(b.data));
