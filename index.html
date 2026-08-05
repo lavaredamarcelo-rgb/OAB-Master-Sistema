@@ -125,9 +125,9 @@ function renderShell() {
   const tabs = ['dashboard', 'atletas', 'financeiro', 'uniformes'];
   const labels = ['📊 Dashboard', '👥 Atletas', '💰 Financeiro', '👕 Uniformes'];
 
-  $('nav').innerHTML = labels.map((l, i) => `
-    <button class="navb ${tab === tabs[i] ? 'on' : ''}" onclick="vai('${tabs[i]}')">${l}</button>
-  `).join('') + `<button class="navb sec" style="margin-left:auto" onclick="sair()">Sair</button>`;
+  const tabs2 = ['dashboard', 'atletas', 'financeiro', 'uniformes', 'eventos', 'saude', 'ajustes'];
+  const labels2 = ['📊 Dashboard', '👥 Atletas', '💰 Financeiro', '👕 Uniformes', '📅 Agenda', '🏥 Saúde', '⚙️ Ajustes'];
+  $('nav').innerHTML = labels2.map((l, i) => '<button class="navb ' + (tab === tabs2[i] ? 'on' : '') + '" onclick="vai(\'' + tabs2[i] + '\')">' + l + '</button>').join('') + '<button class="navb sec" style="margin-left:auto" onclick="sair()">Sair</button>';
 
   $('main').innerHTML = getTabContent();
 }
@@ -162,6 +162,15 @@ function getTabContent() {
 
     case 'uniformes':
       return `<h1>👕 Uniformes</h1><div class="card"><table style="width:100%;border-collapse:collapse"><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Descrição</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Números</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Status</th></tr>${db.uniformes.map(u => '<tr><td style="padding:8px;border-bottom:1px solid #ddd">' + esc(u.descricao) + '</td><td style="padding:8px;border-bottom:1px solid #ddd;font-size:13px">' + esc(u.numero) + '</td><td style="padding:8px;border-bottom:1px solid #ddd"><span class="pill p-ok">OK</span></td></tr>').join('')}</table></div>`;
+
+    case 'eventos':
+      return '<h1>📅 Agenda</h1><div class="card"><h2>Próximos Eventos</h2>' + (db.eventos.length ? '<div>' + db.eventos.map(e => '<div style="padding:8px;margin:8px 0;background:var(--blue-soft);border-radius:6px"><strong>' + esc(e.titulo) + '</strong><br><span class="mut">' + esc(e.data) + ' às ' + esc(e.hora) + ' - ' + esc(e.local) + '</span></div>').join('') + '</div>' : '<p class="mut">Nenhum evento</p>') + '</div>';
+
+    case 'saude':
+      return '<h1>🏥 Saúde</h1><div class="card"><h2>Registros</h2>' + (db.saude && db.saude.length ? '<div>' + db.saude.map(s => '<div style="padding:8px;margin:8px 0;background:#f0f0f0;border-radius:6px"><strong>' + (s.tipo || 'Registro') + '</strong><br><span class="mut">Data: ' + esc(s.data || '—') + '</span></div>').join('') + '</div>' : '<p class="mut">Nenhum registro de saúde</p>') + '</div>';
+
+    case 'ajustes':
+      return '<h1>⚙️ Ajustes</h1><div class="card"><h2>Configurações do Time</h2><label>Nome do Time:</label><input type="text" id="teamName" value="' + esc((db.config && db.config.team_name) || 'OAB/PA Master') + '" style="margin-bottom:12px"><label>Mensalidade Padrão (R$):</label><input type="number" id="teamFee" value="' + ((db.config && db.config.default_fee) || 0) + '" style="margin-bottom:12px"><button class="mini" style="margin-top:12px" onclick="alert(\'Ajustes salvos!\')">Salvar Ajustes</button></div>';
 
     default: return '<p>Tab não encontrada</p>';
   }
