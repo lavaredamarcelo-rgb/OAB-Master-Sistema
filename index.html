@@ -125,8 +125,8 @@ function renderShell() {
   const tabs = ['dashboard', 'atletas', 'financeiro', 'uniformes'];
   const labels = ['📊 Dashboard', '👥 Atletas', '💰 Financeiro', '👕 Uniformes'];
 
-  const tabs2 = ['dashboard', 'atletas', 'financeiro', 'uniformes', 'eventos', 'saude', 'ajustes'];
-  const labels2 = ['📊 Dashboard', '👥 Atletas', '💰 Financeiro', '👕 Uniformes', '📅 Agenda', '🏥 Saúde', '⚙️ Ajustes'];
+  const tabs2 = ['dashboard', 'atletas', 'financeiro', 'uniformes', 'eventos', 'taticas', 'documentos', 'saude', 'ajustes'];
+  const labels2 = ['📊 Dashboard', '👥 Atletas', '💰 Financeiro', '👕 Uniformes', '📅 Agenda', '📋 Táticas', '📄 Documentos', '🏥 Saúde', '⚙️ Ajustes'];
   $('nav').innerHTML = labels2.map((l, i) => '<button class="navb ' + (tab === tabs2[i] ? 'on' : '') + '" onclick="vai(\'' + tabs2[i] + '\')">' + l + '</button>').join('') + '<button class="navb sec" style="margin-left:auto" onclick="sair()">Sair</button>';
 
   $('main').innerHTML = getTabContent();
@@ -168,6 +168,12 @@ function getTabContent() {
 
     case 'saude':
       return '<h1>🏥 Saúde</h1><div class="card"><h2>Registros</h2>' + (db.saude && db.saude.length ? '<div>' + db.saude.map(s => '<div style="padding:8px;margin:8px 0;background:#f0f0f0;border-radius:6px"><strong>' + (s.tipo || 'Registro') + '</strong><br><span class="mut">Data: ' + esc(s.data || '—') + '</span></div>').join('') + '</div>' : '<p class="mut">Nenhum registro de saúde</p>') + '</div>';
+
+    case 'taticas':
+      return '<h1>📋 Táticas</h1><div class="card"><h2>Esquemas Táticos</h2>' + (db.taticas && db.taticas.length ? '<div>' + db.taticas.map(t => '<div style="padding:8px;margin:8px 0;background:#f0f0f0;border-radius:6px"><strong>' + esc(t.formacao || 'Esquema') + '</strong><br><span class="mut">Data: ' + esc(t.data || '—') + '</span></div>').join('') + '</div>' : '<p class="mut">Nenhuma tática registrada</p>') + '</div>';
+
+    case 'documentos':
+      return '<h1>📄 Documentos</h1><div class="card"><h2>Arquivos</h2>' + (db.documentos && db.documentos.length ? '<div>' + db.documentos.map(d => '<div style="padding:8px;margin:8px 0;background:#f0f0f0;border-radius:6px"><strong>' + esc(d.tipo || 'Documento') + '</strong><br><span class="mut">Pessoa: ' + esc(d.pessoa || '—') + ' | Data: ' + esc(d.data || '—') + '</span></div>').join('') + '</div>' : '<p class="mut">Nenhum documento</p>') + '</div>';
 
     case 'ajustes':
       return '<h1>⚙️ Ajustes</h1><div class="card"><h2>Configurações do Time</h2><label>Nome do Time:</label><input type="text" id="teamName" value="' + esc((db.config && db.config.team_name) || 'OAB/PA Master') + '" style="margin-bottom:12px"><label>Mensalidade Padrão (R$):</label><input type="number" id="teamFee" value="' + ((db.config && db.config.default_fee) || 0) + '" style="margin-bottom:12px"><button class="mini" style="margin-top:12px" onclick="alert(\'Ajustes salvos!\')">Salvar Ajustes</button></div>';
