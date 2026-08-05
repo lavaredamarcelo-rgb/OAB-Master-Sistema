@@ -1644,6 +1644,8 @@ function upTatArq(inp){ upFile(inp,50,async f=>{ await enviaArquivo(f,'tatica',n
 
 /* ================= FINANCEIRO AVANÇADO (Lançador Rápido + Editor Período + Gestor Importações) ================= */
 function abrirLancadorRapido(){
+  toast('Lançador rápido em desenvolvimento');
+  return;
   modal(`<h2>➕ Novo Lançamento de Entrada</h2>
   <div class="grid g2">
   <div><label>Data</label><input id="lr_data" type="date" value="${hoje()}"></div>
@@ -1676,6 +1678,8 @@ async function salvaLancamentoRapido(){
   fecha(); await recarrega(); toast('Lançamento registrado!');
 }
 function abrirEditorPeriodo(){
+  toast('Editor de período em desenvolvimento');
+  return;
   const dataIni=subState.editorIni||hoje().slice(0,7)+'-01';
   const dataFim=subState.editorFim||hoje();
   modal(`<h2>📊 Editor de Período Histórico</h2>
@@ -1728,6 +1732,8 @@ async function salvaEditorPeriodo(){
   fecha();
 }
 function abrirGestorImportacoes(){
+  toast('Gestor de importações em desenvolvimento');
+  return;
   const ativos=db.lotes.filter(l=>l.status==='ativo');
   const substituidos=db.lotes.filter(l=>l.status==='substituido');
   modal(`<h2 style="margin-bottom:16px">📦 Lotes de Importação</h2>
