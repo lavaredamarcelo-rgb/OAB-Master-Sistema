@@ -1,206 +1,1489 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>OAB/PA Master — Gestão do Time</title>
-<link rel="icon" type="image/png" href="escudo.png">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#B8272D">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<style>
-:root {
-  --bg: #F6F4EF;
-  --card: #FFFFFF;
-  --ink: #23262E;
-  --ink2: #5C616E;
-  --p: #B8272D;
-  --p-soft: #F7E5E2;
-  --ok: #2E7D4F;
-  --ok-soft: #E2F1E7;
-  --bad: #B3372E;
-  --bad-soft: #F9E7E5;
-  --warn: #A86A12;
-  --warn-soft: #F8EEDD;
-}
-* { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--ink); font: 15px/1.55 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-h1, h2, h3 { font-family: Georgia, serif; margin: 0; }
-h1 { font-size: 26px; }
-h2 { font-size: 20px; margin-bottom: 12px; }
-button { font: inherit; cursor: pointer; border: none; border-radius: 9px; padding: 8px 14px; background: var(--p); color: #fff; transition: filter 0.15s; }
-button:hover { filter: brightness(1.08); }
-button.sec { background: var(--card); color: var(--ink); border: 1px solid #ddd; }
-button.mini { padding: 4px 10px; font-size: 13px; }
-input, select, textarea { font: inherit; color: var(--ink); background: var(--card); border: 1px solid #ddd; border-radius: 9px; padding: 8px 10px; width: 100%; }
-label { display: block; font-size: 12px; font-weight: 600; color: var(--ink2); margin: 10px 0 4px; text-transform: uppercase; }
-.card { background: var(--card); border: 1px solid #ddd; border-radius: 14px; padding: 18px; }
-.pill { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }
-.p-ok { background: var(--ok-soft); color: var(--ok); }
-.p-warn { background: var(--warn-soft); color: var(--warn); }
-.p-bad { background: var(--bad-soft); color: var(--bad); }
-.grid { display: grid; gap: 14px; }
-.g2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-.mut { color: var(--ink2); font-size: 13px; }
-#shell { min-height: 100vh; display: flex; flex-direction: column; }
-#nav { background: var(--card); border-bottom: 1px solid #ddd; padding: 10px; display: flex; gap: 8px; overflow-x: auto; }
-.navb { background: transparent; border: none; padding: 8px 14px; cursor: pointer; border-radius: 8px; }
-.navb.on { background: var(--p); color: white; }
-#main { flex: 1; padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; }
-.toast { position: fixed; bottom: 20px; right: 20px; background: var(--p); color: white; padding: 12px 16px; border-radius: 8px; display: none; z-index: 9999; }
-.toast.show { display: block; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAB/PA Master - Sistema de Gestão</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f9fafb;
+            --surface: #ffffff;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        #app {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 0;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .user-section {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-email {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 24px 0;
+        }
+
+        .tabs-header {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .tab-btn {
+            padding: 12px 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-light);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            background: var(--bg);
+            color: var(--primary);
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .table-container {
+            background: var(--surface);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: var(--bg);
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-light);
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: 8px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: var(--shadow-lg);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .form-actions .btn {
+            flex: 1;
+        }
+
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 400px;
+        }
+
+        .toast {
+            background: var(--surface);
+            padding: 16px;
+            border-radius: 6px;
+            box-shadow: var(--shadow-lg);
+            border-left: 4px solid var(--primary);
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.success {
+            border-left-color: var(--success);
+        }
+
+        .toast.danger {
+            border-left-color: var(--danger);
+        }
+
+        .toast.warning {
+            border-left-color: var(--warning);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        }
+
+        .auth-card {
+            background: var(--surface);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .auth-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 24px;
+            color: var(--primary);
+            text-align: center;
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 24px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: var(--bg);
+            cursor: pointer;
+            font-weight: 500;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .auth-tab.active {
+            background: white;
+            border-bottom-color: var(--primary);
+        }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+        }
+
+        .auth-form .form-group {
+            margin-bottom: 16px;
+        }
+
+        .auth-loading {
+            display: none;
+            text-align: center;
+            color: var(--text-light);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 12px;
+            }
+
+            .header-content {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs-header {
+                flex-wrap: wrap;
+            }
+
+            .tab-btn {
+                flex: 1;
+                min-width: 100px;
+            }
+
+            .modal-content {
+                width: 95%;
+            }
+
+            .toast-container {
+                right: 12px;
+                left: 12px;
+                max-width: none;
+            }
+
+            .auth-card {
+                padding: 24px;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px 12px;
+            }
+        }
+
+        .subtabs-header {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .subtab-btn {
+            padding: 8px 12px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-light);
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .subtab-btn:hover {
+            color: var(--primary);
+        }
+
+        .subtab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .subtab-content {
+            display: none;
+        }
+
+        .subtab-content.active {
+            display: block;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-light);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+    </style>
 </head>
 <body>
-<div id="shell">
-  <div id="nav"></div>
-  <div id="main"></div>
-</div>
-<div id="toast" class="toast"></div>
+    <div id="app">
+        <div id="authPage" class="auth-container">
+            <div class="auth-card">
+                <h1 class="auth-title">OAB/PA Master</h1>
 
-<script>
-'use strict';
+                <div class="auth-tabs">
+                    <button class="auth-tab active" onclick="switchAuthTab('login')">Entrar</button>
+                    <button class="auth-tab" onclick="switchAuthTab('signup')">Registrar</button>
+                </div>
 
-const SB_URL = 'https://pzodgfsekqpumvgigeii.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b2RnZnNla3FwdW12Z2lnZWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNjEyNzYsImV4cCI6MjA5OTgzNzI3Nn0.-tQn-ECR6t-waBBuihIesi6LhxJ3s22xORzR3OwMoeQ';
-const sb = window.supabase.createClient(SB_URL, SB_KEY);
+                <form id="loginForm" class="auth-form active">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="loginEmail" placeholder="seu@email.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Senha</label>
+                        <input type="password" id="loginPassword" placeholder="••••••••" required>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="handleLogin()" style="width: 100%;">
+                        Entrar
+                    </button>
+                    <div id="loginLoading" class="auth-loading">
+                        <p>Entrando...</p>
+                    </div>
+                </form>
 
-let db = null;
-let me = null;
-let tab = 'dashboard';
-let subTab = 'cobracas';
+                <form id="signupForm" class="auth-form">
+                    <div class="form-group">
+                        <label>Nome</label>
+                        <input type="text" id="signupName" placeholder="Seu nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="signupEmail" placeholder="seu@email.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Senha</label>
+                        <input type="password" id="signupPassword" placeholder="••••••••" required>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="handleSignup()" style="width: 100%;">
+                        Registrar
+                    </button>
+                    <div id="signupLoading" class="auth-loading">
+                        <p>Registrando...</p>
+                    </div>
+                </form>
+            </div>
+        </div>
 
-const $ = id => document.getElementById(id);
-const esc = s => String(s || '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
-const brl = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const toast = msg => { $('toast').textContent = msg; $('toast').classList.add('show'); setTimeout(() => $('toast').classList.remove('show'), 3000); };
+        <div id="mainPage" style="display: none;">
+            <header class="header">
+                <div class="container">
+                    <div class="header-content">
+                        <div class="logo">⚖️ OAB/PA Master</div>
+                        <div class="user-section">
+                            <span class="user-email" id="userEmailDisplay">usuario@email.com</span>
+                            <button class="btn btn-secondary btn-small" onclick="handleLogout()">Sair</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
 
-async function carregaTudo() {
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) { renderLogin(); return; }
-
-  const { data: perfil } = await sb.from('perfis').select('*').eq('id', user.id).single();
-  me = perfil;
-
-  const { data: config } = await sb.from('config').select('*').single();
-  const { data: atletas } = await sb.from('perfis').select('*');
-  const { data: cobrancas } = await sb.from('cobrancas').select('*');
-  const { data: despesas } = await sb.from('despesas').select('*');
-  const { data: uniformes } = await sb.from('uniformes').select('*');
-  const { data: eventos } = await sb.from('eventos').select('*');
-
-  db = { config, atletas, cobrancas, despesas, uniformes, eventos };
-  renderShell();
-}
-
-function renderLogin() {
-  $('shell').innerHTML = `
-    <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px">
-      <div class="card" style="max-width:400px;width:100%">
-        <h1 style="text-align:center;margin-bottom:24px">⚽ OAB/PA Master</h1>
-        <label>Email</label>
-        <input id="email" type="email" placeholder="seu@email.com">
-        <label style="margin-top:12px">Senha</label>
-        <input id="senha" type="password" placeholder="••••••••">
-        <button style="width:100%;margin-top:20px" onclick="fazerLogin()">Entrar</button>
-      </div>
+            <main class="main-content">
+                <div class="container">
+                    <div class="tabs-header" id="tabsHeader"></div>
+                    <div id="tabsContent"></div>
+                </div>
+            </main>
+        </div>
     </div>
-  `;
-}
 
-async function fazerLogin() {
-  const email = $('email').value;
-  const senha = $('senha').value;
-  if (!email || !senha) { toast('Preencha email e senha'); return; }
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span id="modalTitle">Modal</span>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
 
-  const { error } = await sb.auth.signInWithPassword({ email, senha });
-  if (error) { toast('Erro: ' + error.message); return; }
+    <div class="toast-container" id="toastContainer"></div>
 
-  carregaTudo();
-}
+    <script>
+        const SUPABASE_URL = 'https://your-project.supabase.co';
+        const SUPABASE_KEY = 'your-anon-key';
+        let supabase = null;
+        let currentUser = null;
 
-function renderShell() {
-  const tabs = ['dashboard', 'atletas', 'financeiro', 'uniformes'];
-  const labels = ['📊 Dashboard', '👥 Atletas', '💰 Financeiro', '👕 Uniformes'];
+        function initSupabase() {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
 
-  const tabs2 = ['dashboard', 'atletas', 'financeiro', 'uniformes', 'eventos', 'taticas', 'documentos', 'saude', 'ajustes'];
-  const labels2 = ['📊 Dashboard', '👥 Atletas', '💰 Financeiro', '👕 Uniformes', '📅 Agenda', '📋 Táticas', '📄 Documentos', '🏥 Saúde', '⚙️ Ajustes'];
-  $('nav').innerHTML = labels2.map((l, i) => '<button class="navb ' + (tab === tabs2[i] ? 'on' : '') + '" onclick="vai(\'' + tabs2[i] + '\')">' + l + '</button>').join('') + '<button class="navb sec" style="margin-left:auto" onclick="sair()">Sair</button>';
+        async function handleLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
 
-  $('main').innerHTML = getTabContent();
-}
+            if (!email || !password) {
+                showToast('Por favor, preencha todos os campos', 'warning');
+                return;
+            }
 
-function vai(t) {
-  tab = t;
-  renderShell();
-}
+            try {
+                showAuthLoading('login', true);
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
 
-async function sair() {
-  await sb.auth.signOut();
-  carregaTudo();
-}
+                if (error) throw error;
+                currentUser = data.user;
+                showAuthLoading('login', false);
+                showToast('Login realizado com sucesso!', 'success');
+                showMainApp();
+            } catch (error) {
+                showAuthLoading('login', false);
+                showToast(error.message || 'Erro no login', 'danger');
+            }
+        }
 
-function getTabContent() {
-  switch(tab) {
-    case 'dashboard':
-      const pendencias = db.cobrancas.filter(c => c.status !== 'pago').length;
-      const totalPago = db.cobrancas.filter(c => c.status === 'pago').reduce((s,c) => s + Number(c.valor), 0);
-      const totalDesp = db.despesas.reduce((s,d) => s + Number(d.valor), 0);
-      return `<h1>📊 Dashboard</h1><div class="grid g2"><div class="card"><div style="font-size:28px;font-weight:bold;color:var(--ok)">${db.atletas.length}</div><div class="mut">Jogadores</div></div><div class="card"><div style="font-size:28px;font-weight:bold;color:var(--bad)">${pendencias}</div><div class="mut">Pendências</div></div><div class="card"><div style="font-size:28px;font-weight:bold;color:var(--ok)">${brl(totalPago)}</div><div class="mut">Receita</div></div><div class="card"><div style="font-size:28px;font-weight:bold;color:var(--bad)">${brl(totalDesp)}</div><div class="mut">Despesas</div></div></div>`;
+        async function handleSignup() {
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
 
-    case 'atletas':
-      return `<h1>👥 Atletas</h1><div class="card"><table style="width:100%;border-collapse:collapse"><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Nome</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Posição</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Status</th></tr>${db.atletas.map(a => '<tr><td style="padding:8px;border-bottom:1px solid #ddd">' + esc(a.nome) + '</td><td style="padding:8px;border-bottom:1px solid #ddd;font-size:13px;color:var(--ink2)">' + esc(a.posicao || '—') + '</td><td style="padding:8px;border-bottom:1px solid #ddd"><span class="pill ' + (a.ativo ? 'p-ok' : 'p-bad') + '">' + (a.ativo ? 'Ativo' : 'Inativo') + '</span></td></tr>').join('')}</table></div>`;
+            if (!name || !email || !password) {
+                showToast('Por favor, preencha todos os campos', 'warning');
+                return;
+            }
 
-    case 'financeiro':
-      const cobPendentes = db.cobrancas.filter(c => c.status !== 'pago');
-      const cobPagas = db.cobrancas.filter(c => c.status === 'pago');
-      const totalCobPagos = cobPagas.reduce((s,c) => s + Number(c.valor), 0);
-      const totalDesp2 = db.despesas.reduce((s,d) => s + Number(d.valor), 0);
-      return `<h1>💰 Financeiro</h1><div class="row" style="gap:8px;margin-bottom:16px"><button class="mini" onclick="subTab='cobracas';renderShell()">💳 Cobranças</button><button class="mini" onclick="subTab='despesas';renderShell()">📋 Despesas</button><button class="mini" onclick="subTab='balanco';renderShell()">📊 Balanço</button></div><div class="card">${getFinanceiroTab()}</div>`;
+            try {
+                showAuthLoading('signup', true);
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            full_name: name
+                        }
+                    }
+                });
 
-    case 'uniformes':
-      return `<h1>👕 Uniformes</h1><div class="card"><table style="width:100%;border-collapse:collapse"><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Descrição</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Números</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Status</th></tr>${db.uniformes.map(u => '<tr><td style="padding:8px;border-bottom:1px solid #ddd">' + esc(u.descricao) + '</td><td style="padding:8px;border-bottom:1px solid #ddd;font-size:13px">' + esc(u.numero) + '</td><td style="padding:8px;border-bottom:1px solid #ddd"><span class="pill p-ok">OK</span></td></tr>').join('')}</table></div>`;
+                if (error) throw error;
+                currentUser = data.user;
+                showAuthLoading('signup', false);
+                showToast('Conta criada com sucesso!', 'success');
+                showMainApp();
+            } catch (error) {
+                showAuthLoading('signup', false);
+                showToast(error.message || 'Erro no registro', 'danger');
+            }
+        }
 
-    case 'eventos':
-      return '<h1>📅 Agenda</h1><div class="card"><h2>Próximos Eventos</h2>' + (db.eventos.length ? '<div>' + db.eventos.map(e => '<div style="padding:8px;margin:8px 0;background:var(--blue-soft);border-radius:6px"><strong>' + esc(e.titulo) + '</strong><br><span class="mut">' + esc(e.data) + ' às ' + esc(e.hora) + ' - ' + esc(e.local) + '</span></div>').join('') + '</div>' : '<p class="mut">Nenhum evento</p>') + '</div>';
+        async function handleLogout() {
+            try {
+                await supabase.auth.signOut();
+                currentUser = null;
+                document.getElementById('authPage').style.display = 'flex';
+                document.getElementById('mainPage').style.display = 'none';
+                showToast('Desconectado com sucesso', 'success');
+            } catch (error) {
+                showToast(error.message || 'Erro ao desconectar', 'danger');
+            }
+        }
 
-    case 'saude':
-      return '<h1>🏥 Saúde</h1><div class="card"><h2>Registros</h2>' + (db.saude && db.saude.length ? '<div>' + db.saude.map(s => '<div style="padding:8px;margin:8px 0;background:#f0f0f0;border-radius:6px"><strong>' + (s.tipo || 'Registro') + '</strong><br><span class="mut">Data: ' + esc(s.data || '—') + '</span></div>').join('') + '</div>' : '<p class="mut">Nenhum registro de saúde</p>') + '</div>';
+        function switchAuthTab(tab) {
+            const loginForm = document.getElementById('loginForm');
+            const signupForm = document.getElementById('signupForm');
+            const tabs = document.querySelectorAll('.auth-tab');
 
-    case 'taticas':
-      return '<h1>📋 Táticas</h1><div class="card"><h2>Esquemas Táticos</h2>' + (db.taticas && db.taticas.length ? '<div>' + db.taticas.map(t => '<div style="padding:8px;margin:8px 0;background:#f0f0f0;border-radius:6px"><strong>' + esc(t.formacao || 'Esquema') + '</strong><br><span class="mut">Data: ' + esc(t.data || '—') + '</span></div>').join('') + '</div>' : '<p class="mut">Nenhuma tática registrada</p>') + '</div>';
+            tabs.forEach(t => t.classList.remove('active'));
+            loginForm.classList.remove('active');
+            signupForm.classList.remove('active');
 
-    case 'documentos':
-      return '<h1>📄 Documentos</h1><div class="card"><h2>Arquivos</h2>' + (db.documentos && db.documentos.length ? '<div>' + db.documentos.map(d => '<div style="padding:8px;margin:8px 0;background:#f0f0f0;border-radius:6px"><strong>' + esc(d.tipo || 'Documento') + '</strong><br><span class="mut">Pessoa: ' + esc(d.pessoa || '—') + ' | Data: ' + esc(d.data || '—') + '</span></div>').join('') + '</div>' : '<p class="mut">Nenhum documento</p>') + '</div>';
+            if (tab === 'login') {
+                loginForm.classList.add('active');
+                tabs[0].classList.add('active');
+            } else {
+                signupForm.classList.add('active');
+                tabs[1].classList.add('active');
+            }
+        }
 
-    case 'ajustes':
-      return '<h1>⚙️ Ajustes</h1><div class="card"><h2>Configurações do Time</h2><label>Nome do Time:</label><input type="text" id="teamName" value="' + esc((db.config && db.config.team_name) || 'OAB/PA Master') + '" style="margin-bottom:12px"><label>Mensalidade Padrão (R$):</label><input type="number" id="teamFee" value="' + ((db.config && db.config.default_fee) || 0) + '" style="margin-bottom:12px"><button class="mini" style="margin-top:12px" onclick="alert(\'Ajustes salvos!\')">Salvar Ajustes</button></div>';
+        function showAuthLoading(tab, show) {
+            const selector = tab === 'login' ? '#loginLoading' : '#signupLoading';
+            const element = document.querySelector(selector);
+            element.style.display = show ? 'block' : 'none';
+        }
 
-    default: return '<p>Tab não encontrada</p>';
-  }
-}
+        function showMainApp() {
+            document.getElementById('authPage').style.display = 'none';
+            document.getElementById('mainPage').style.display = 'flex';
+            document.getElementById('userEmailDisplay').textContent = currentUser.email;
+            initializeApp();
+        }
 
-function getFinanceiroTab() {
-  if (subTab === 'cobracas') {
-    const cobPendentes = db.cobrancas.filter(c => c.status !== 'pago');
-    const cobPagas = db.cobrancas.filter(c => c.status === 'pago');
-    const totalPendente = cobPendentes.reduce((s,c) => s + Number(c.valor), 0);
-    const totalPago = cobPagas.reduce((s,c) => s + Number(c.valor), 0);
-    return '<h2>💳 Cobranças</h2><p class="mut">Pendente: <strong>' + brl(totalPendente) + '</strong> | Pago: <strong>' + brl(totalPago) + '</strong></p>' + (cobPendentes.length ? '<div>' + cobPendentes.map(c => '<div style="padding:8px;margin:8px 0;background:var(--warn-soft);border-radius:6px"><strong>' + esc(c.desc) + '</strong><br><span class="mut">' + brl(c.valor) + '</span></div>').join('') + '</div>' : '<p class="mut">Nenhuma pendência</p>');
-  } else if (subTab === 'despesas') {
-    const totalDesp = db.despesas.reduce((s,d) => s + Number(d.valor), 0);
-    return '<h2>📋 Despesas</h2><p class="mut">Total: <strong>' + brl(totalDesp) + '</strong></p>' + (db.despesas.length ? '<div>' + db.despesas.map(d => '<div style="padding:8px;margin:8px 0;background:var(--bad-soft);border-radius:6px"><strong>' + esc(d.item) + '</strong><br><span class="mut">' + esc(d.categoria) + ' - ' + brl(d.valor) + '</span></div>').join('') + '</div>' : '<p class="mut">Nenhuma despesa</p>');
-  } else {
-    const totalRec = db.cobrancas.filter(c => c.status === 'pago').reduce((s,c) => s + Number(c.valor), 0);
-    const totalDesp = db.despesas.reduce((s,d) => s + Number(d.valor), 0);
-    const saldo = totalRec - totalDesp;
-    return '<h2>📊 Balanço</h2><div class="grid g3"><div><div style="font-size:20px;font-weight:bold;color:var(--ok)">' + brl(totalRec) + '</div><div class="mut">Receitas</div></div><div><div style="font-size:20px;font-weight:bold;color:var(--bad)">' + brl(totalDesp) + '</div><div class="mut">Despesas</div></div><div><div style="font-size:20px;font-weight:bold;color:' + (saldo >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + brl(saldo) + '</div><div class="mut">Saldo</div></div></div>';
-  }
-}
+        const tabs = [
+            { id: 'dashboard', label: '📊 Dashboard' },
+            { id: 'atletas', label: '🤸 Atletas' },
+            { id: 'financeiro', label: '💰 Financeiro' },
+            { id: 'uniformes', label: '👕 Uniformes' },
+            { id: 'agenda', label: '📅 Agenda' },
+            { id: 'taticas', label: '⚡ Táticas' },
+            { id: 'documentos', label: '📄 Documentos' },
+            { id: 'saude', label: '💪 Saúde' },
+            { id: 'ajustes', label: '⚙️ Ajustes' }
+        ];
 
-carregaTudo();
-</script>
+        let appData = {
+            atletas: [],
+            cobracas: [],
+            despesas: [],
+            uniformes: [],
+            agenda: [],
+            taticas: [],
+            documentos: [],
+            saude: []
+        };
+
+        function initializeApp() {
+            renderTabs();
+            loadAllData();
+        }
+
+        function renderTabs() {
+            const tabsHeader = document.getElementById('tabsHeader');
+            tabsHeader.innerHTML = '';
+
+            tabs.forEach(tab => {
+                const btn = document.createElement('button');
+                btn.className = 'tab-btn';
+                if (tab.id === 'dashboard') {
+                    btn.className += ' active';
+                }
+                btn.textContent = tab.label;
+                btn.onclick = function() {
+                    switchTab(tab.id);
+                };
+                tabsHeader.appendChild(btn);
+            });
+
+            renderTabContent('dashboard');
+        }
+
+        function switchTab(tabId) {
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(function(btn, idx) {
+                if (tabs[idx].id === tabId) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            renderTabContent(tabId);
+        }
+
+        function renderTabContent(tabId) {
+            const tabsContent = document.getElementById('tabsContent');
+            let content = '';
+
+            if (tabId === 'dashboard') {
+                content = getTabDashboard();
+            } else if (tabId === 'atletas') {
+                content = getTabAtletas();
+            } else if (tabId === 'financeiro') {
+                content = getTabFinanceiro();
+            } else if (tabId === 'uniformes') {
+                content = getTabUniformes();
+            } else if (tabId === 'agenda') {
+                content = getTabAgenda();
+            } else if (tabId === 'taticas') {
+                content = getTabTaticas();
+            } else if (tabId === 'documentos') {
+                content = getTabDocumentos();
+            } else if (tabId === 'saude') {
+                content = getTabSaude();
+            } else if (tabId === 'ajustes') {
+                content = getTabAjustes();
+            }
+
+            tabsContent.innerHTML = content;
+        }
+
+        function getTabDashboard() {
+            const totalAtletas = appData.atletas.length;
+            const totalCobracas = appData.cobracas.length;
+            const totalDespesas = appData.despesas.length;
+            const cobrancasRecebidas = appData.cobracas.filter(function(c) {
+                return c.pago;
+            }).length;
+
+            let html = '<div class="stats-grid">';
+            html += '<div class="stat-card">';
+            html += '<div class="stat-label">Total de Atletas</div>';
+            html += '<div class="stat-value">' + totalAtletas + '</div>';
+            html += '</div>';
+
+            html += '<div class="stat-card">';
+            html += '<div class="stat-label">Cobranças</div>';
+            html += '<div class="stat-value">' + totalCobracas + '</div>';
+            html += '</div>';
+
+            html += '<div class="stat-card">';
+            html += '<div class="stat-label">Cobranças Recebidas</div>';
+            html += '<div class="stat-value">' + cobrancasRecebidas + '</div>';
+            html += '</div>';
+
+            html += '<div class="stat-card">';
+            html += '<div class="stat-label">Despesas Registradas</div>';
+            html += '<div class="stat-value">' + totalDespesas + '</div>';
+            html += '</div>';
+            html += '</div>';
+
+            return html;
+        }
+
+        function getTabAtletas() {
+            let html = '';
+            html += '<div style="margin-bottom: 16px;">';
+            html += '<button class="btn btn-primary" onclick="openModalAtleta()">+ Novo Atleta</button>';
+            html += '</div>';
+
+            if (appData.atletas.length === 0) {
+                html += '<div class="empty-state">';
+                html += '<div class="empty-state-icon">🤸</div>';
+                html += '<p>Nenhum atleta cadastrado</p>';
+                html += '</div>';
+                return html;
+            }
+
+            html += '<div class="table-container"><div class="table-wrapper"><table>';
+            html += '<thead><tr><th>Nome</th><th>Posição</th><th>Número</th><th>Ações</th></tr></thead>';
+            html += '<tbody>';
+
+            appData.atletas.forEach(function(atleta) {
+                html += '<tr>';
+                html += '<td>' + (atleta.nome || '-') + '</td>';
+                html += '<td>' + (atleta.posicao || '-') + '</td>';
+                html += '<td>' + (atleta.numero || '-') + '</td>';
+                html += '<td class="action-buttons">';
+                html += '<button class="btn btn-secondary btn-small" onclick="editarAtleta(' + atleta.id + ')">Editar</button>';
+                html += '<button class="btn btn-danger btn-small" onclick="deletarAtleta(' + atleta.id + ')">Deletar</button>';
+                html += '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody>';
+            html += '</table></div></div>';
+
+            return html;
+        }
+
+        function getTabFinanceiro() {
+            let html = '';
+            html += '<div class="subtabs-header">';
+            html += '<button class="subtab-btn active" onclick="switchFinanceiroTab(\'cobracas\')">Cobranças</button>';
+            html += '<button class="subtab-btn" onclick="switchFinanceiroTab(\'despesas\')">Despesas</button>';
+            html += '<button class="subtab-btn" onclick="switchFinanceiroTab(\'balanco\')">Balanço</button>';
+            html += '</div>';
+
+            html += '<div id="cobrancasTab" class="subtab-content active">';
+            html += getCobrancasContent();
+            html += '</div>';
+
+            html += '<div id="despesasTab" class="subtab-content">';
+            html += getDespesasContent();
+            html += '</div>';
+
+            html += '<div id="balanceTab" class="subtab-content">';
+            html += getBalanceContent();
+            html += '</div>';
+
+            return html;
+        }
+
+        function getCobrancasContent() {
+            let html = '';
+            html += '<div style="margin-bottom: 16px;">';
+            html += '<button class="btn btn-primary" onclick="openModalCobranca()">+ Nova Cobrança</button>';
+            html += '</div>';
+
+            if (appData.cobracas.length === 0) {
+                html += '<div class="empty-state">';
+                html += '<div class="empty-state-icon">💳</div>';
+                html += '<p>Nenhuma cobrança cadastrada</p>';
+                html += '</div>';
+                return html;
+            }
+
+            html += '<div class="table-container"><div class="table-wrapper"><table>';
+            html += '<thead><tr><th>Descrição</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead>';
+            html += '<tbody>';
+
+            appData.cobracas.forEach(function(c) {
+                const badge = c.pago ? '<span class="badge badge-success">Pago</span>' : '<span class="badge badge-danger">Pendente</span>';
+                html += '<tr>';
+                html += '<td>' + (c.descricao || '-') + '</td>';
+                html += '<td>R$ ' + (c.valor || '0').toFixed(2) + '</td>';
+                html += '<td>' + badge + '</td>';
+                html += '<td class="action-buttons">';
+                if (!c.pago) {
+                    html += '<button class="btn btn-success btn-small" onclick="marcarCobracaPago(' + c.id + ')">Marcar Pago</button>';
+                }
+                html += '<button class="btn btn-danger btn-small" onclick="deletarCobranca(' + c.id + ')">Deletar</button>';
+                html += '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody>';
+            html += '</table></div></div>';
+
+            return html;
+        }
+
+        function getDespesasContent() {
+            let html = '';
+            html += '<div style="margin-bottom: 16px;">';
+            html += '<button class="btn btn-primary" onclick="openModalDespesa()">+ Nova Despesa</button>';
+            html += '</div>';
+
+            if (appData.despesas.length === 0) {
+                html += '<div class="empty-state">';
+                html += '<div class="empty-state-icon">💸</div>';
+                html += '<p>Nenhuma despesa cadastrada</p>';
+                html += '</div>';
+                return html;
+            }
+
+            html += '<div class="table-container"><div class="table-wrapper"><table>';
+            html += '<thead><tr><th>Descrição</th><th>Valor</th><th>Data</th><th>Ações</th></tr></thead>';
+            html += '<tbody>';
+
+            appData.despesas.forEach(function(d) {
+                html += '<tr>';
+                html += '<td>' + (d.descricao || '-') + '</td>';
+                html += '<td>R$ ' + (d.valor || '0').toFixed(2) + '</td>';
+                html += '<td>' + (d.data || '-') + '</td>';
+                html += '<td class="action-buttons">';
+                html += '<button class="btn btn-danger btn-small" onclick="deletarDespesa(' + d.id + ')">Deletar</button>';
+                html += '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody>';
+            html += '</table></div></div>';
+
+            return html;
+        }
+
+        function getBalanceContent() {
+            const totalCobrancas = appData.cobracas.reduce(function(sum, c) {
+                return sum + (c.pago ? c.valor : 0);
+            }, 0);
+            const totalDespesas = appData.despesas.reduce(function(sum, d) {
+                return sum + d.valor;
+            }, 0);
+            const saldo = totalCobrancas - totalDespesas;
+
+            let html = '<div class="stats-grid">';
+
+            html += '<div class="stat-card">';
+            html += '<div class="stat-label">Total de Cobranças Recebidas</div>';
+            html += '<div class="stat-value" style="color: var(--success);">R$ ' + totalCobrancas.toFixed(2) + '</div>';
+            html += '</div>';
+
+            html += '<div class="stat-card">';
+            html += '<div class="stat-label">Total de Despesas</div>';
+            html += '<div class="stat-value" style="color: var(--danger);">R$ ' + totalDespesas.toFixed(2) + '</div>';
+            html += '</div>';
+
+            html += '<div class="stat-card">';
+            const saldoColor = saldo >= 0 ? 'var(--success)' : 'var(--danger)';
+            html += '<div class="stat-label">Saldo</div>';
+            html += '<div class="stat-value" style="color: ' + saldoColor + ';">R$ ' + saldo.toFixed(2) + '</div>';
+            html += '</div>';
+
+            html += '</div>';
+
+            return html;
+        }
+
+        function switchFinanceiroTab(tab) {
+            const buttons = document.querySelectorAll('.subtab-btn');
+            buttons.forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+
+            const contents = document.querySelectorAll('.subtab-content');
+            contents.forEach(function(content) {
+                content.classList.remove('active');
+            });
+
+            if (tab === 'cobracas') {
+                buttons[0].classList.add('active');
+                document.getElementById('cobrancasTab').classList.add('active');
+            } else if (tab === 'despesas') {
+                buttons[1].classList.add('active');
+                document.getElementById('despesasTab').classList.add('active');
+            } else if (tab === 'balanco') {
+                buttons[2].classList.add('active');
+                document.getElementById('balanceTab').classList.add('active');
+            }
+        }
+
+        function getTabUniformes() {
+            let html = '';
+            html += '<div style="margin-bottom: 16px;">';
+            html += '<button class="btn btn-primary" onclick="openModalUniforme()">+ Novo Uniforme</button>';
+            html += '</div>';
+
+            if (appData.uniformes.length === 0) {
+                html += '<div class="empty-state">';
+                html += '<div class="empty-state-icon">👕</div>';
+                html += '<p>Nenhum uniforme cadastrado</p>';
+                html += '</div>';
+                return html;
+            }
+
+            html += '<div class="table-container"><div class="table-wrapper"><table>';
+            html += '<thead><tr><th>Tipo</th><th>Tamanho</th><th>Números</th><th>Quantidade</th><th>Ações</th></tr></thead>';
+            html += '<tbody>';
+
+            appData.uniformes.forEach(function(u) {
+                html += '<tr>';
+                html += '<td>' + (u.tipo || '-') + '</td>';
+                html += '<td>' + (u.tamanho || '-') + '</td>';
+                html += '<td>' + (u.numeros || '-') + '</td>';
+                html += '<td>' + (u.quantidade || 0) + '</td>';
+                html += '<td class="action-buttons">';
+                html += '<button class="btn btn-secondary btn-small" onclick="editarUniforme(' + u.id + ')">Editar</button>';
+                html += '<button class="btn btn-danger btn-small" onclick="deletarUniforme(' + u.id + ')">Deletar</button>';
+                html += '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody>';
+            html += '</table></div></div>';
+
+            return html;
+        }
+
+        function getTabAgenda() {
+            let html = '<div style="margin-bottom: 16px;">';
+            html += '<button class="btn btn-primary" onclick="openModalAgenda()">+ Novo Evento</button>';
+            html += '</div>';
+
+            if (appData.agenda.length === 0) {
+                html += '<div class="empty-state"><div class="empty-state-icon">📅</div><p>Nenhum evento</p></div>';
+                return html;
+            }
+
+            html += '<div class="table-container"><div class="table-wrapper"><table>';
+            html += '<thead><tr><th>Evento</th><th>Data</th><th>Hora</th><th>Local</th></tr></thead>';
+            html += '<tbody>';
+            appData.agenda.forEach(function(a) {
+                html += '<tr>';
+                html += '<td>' + (a.titulo || '-') + '</td>';
+                html += '<td>' + (a.data || '-') + '</td>';
+                html += '<td>' + (a.hora || '-') + '</td>';
+                html += '<td>' + (a.local || '-') + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table></div></div>';
+
+            return html;
+        }
+
+        function getTabTaticas() {
+            return '<div class="empty-state"><div class="empty-state-icon">⚡</div><p>Seção de Táticas em desenvolvimento</p></div>';
+        }
+
+        function getTabDocumentos() {
+            return '<div class="empty-state"><div class="empty-state-icon">📄</div><p>Seção de Documentos em desenvolvimento</p></div>';
+        }
+
+        function getTabSaude() {
+            return '<div class="empty-state"><div class="empty-state-icon">💪</div><p>Seção de Saúde em desenvolvimento</p></div>';
+        }
+
+        function getTabAjustes() {
+            let html = '<div style="padding: 20px; background: var(--surface); border-radius: 8px;">';
+            html += '<h3 style="margin-bottom: 16px;">Configurações</h3>';
+            html += '<p>Versão: 1.0.0</p>';
+            html += '<p>Usuário: ' + (currentUser.email || '-') + '</p>';
+            html += '</div>';
+            return html;
+        }
+
+        function openModalAtleta() {
+            let body = '<div class="form-group">';
+            body += '<label>Nome</label>';
+            body += '<input type="text" id="atletaNome" placeholder="Nome completo">';
+            body += '</div>';
+            body += '<div class="form-group">';
+            body += '<label>Posição</label>';
+            body += '<input type="text" id="atletaPosicao" placeholder="Ex: Goleiro">';
+            body += '</div>';
+            body += '<div class="form-group">';
+            body += '<label>Número</label>';
+            body += '<input type="number" id="atletaNumero" placeholder="1-99">';
+            body += '</div>';
+            body += '<div class="form-actions">';
+            body += '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>';
+            body += '<button class="btn btn-primary" onclick="salvarAtleta()">Salvar</button>';
+            body += '</div>';
+
+            openModal('Novo Atleta', body);
+        }
+
+        function salvarAtleta() {
+            const nome = document.getElementById('atletaNome').value;
+            const posicao = document.getElementById('atletaPosicao').value;
+            const numero = document.getElementById('atletaNumero').value;
+
+            if (!nome) {
+                showToast('Nome é obrigatório', 'warning');
+                return;
+            }
+
+            const atleta = {
+                id: Math.random(),
+                nome: nome,
+                posicao: posicao,
+                numero: numero
+            };
+
+            appData.atletas.push(atleta);
+            closeModal();
+            switchTab('atletas');
+            showToast('Atleta criado com sucesso', 'success');
+        }
+
+        function deletarAtleta(id) {
+            appData.atletas = appData.atletas.filter(function(a) {
+                return a.id !== id;
+            });
+            switchTab('atletas');
+            showToast('Atleta deletado', 'success');
+        }
+
+        function editarAtleta(id) {
+            showToast('Edição em desenvolvimento', 'warning');
+        }
+
+        function openModalCobranca() {
+            let body = '<div class="form-group">';
+            body += '<label>Descrição</label>';
+            body += '<input type="text" id="cobracaDesc" placeholder="Ex: Mensalidade">';
+            body += '</div>';
+            body += '<div class="form-group">';
+            body += '<label>Valor (R$)</label>';
+            body += '<input type="number" id="cobracaValor" placeholder="0.00" step="0.01">';
+            body += '</div>';
+            body += '<div class="form-actions">';
+            body += '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>';
+            body += '<button class="btn btn-primary" onclick="salvarCobranca()">Salvar</button>';
+            body += '</div>';
+
+            openModal('Nova Cobrança', body);
+        }
+
+        function salvarCobranca() {
+            const descricao = document.getElementById('cobracaDesc').value;
+            const valor = parseFloat(document.getElementById('cobracaValor').value);
+
+            if (!descricao || !valor) {
+                showToast('Preencha todos os campos', 'warning');
+                return;
+            }
+
+            const cobranca = {
+                id: Math.random(),
+                descricao: descricao,
+                valor: valor,
+                pago: false
+            };
+
+            appData.cobracas.push(cobranca);
+            closeModal();
+            renderTabContent('financeiro');
+            showToast('Cobrança criada com sucesso', 'success');
+        }
+
+        function marcarCobracaPago(id) {
+            const cobranca = appData.cobracas.find(function(c) {
+                return c.id === id;
+            });
+            if (cobranca) {
+                cobranca.pago = true;
+                renderTabContent('financeiro');
+                showToast('Cobrança marcada como pago', 'success');
+            }
+        }
+
+        function deletarCobranca(id) {
+            appData.cobracas = appData.cobracas.filter(function(c) {
+                return c.id !== id;
+            });
+            renderTabContent('financeiro');
+            showToast('Cobrança deletada', 'success');
+        }
+
+        function openModalDespesa() {
+            let body = '<div class="form-group">';
+            body += '<label>Descrição</label>';
+            body += '<input type="text" id="despesaDesc" placeholder="Ex: Aluguel">';
+            body += '</div>';
+            body += '<div class="form-group">';
+            body += '<label>Valor (R$)</label>';
+            body += '<input type="number" id="despesaValor" placeholder="0.00" step="0.01">';
+            body += '</div>';
+            body += '<div class="form-group">';
+            body += '<label>Data</label>';
+            body += '<input type="date" id="despesaData">';
+            body += '</div>';
+            body += '<div class="form-actions">';
+            body += '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>';
+            body += '<button class="btn btn-primary" onclick="salvarDespesa()">Salvar</button>';
+            body += '</div>';
+
+            openModal('Nova Despesa', body);
+        }
+
+        function salvarDespesa() {
+            const descricao = document.getElementById('despesaDesc').value;
+            const valor = parseFloat(document.getElementById('despesaValor').value);
+            const data = document.getElementById('despesaData').value;
+
+            if (!descricao || !valor) {
+                showToast('Preencha os campos obrigatórios', 'warning');
+                return;
+            }
+
+            const despesa = {
+                id: Math.random(),
+                descricao: descricao,
+                valor: valor,
+                data: data || new Date().toISOString().split('T')[0]
+            };
+
+            appData.despesas.push(despesa);
+            closeModal();
+            renderTabContent('financeiro');
+            showToast('Despesa criada com sucesso', 'success');
+        }
+
+        function deletarDespesa(id) {
+            appData.despesas = appData.despesas.filter(function(d) {
+                return d.id !== id;
+            });
+            renderTabContent('financeiro');
+            showToast('Despesa deletada', 'success');
+        }
+
+        function openModalUniforme() {
+            let body = '<div class="form-group">';
+            body += '<label>Tipo</label>';
+            body += '<input type="text" id="uniformeTipo" placeholder="Ex: Camisa">';
+            body += '</div>';
+            body += '<div class="form-group">';
+            body += '<label>Tamanho</label>';
+            body += '<select id="uniformeTamanho">';
+            body += '<option>P</option>';
+            body += '<option>M</option>';
+            body += '<option>G</option>';
+            body += '<option>GG</option>';
+            body += '</select>';
+            body += '</div>';
+            body += '<div class="form-group">';
+            body += '<label>Números (separado por vírgula)</label>';
+            body += '<input type="text" id="uniformeNumeros" placeholder="1, 10, 15">';
+            body += '</div>';
+            body += '<div class="form-group">';
+            body += '<label>Quantidade</label>';
+            body += '<input type="number" id="uniformeQuantidade" placeholder="1">';
+            body += '</div>';
+            body += '<div class="form-actions">';
+            body += '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>';
+            body += '<button class="btn btn-primary" onclick="salvarUniforme()">Salvar</button>';
+            body += '</div>';
+
+            openModal('Novo Uniforme', body);
+        }
+
+        function salvarUniforme() {
+            const tipo = document.getElementById('uniformeTipo').value;
+            const tamanho = document.getElementById('uniformeTamanho').value;
+            const numeros = document.getElementById('uniformeNumeros').value;
+            const quantidade = parseInt(document.getElementById('uniformeQuantidade').value) || 1;
+
+            if (!tipo || !tamanho) {
+                showToast('Preencha os campos obrigatórios', 'warning');
+                return;
+            }
+
+            const uniforme = {
+                id: Math.random(),
+                tipo: tipo,
+                tamanho: tamanho,
+                numeros: numeros,
+                quantidade: quantidade
+            };
+
+            appData.uniformes.push(uniforme);
+            closeModal();
+            switchTab('uniformes');
+            showToast('Uniforme criado com sucesso', 'success');
+        }
+
+        function deletarUniforme(id) {
+            appData.uniformes = appData.uniformes.filter(function(u) {
+                return u.id !== id;
+            });
+            switchTab('uniformes');
+            showToast('Uniforme deletado', 'success');
+        }
+
+        function editarUniforme(id) {
+            showToast('Edição em desenvolvimento', 'warning');
+        }
+
+        function openModalAgenda() {
+            let body = '<div class="form-group">';
+            body += '<label>Título</label>';
+            body += '<input type="text" id="agendaTitulo" placeholder="Título do evento">';
+            body += '</div>';
+            body += '<div class="form-group">';
+            body += '<label>Data</label>';
+            body += '<input type="date" id="agendaData">';
+            body += '</div>';
+            body += '<div class="form-group">';
+            body += '<label>Hora</label>';
+            body += '<input type="time" id="agendaHora">';
+            body += '</div>';
+            body += '<div class="form-group">';
+            body += '<label>Local</label>';
+            body += '<input type="text" id="agendaLocal" placeholder="Local">';
+            body += '</div>';
+            body += '<div class="form-actions">';
+            body += '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>';
+            body += '<button class="btn btn-primary" onclick="salvarAgenda()">Salvar</button>';
+            body += '</div>';
+
+            openModal('Novo Evento', body);
+        }
+
+        function salvarAgenda() {
+            const titulo = document.getElementById('agendaTitulo').value;
+            const data = document.getElementById('agendaData').value;
+            const hora = document.getElementById('agendaHora').value;
+            const local = document.getElementById('agendaLocal').value;
+
+            if (!titulo) {
+                showToast('Título é obrigatório', 'warning');
+                return;
+            }
+
+            const evento = {
+                id: Math.random(),
+                titulo: titulo,
+                data: data,
+                hora: hora,
+                local: local
+            };
+
+            appData.agenda.push(evento);
+            closeModal();
+            switchTab('agenda');
+            showToast('Evento criado com sucesso', 'success');
+        }
+
+        function openModal(title, body) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalBody').innerHTML = body;
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        function showToast(message, type) {
+            if (!type) {
+                type = 'success';
+            }
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            setTimeout(function() {
+                toast.remove();
+            }, 3000);
+        }
+
+        function loadAllData() {
+            appData.atletas = [
+                { id: 1, nome: 'João Silva', posicao: 'Goleiro', numero: 1 },
+                { id: 2, nome: 'Maria Santos', posicao: 'Meia', numero: 7 }
+            ];
+
+            appData.cobracas = [
+                { id: 1, descricao: 'Mensalidade - Julho', valor: 500, pago: true },
+                { id: 2, descricao: 'Mensalidade - Agosto', valor: 500, pago: false }
+            ];
+
+            appData.despesas = [
+                { id: 1, descricao: 'Aluguel Quadra', valor: 1000, data: '2024-08-01' },
+                { id: 2, descricao: 'Material Esportivo', valor: 300, data: '2024-08-05' }
+            ];
+
+            appData.uniformes = [
+                { id: 1, tipo: 'Camisa', tamanho: 'M', numeros: '1, 7, 10', quantidade: 3 }
+            ];
+
+            appData.agenda = [
+                { id: 1, titulo: 'Treino', data: '2024-08-10', hora: '19:00', local: 'Quadra' }
+            ];
+
+            renderTabContent('dashboard');
+        }
+
+        initSupabase();
+    </script>
 </body>
 </html>
