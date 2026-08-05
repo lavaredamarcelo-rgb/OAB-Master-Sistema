@@ -3,218 +3,214 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OAB/PA Master</title>
+    <title>OAB/PA Master - Sistema de Gestão</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --primary: #2563eb;
-            --success: #10b981;
-            --danger: #ef4444;
-            --bg: #f9fafb;
-            --surface: #ffffff;
-            --text: #1f2937;
-        }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); }
+        :root { --primary: #2563eb; --success: #10b981; --danger: #ef4444; --bg: #f9fafb; --surface: #fff; --text: #1f2937; --border: #e5e7eb; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .header { background: var(--surface); padding: 20px; margin-bottom: 20px; border-radius: 8px; }
-        .btn { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; }
+        .header { background: var(--surface); padding: 20px; margin-bottom: 20px; border-radius: 8px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { margin: 0; }
+        .btn { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.2s; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { opacity: 0.9; }
-        .form { background: var(--surface); padding: 24px; border-radius: 8px; max-width: 400px; }
+        .btn-secondary { background: var(--bg); border: 1px solid var(--border); }
+        .btn-danger { background: var(--danger); color: white; }
+        .form { background: var(--surface); padding: 24px; border-radius: 8px; max-width: 400px; margin: 0 auto; border: 1px solid var(--border); }
         .form-group { margin-bottom: 16px; }
-        label { display: block; margin-bottom: 6px; font-weight: 500; }
-        input { width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; }
-        .hidden { display: none; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .stat-card { background: var(--surface); padding: 20px; border-radius: 8px; }
-        .stat-label { font-size: 12px; color: #6b7280; text-transform: uppercase; }
-        .stat-value { font-size: 28px; font-weight: bold; color: var(--primary); margin-top: 8px; }
+        label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; }
+        input, textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+        .tab { padding: 12px 16px; border: none; background: none; cursor: pointer; color: var(--text); border-bottom: 2px solid transparent; font-weight: 500; }
+        .tab.active { border-bottom-color: var(--primary); color: var(--primary); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: var(--surface); padding: 20px; border-radius: 8px; border: 1px solid var(--border); }
+        .stat-label { font-size: 12px; color: #6b7280; text-transform: uppercase; margin-bottom: 8px; }
+        .stat-value { font-size: 28px; font-weight: bold; color: var(--primary); }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: var(--bg); padding: 12px; text-align: left; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--border); }
+        td { padding: 12px; border-bottom: 1px solid var(--border); }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
     <div id="app"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Configuração
-        const CONFIG = {
-            supabaseUrl: 'https://pzodgfsekqpumvgigeii.supabase.co',
-            supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b2RnZnNla3FwdW12Z2lnZWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjA0MTM5NDEsImV4cCI6MjAzNTk4OTk0MX0.SGQR_fLXrHXHZ6yRp3lR2xS5qR_xZ0xZ0xZ0xZ0xZ0xZ'
-        };
+        const app = {
+            user: JSON.parse(localStorage.getItem('user')) || null,
+            data: JSON.parse(localStorage.getItem('data')) || {
+                atletas: [
+                    { id: 1, nome: 'João Silva', posicao: 'Goleiro', numero: '1' },
+                    { id: 2, nome: 'Maria Santos', posicao: 'Zagueira', numero: '4' }
+                ],
+                cobrancas: [],
+                despesas: [],
+                eventos: [],
+                uniformes: [],
+                saude: [],
+                taticas: [],
+                documentos: [],
+                config: {}
+            },
 
-        let db = null;
-        let user = null;
+            save() {
+                localStorage.setItem('data', JSON.stringify(this.data));
+            },
 
-        // Inicializa Supabase
-        function initDB() {
-            if (typeof window.supabase !== 'undefined') {
-                db = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
-            }
-        }
+            login(email) {
+                this.user = { email, id: Date.now() };
+                localStorage.setItem('user', JSON.stringify(this.user));
+                this.render();
+            },
 
-        // Login
-        async function login(email, password) {
-            if (!db) initDB();
-            try {
-                const { data, error } = await db.auth.signInWithPassword({ email, password });
-                if (error) throw error;
-                user = data.user;
-                render();
-            } catch (e) {
-                alert('Erro: ' + e.message);
-            }
-        }
+            logout() {
+                this.user = null;
+                localStorage.removeItem('user');
+                this.render();
+            },
 
-        // Registrar
-        async function signup(name, email, password) {
-            if (!db) initDB();
-            try {
-                const { data, error } = await db.auth.signUp({ 
-                    email, 
-                    password,
-                    options: { data: { full_name: name } }
-                });
-                if (error) throw error;
-                user = data.user;
-                render();
-            } catch (e) {
-                alert('Erro: ' + e.message);
-            }
-        }
+            switchTab(tab) {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                event.target.classList.add('active');
+                document.getElementById(`tab-${tab}`).classList.add('active');
+            },
 
-        // Logout
-        async function logout() {
-            if (!db) return;
-            await db.auth.signOut();
-            user = null;
-            render();
-        }
-
-        // Render principal
-        function render() {
-            const app = document.getElementById('app');
-            
-            if (!user) {
-                renderAuth(app);
-            } else {
-                renderDashboard(app);
-            }
-        }
-
-        function renderAuth(app) {
-            app.innerHTML = `
-                <div class="container">
-                    <div class="header">
-                        <h1>OAB/PA Master</h1>
-                    </div>
-                    <div class="form">
-                        <h2 style="margin-bottom: 20px;">Entrar</h2>
-                        <div class="form-group">
-                            <label>Email</label>
-                            <input type="email" id="loginEmail" placeholder="seu@email.com">
-                        </div>
-                        <div class="form-group">
-                            <label>Senha</label>
-                            <input type="password" id="loginPassword" placeholder="••••••••">
-                        </div>
-                        <button class="btn btn-primary" style="width: 100%;" onclick="handleLoginClick()">Entrar</button>
-                        <p style="margin-top: 16px; text-align: center; font-size: 14px;">
-                            Não tem conta? <a href="#" onclick="toggleAuth(); return false;">Registrar</a>
-                        </p>
-                    </div>
-                    <div id="signupForm" class="form hidden" style="margin-top: 20px;">
-                        <h2 style="margin-bottom: 20px;">Registrar</h2>
-                        <div class="form-group">
-                            <label>Nome</label>
-                            <input type="text" id="signupName" placeholder="Seu nome">
-                        </div>
-                        <div class="form-group">
-                            <label>Email</label>
-                            <input type="email" id="signupEmail" placeholder="seu@email.com">
-                        </div>
-                        <div class="form-group">
-                            <label>Senha</label>
-                            <input type="password" id="signupPassword" placeholder="••••••••">
-                        </div>
-                        <button class="btn btn-primary" style="width: 100%;" onclick="handleSignupClick()">Registrar</button>
-                        <p style="margin-top: 16px; text-align: center; font-size: 14px;">
-                            Já tem conta? <a href="#" onclick="toggleAuth(); return false;">Entrar</a>
-                        </p>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderDashboard(app) {
-            app.innerHTML = `
-                <div class="container">
-                    <div class="header">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h1>OAB/PA Master</h1>
-                            <div>
-                                <span style="margin-right: 16px;">${user.email}</span>
-                                <button class="btn btn-primary" onclick="handleLogoutClick()">Sair</button>
+            render() {
+                const root = document.getElementById('app');
+                if (!this.user) {
+                    root.innerHTML = `
+                        <div class="container">
+                            <div class="form">
+                                <h1 style="margin-bottom: 24px; text-align: center;">OAB/PA Master</h1>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="email" placeholder="seu@email.com">
+                                </div>
+                                <button class="btn btn-primary" style="width: 100%;" onclick="app.login(document.getElementById('email').value)">Entrar</button>
+                                <p style="text-align: center; margin-top: 16px; font-size: 14px; color: #6b7280;">
+                                    Use qualquer email para acessar (teste local)
+                                </p>
                             </div>
                         </div>
-                    </div>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-label">Atletas</div>
-                            <div class="stat-value">0</div>
+                    `;
+                } else {
+                    root.innerHTML = `
+                        <div class="header">
+                            <h1>⚖️ OAB/PA Master</h1>
+                            <div style="display: flex; gap: 16px; align-items: center;">
+                                <span>${this.user.email}</span>
+                                <button class="btn btn-secondary" onclick="app.logout()">Sair</button>
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Cobranças</div>
-                            <div class="stat-value">0</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Uniformes</div>
-                            <div class="stat-value">0</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Eventos</div>
-                            <div class="stat-value">0</div>
-                        </div>
-                    </div>
-                    <p>Sistema pronto para uso!</p>
-                </div>
-            `;
-        }
+                        <div class="container">
+                            <div class="tabs">
+                                <button class="tab active" onclick="app.switchTab('dashboard')">📊 Dashboard</button>
+                                <button class="tab" onclick="app.switchTab('atletas')">🤸 Atletas</button>
+                                <button class="tab" onclick="app.switchTab('financeiro')">💰 Financeiro</button>
+                                <button class="tab" onclick="app.switchTab('uniformes')">👕 Uniformes</button>
+                                <button class="tab" onclick="app.switchTab('agenda')">📅 Agenda</button>
+                                <button class="tab" onclick="app.switchTab('saude')">🏥 Saúde</button>
+                                <button class="tab" onclick="app.switchTab('taticas')">🎯 Táticas</button>
+                                <button class="tab" onclick="app.switchTab('documentos')">📄 Documentos</button>
+                                <button class="tab" onclick="app.switchTab('config')">⚙️ Config</button>
+                            </div>
 
-        function toggleAuth() {
-            const form = document.getElementById('signupForm');
-            form.classList.toggle('hidden');
-        }
+                            <div id="tab-dashboard" class="tab-content active">
+                                <div class="stats-grid">
+                                    <div class="stat-card"><div class="stat-label">Atletas</div><div class="stat-value">${this.data.atletas.length}</div></div>
+                                    <div class="stat-card"><div class="stat-label">Cobranças</div><div class="stat-value">${this.data.cobrancas.length}</div></div>
+                                    <div class="stat-card"><div class="stat-label">Despesas</div><div class="stat-value">${this.data.despesas.length}</div></div>
+                                    <div class="stat-card"><div class="stat-label">Eventos</div><div class="stat-value">${this.data.eventos.length}</div></div>
+                                </div>
+                                <p>Bem-vindo ao OAB/PA Master! Sistema pronto para uso com dados armazenados localmente.</p>
+                            </div>
 
-        function handleLoginClick() {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            if (!email || !password) {
-                alert('Preencha todos os campos');
-                return;
+                            <div id="tab-atletas" class="tab-content">
+                                <button class="btn btn-primary" onclick="if(this.data.atletas.length < 10) { this.data.atletas.push({id: Date.now(), nome: 'Novo Atleta', posicao: '', numero: ''}); this.save(); this.render(); }">+ Novo Atleta</button>
+                                <table style="margin-top: 16px;">
+                                    <thead><tr><th>Nome</th><th>Posição</th><th>Número</th><th>Ações</th></tr></thead>
+                                    <tbody>
+                                        ${this.data.atletas.map((a, i) => `
+                                            <tr>
+                                                <td>${a.nome}</td>
+                                                <td>${a.posicao}</td>
+                                                <td>${a.numero}</td>
+                                                <td><button class="btn btn-danger btn-small" onclick="app.data.atletas.splice(${i}, 1); app.save(); app.render();">Deletar</button></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div id="tab-financeiro" class="tab-content">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                                    <div>
+                                        <h3>💵 Cobranças (${this.data.cobrancas.length})</h3>
+                                        <button class="btn btn-primary" style="margin-top: 8px;" onclick="const desc = prompt('Descrição'); const val = prompt('Valor'); if(desc && val) { app.data.cobrancas.push({id: Date.now(), descricao: desc, valor: parseFloat(val), status: 'pendente'}); app.save(); app.render(); }">+ Nova Cobrança</button>
+                                        <table style="margin-top: 12px; font-size: 13px;">
+                                            <thead><tr><th>Descrição</th><th>Valor</th><th>Status</th></tr></thead>
+                                            <tbody>${this.data.cobrancas.map((c, i) => `<tr><td>${c.descricao}</td><td>R$ ${c.valor.toFixed(2)}</td><td>${c.status}</td></tr>`).join('')}</tbody>
+                                        </table>
+                                    </div>
+                                    <div>
+                                        <h3>💸 Despesas (${this.data.despesas.length})</h3>
+                                        <button class="btn btn-primary" style="margin-top: 8px;" onclick="const desc = prompt('Descrição'); const val = prompt('Valor'); if(desc && val) { app.data.despesas.push({id: Date.now(), descricao: desc, valor: parseFloat(val), status: 'pendente'}); app.save(); app.render(); }">+ Nova Despesa</button>
+                                        <table style="margin-top: 12px; font-size: 13px;">
+                                            <thead><tr><th>Descrição</th><th>Valor</th><th>Status</th></tr></thead>
+                                            <tbody>${this.data.despesas.map((d, i) => `<tr><td>${d.descricao}</td><td>R$ ${d.valor.toFixed(2)}</td><td>${d.status}</td></tr>`).join('')}</tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">Balanço Total</div>
+                                    <div class="stat-value" style="color: ${(this.data.cobrancas.reduce((a, c) => a + (c.valor || 0), 0) - this.data.despesas.reduce((a, d) => a + (d.valor || 0), 0)) >= 0 ? 'var(--success)' : 'var(--danger)'};">
+                                        R$ ${(this.data.cobrancas.reduce((a, c) => a + (c.valor || 0), 0) - this.data.despesas.reduce((a, d) => a + (d.valor || 0), 0)).toFixed(2)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="tab-uniformes" class="tab-content">
+                                <button class="btn btn-primary" onclick="const tipo = prompt('Tipo'); if(tipo) { app.data.uniformes.push({id: Date.now(), tipo, tamanho: '', quantidade: 0}); app.save(); app.render(); }">+ Novo Uniforme</button>
+                                <table style="margin-top: 16px;">
+                                    <thead><tr><th>Tipo</th><th>Quantidade</th></tr></thead>
+                                    <tbody>${this.data.uniformes.map((u, i) => `<tr><td>${u.tipo}</td><td>${u.quantidade || 0}</td></tr>`).join('')}</tbody>
+                                </table>
+                            </div>
+
+                            <div id="tab-agenda" class="tab-content">
+                                <button class="btn btn-primary" onclick="const titulo = prompt('Título'); if(titulo) { app.data.eventos.push({id: Date.now(), titulo, data: new Date().toISOString().split('T')[0], hora: '19:00'}); app.save(); app.render(); }">+ Novo Evento</button>
+                                <table style="margin-top: 16px;">
+                                    <thead><tr><th>Título</th><th>Data</th><th>Hora</th></tr></thead>
+                                    <tbody>${this.data.eventos.map((e, i) => `<tr><td>${e.titulo}</td><td>${e.data}</td><td>${e.hora}</td></tr>`).join('')}</tbody>
+                                </table>
+                            </div>
+
+                            <div id="tab-saude" class="tab-content">
+                                <p>Aba de Saúde - Recurso em desenvolvimento</p>
+                            </div>
+
+                            <div id="tab-taticas" class="tab-content">
+                                <p>Aba de Táticas - Recurso em desenvolvimento</p>
+                            </div>
+
+                            <div id="tab-documentos" class="tab-content">
+                                <p>Aba de Documentos - Recurso em desenvolvimento</p>
+                            </div>
+
+                            <div id="tab-config" class="tab-content">
+                                <p>Configurações - Recurso em desenvolvimento</p>
+                            </div>
+                        </div>
+                    `;
+                }
             }
-            login(email, password);
-        }
+        };
 
-        function handleSignupClick() {
-            const name = document.getElementById('signupName').value;
-            const email = document.getElementById('signupEmail').value;
-            const password = document.getElementById('signupPassword').value;
-            if (!name || !email || !password) {
-                alert('Preencha todos os campos');
-                return;
-            }
-            signup(name, email, password);
-        }
-
-        function handleLogoutClick() {
-            logout();
-        }
-
-        // Inicializa ao carregar
-        window.addEventListener('load', function() {
-            initDB();
-            render();
-        });
+        app.render();
     </script>
 </body>
 </html>
