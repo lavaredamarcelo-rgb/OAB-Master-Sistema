@@ -70,6 +70,7 @@ const sb = window.supabase.createClient(SB_URL, SB_KEY);
 let db = null;
 let me = null;
 let tab = 'dashboard';
+let subTab = 'cobracas';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s || '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -143,93 +144,44 @@ async function sair() {
 
 function getTabContent() {
   switch(tab) {
-    case 'dashboard': return `
-      <h1>📊 Dashboard</h1>
-      <div class="grid g2">
-        <div class="card">
-          <div style="font-size:28px;font-weight:bold;color:var(--ok)">${db.atletas.length}</div>
-          <div class="mut">Jogadores</div>
-        </div>
-        <div class="card">
-          <div style="font-size:28px;font-weight:bold;color:var(--bad)">${db.cobrancas.filter(c => c.status !== 'pago').length}</div>
-          <div class="mut">Pendências</div>
-        </div>
-        <div class="card">
-          <div style="font-size:28px;font-weight:bold;color:var(--warn)">${db.eventos.length}</div>
-          <div class="mut">Compromissos</div>
-        </div>
-        <div class="card">
-          <div style="font-size:28px;font-weight:bold">${brl(db.cobrancas.filter(c => c.status === 'pago').reduce((s,c) => s + Number(c.valor), 0))}</div>
-          <div class="mut">Receita</div>
-        </div>
-      </div>
-    `;
+    case 'dashboard':
+      const pendencias = db.cobrancas.filter(c => c.status !== 'pago').length;
+      const totalPago = db.cobrancas.filter(c => c.status === 'pago').reduce((s,c) => s + Number(c.valor), 0);
+      const totalDesp = db.despesas.reduce((s,d) => s + Number(d.valor), 0);
+      return `<h1>📊 Dashboard</h1><div class="grid g2"><div class="card"><div style="font-size:28px;font-weight:bold;color:var(--ok)">${db.atletas.length}</div><div class="mut">Jogadores</div></div><div class="card"><div style="font-size:28px;font-weight:bold;color:var(--bad)">${pendencias}</div><div class="mut">Pendências</div></div><div class="card"><div style="font-size:28px;font-weight:bold;color:var(--ok)">${brl(totalPago)}</div><div class="mut">Receita</div></div><div class="card"><div style="font-size:28px;font-weight:bold;color:var(--bad)">${brl(totalDesp)}</div><div class="mut">Despesas</div></div></div>`;
 
-    case 'atletas': return `
-      <h1>👥 Atletas</h1>
-      <div class="card">
-        <table style="width:100%;border-collapse:collapse">
-          <tr>
-            <th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Nome</th>
-            <th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Posição</th>
-            <th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Status</th>
-          </tr>
-          ${db.atletas.map(a => `
-            <tr>
-              <td style="padding:8px;border-bottom:1px solid #ddd">${esc(a.nome)}</td>
-              <td style="padding:8px;border-bottom:1px solid #ddd;font-size:13px;color:var(--ink2)">${esc(a.posicao || '—')}</td>
-              <td style="padding:8px;border-bottom:1px solid #ddd"><span class="pill ${a.ativo ? 'p-ok' : 'p-bad'}">${a.ativo ? 'Ativo' : 'Inativo'}</span></td>
-            </tr>
-          `).join('')}
-        </table>
-      </div>
-    `;
+    case 'atletas':
+      return `<h1>👥 Atletas</h1><div class="card"><table style="width:100%;border-collapse:collapse"><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Nome</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Posição</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Status</th></tr>${db.atletas.map(a => '<tr><td style="padding:8px;border-bottom:1px solid #ddd">' + esc(a.nome) + '</td><td style="padding:8px;border-bottom:1px solid #ddd;font-size:13px;color:var(--ink2)">' + esc(a.posicao || '—') + '</td><td style="padding:8px;border-bottom:1px solid #ddd"><span class="pill ' + (a.ativo ? 'p-ok' : 'p-bad') + '">' + (a.ativo ? 'Ativo' : 'Inativo') + '</span></td></tr>').join('')}</table></div>`;
 
-    case 'financeiro': return `
-      <h1>💰 Financeiro</h1>
-      <div class="grid g2">
-        <div class="card">
-          <h2>Cobranças Pendentes</h2>
-          ${db.cobrancas.filter(c => c.status !== 'pago').map(c => `
-            <div style="margin:8px 0;padding:8px;background:var(--warn-soft);border-radius:6px">
-              <strong>${esc(c.desc)}</strong><br>
-              <span class="mut">${brl(c.valor)}</span>
-            </div>
-          `).join('') || '<p class="mut">Nenhuma pendência</p>'}
-        </div>
-        <div class="card">
-          <h2>Despesas</h2>
-          ${db.despesas.map(d => `
-            <div style="margin:8px 0;padding:8px;background:var(--bad-soft);border-radius:6px">
-              <strong>${esc(d.item)}</strong><br>
-              <span class="mut">${brl(d.valor)}</span>
-            </div>
-          `).join('') || '<p class="mut">Nenhuma despesa</p>'}
-        </div>
-      </div>
-    `;
+    case 'financeiro':
+      const cobPendentes = db.cobrancas.filter(c => c.status !== 'pago');
+      const cobPagas = db.cobrancas.filter(c => c.status === 'pago');
+      const totalCobPagos = cobPagas.reduce((s,c) => s + Number(c.valor), 0);
+      const totalDesp2 = db.despesas.reduce((s,d) => s + Number(d.valor), 0);
+      return `<h1>💰 Financeiro</h1><div class="row" style="gap:8px;margin-bottom:16px"><button class="mini" onclick="subTab='cobracas';renderShell()">💳 Cobranças</button><button class="mini" onclick="subTab='despesas';renderShell()">📋 Despesas</button><button class="mini" onclick="subTab='balanco';renderShell()">📊 Balanço</button></div><div class="card">${getFinanceiroTab()}</div>`;
 
-    case 'uniformes': return `
-      <h1>👕 Uniformes</h1>
-      <div class="card">
-        <table style="width:100%;border-collapse:collapse">
-          <tr>
-            <th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Descrição</th>
-            <th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Números</th>
-            <th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Status</th>
-          </tr>
-          ${db.uniformes.map(u => `
-            <tr>
-              <td style="padding:8px;border-bottom:1px solid #ddd">${esc(u.descricao)}</td>
-              <td style="padding:8px;border-bottom:1px solid #ddd;font-size:13px">${esc(u.numero)}</td>
-              <td style="padding:8px;border-bottom:1px solid #ddd"><span class="pill p-ok">OK</span></td>
-            </tr>
-          `).join('')}
-        </table>
-      </div>
-    `;
+    case 'uniformes':
+      return `<h1>👕 Uniformes</h1><div class="card"><table style="width:100%;border-collapse:collapse"><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Descrição</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Números</th><th style="text-align:left;padding:8px;border-bottom:2px solid #ddd">Status</th></tr>${db.uniformes.map(u => '<tr><td style="padding:8px;border-bottom:1px solid #ddd">' + esc(u.descricao) + '</td><td style="padding:8px;border-bottom:1px solid #ddd;font-size:13px">' + esc(u.numero) + '</td><td style="padding:8px;border-bottom:1px solid #ddd"><span class="pill p-ok">OK</span></td></tr>').join('')}</table></div>`;
 
     default: return '<p>Tab não encontrada</p>';
+  }
+}
+
+function getFinanceiroTab() {
+  if (subTab === 'cobracas') {
+    const cobPendentes = db.cobrancas.filter(c => c.status !== 'pago');
+    const cobPagas = db.cobrancas.filter(c => c.status === 'pago');
+    const totalPendente = cobPendentes.reduce((s,c) => s + Number(c.valor), 0);
+    const totalPago = cobPagas.reduce((s,c) => s + Number(c.valor), 0);
+    return '<h2>💳 Cobranças</h2><p class="mut">Pendente: <strong>' + brl(totalPendente) + '</strong> | Pago: <strong>' + brl(totalPago) + '</strong></p>' + (cobPendentes.length ? '<div>' + cobPendentes.map(c => '<div style="padding:8px;margin:8px 0;background:var(--warn-soft);border-radius:6px"><strong>' + esc(c.desc) + '</strong><br><span class="mut">' + brl(c.valor) + '</span></div>').join('') + '</div>' : '<p class="mut">Nenhuma pendência</p>');
+  } else if (subTab === 'despesas') {
+    const totalDesp = db.despesas.reduce((s,d) => s + Number(d.valor), 0);
+    return '<h2>📋 Despesas</h2><p class="mut">Total: <strong>' + brl(totalDesp) + '</strong></p>' + (db.despesas.length ? '<div>' + db.despesas.map(d => '<div style="padding:8px;margin:8px 0;background:var(--bad-soft);border-radius:6px"><strong>' + esc(d.item) + '</strong><br><span class="mut">' + esc(d.categoria) + ' - ' + brl(d.valor) + '</span></div>').join('') + '</div>' : '<p class="mut">Nenhuma despesa</p>');
+  } else {
+    const totalRec = db.cobrancas.filter(c => c.status === 'pago').reduce((s,c) => s + Number(c.valor), 0);
+    const totalDesp = db.despesas.reduce((s,d) => s + Number(d.valor), 0);
+    const saldo = totalRec - totalDesp;
+    return '<h2>📊 Balanço</h2><div class="grid g3"><div><div style="font-size:20px;font-weight:bold;color:var(--ok)">' + brl(totalRec) + '</div><div class="mut">Receitas</div></div><div><div style="font-size:20px;font-weight:bold;color:var(--bad)">' + brl(totalDesp) + '</div><div class="mut">Despesas</div></div><div><div style="font-size:20px;font-weight:bold;color:' + (saldo >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + brl(saldo) + '</div><div class="mut">Saldo</div></div></div>';
   }
 }
 
