@@ -2,381 +2,180 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OAB/PA Master — Gestão do Time</title>
-<link rel="icon" type="image/png" href="escudo.png">
-<link rel="apple-touch-icon" href="escudo-192.png">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#B8272D">
 <style>
-:root{
-  --bg:#F6F4EF; --card:#FFFFFF; --ink:#23262E; --ink2:#5C616E; --line:#E1DFD8;
-  --p:#B8272D; --p-soft:#F7E5E2; --blue:#1C4FA0; --blue-soft:#E3EAF6; --gold:#A8811C; --gold-soft:#F6EDD6;
-  --ok:#2E7D4F; --ok-soft:#E2F1E7; --warn:#A86A12; --warn-soft:#F8EEDD; --bad:#B3372E; --bad-soft:#F9E7E5;
-  --shadow:0 1px 3px rgba(35,38,46,.08),0 4px 14px rgba(35,38,46,.06);
+:root {
+  --primary: #B8272D;
+  --bg: #F6F4EF;
+  --card: #FFFFFF;
+  --text: #23262E;
+  --text-light: #5C616E;
+  --border: #E1DFD8;
 }
-*{box-sizing:border-box}
-html,body{margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
-.container{max-width:1400px;margin:0 auto;padding:20px}
-#app{min-height:100vh;display:flex;flex-direction:column}
-.login-wrap{display:flex;justify-content:center;align-items:center;min-height:100vh;background:linear-gradient(135deg,var(--p) 0%,#8b1f28 100%);padding:20px}
-.login-box{background:var(--card);border-radius:12px;padding:40px;width:100%;max-width:400px;box-shadow:var(--shadow)}
-.crest{text-align:center;margin-bottom:20px;font-size:64px}
-.login-box h1{text-align:center;color:var(--p);margin-bottom:30px;font-size:24px}
-.form-group{margin-bottom:20px}
-.form-group label{display:block;margin-bottom:8px;font-weight:500;font-size:14px;color:var(--ink)}
-.form-group input{width:100%;padding:12px;border:1px solid var(--line);border-radius:6px;font-size:14px}
-.form-group input:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px var(--p-soft)}
-.btn{padding:12px 24px;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;transition:all .2s}
-.btn-primary{background:var(--p);color:white;width:100%;margin-top:20px}
-.btn-primary:hover{background:#a01f26;transform:translateY(-2px)}
-.btn-secondary{background:var(--bg);color:var(--p);border:2px solid var(--p);margin-top:12px;width:100%}
-.btn-secondary:hover{background:var(--p-soft)}
-.alert{padding:12px 16px;border-radius:6px;margin-bottom:20px;font-size:14px}
-.alert-error{background:var(--bad-soft);color:var(--bad);border-left:4px solid var(--bad)}
-.alert-success{background:var(--ok-soft);color:var(--ok);border-left:4px solid var(--ok)}
-#main-page{display:none}
-.header{background:var(--card);border-bottom:2px solid var(--p);padding:20px 0;box-shadow:var(--shadow);position:sticky;top:0;z-index:100}
-.header-content{display:flex;justify-content:space-between;align-items:center}
-.logo{font-size:24px;font-weight:bold;color:var(--p);display:flex;align-items:center;gap:10px}
-.user-section{display:flex;align-items:center;gap:20px;font-size:14px}
-.btn-logout{background:var(--bad);color:white;padding:8px 16px}
-.btn-logout:hover{background:#a01f26}
-.tabs{display:flex;gap:8px;margin-bottom:24px;border-bottom:2px solid var(--line);overflow-x:auto;padding-bottom:0}
-.tab-btn{padding:16px 20px;background:none;border:none;cursor:pointer;font-weight:600;font-size:14px;color:var(--ink2);border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap}
-.tab-btn:hover{color:var(--p)}
-.tab-btn.active{color:var(--p);border-bottom-color:var(--p)}
-.tab-content{display:none}
-.tab-content.active{display:block}
-.card{background:var(--card);border-radius:8px;padding:20px;border:1px solid var(--line);box-shadow:var(--shadow);margin-bottom:20px}
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
-.stat-card{background:var(--card);padding:20px;border-radius:8px;border:1px solid var(--line);text-align:center}
-.stat-label{font-size:12px;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
-.stat-value{font-size:32px;font-weight:bold;color:var(--p)}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th{background:var(--bg);padding:12px;text-align:left;font-weight:600;border-bottom:2px solid var(--line)}
-td{padding:12px;border-bottom:1px solid var(--line)}
-tr:hover{background:var(--p-soft)}
-.btn-small{padding:6px 12px;font-size:12px}
-.btn-danger{background:var(--bad);color:white}
-.btn-danger:hover{background:#a01f26}
-.btn-success{background:var(--ok);color:white}
-.btn-success:hover{background:#1e6b3d}
-.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1000;justify-content:center;align-items:center}
-.modal.active{display:flex}
-.modal-content{background:var(--card);border-radius:8px;padding:30px;width:90%;max-width:500px;box-shadow:var(--shadow);max-height:90vh;overflow-y:auto}
-.modal-header{font-size:20px;font-weight:bold;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
-.modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--ink2)}
-.empty-state{text-align:center;padding:40px 20px;color:var(--ink2)}
-.empty-state-icon{font-size:48px;margin-bottom:16px}
-.loading{text-align:center;padding:40px;color:var(--ink2)}
-.toast-container{position:fixed;bottom:20px;right:20px;z-index:2000}
-.toast{background:var(--card);padding:16px 20px;border-radius:8px;margin-bottom:10px;box-shadow:var(--shadow);border-left:4px solid var(--p);min-width:300px}
-.toast.error{border-left-color:var(--bad)}
-.toast.success{border-left-color:var(--ok)}
+
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--primary) 0%, #8b1f28 100%);
+  padding: 20px;
+}
+
+.login-box {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 40px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.login-box h1 {
+  text-align: center;
+  color: var(--primary);
+  margin: 0 0 30px 0;
+  font-size: 24px;
+}
+
+.crest {
+  text-align: center;
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(184, 39, 45, 0.1);
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  width: 100%;
+  margin-top: 12px;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #a01f26;
+  transform: translateY(-2px);
+}
+
+.alert {
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.alert-error {
+  background: #f8d7da;
+  color: #721c24;
+  border-left: 4px solid #721c24;
+}
+
+.alert-success {
+  background: #d4edda;
+  color: #155724;
+  border-left: 4px solid #155724;
+}
+
+#main-page { display: none; }
 </style>
 </head>
 <body>
 
-<div id="app">
-  <!-- Login Page -->
-  <div id="login-page" class="login-wrap">
-    <div class="login-box">
-      <div class="crest">⚖️</div>
-      <h1>OAB/PA Master</h1>
-      <div id="login-alert"></div>
-      <div class="form-group">
-        <label>Email</label>
-        <input type="email" id="loginEmail" placeholder="seu@email.com">
-      </div>
-      <div class="form-group">
-        <label>Senha</label>
-        <input type="password" id="loginPassword" placeholder="••••••••">
-      </div>
-      <button class="btn btn-primary" onclick="handleLogin()">Entrar</button>
-      <button class="btn btn-secondary" onclick="toggleAuthMode()">Criar Conta</button>
+<div id="login-page" class="login-container">
+  <div class="login-box">
+    <div class="crest">⚖️</div>
+    <h1>OAB/PA Master</h1>
+    <div id="login-alert"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="seu@email.com">
     </div>
-  </div>
-
-  <!-- Main App -->
-  <div id="main-page" style="display:none;flex:1;display:flex;flex-direction:column">
-    <div class="header">
-      <div class="container">
-        <div class="header-content">
-          <div class="logo">⚖️ OAB/PA Master</div>
-          <div class="user-section">
-            <span id="userEmail"></span>
-            <button class="btn btn-logout" onclick="handleLogout()">Sair</button>
-          </div>
-        </div>
-      </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" id="loginPassword" placeholder="••••••••">
     </div>
-
-    <div class="container" style="flex:1">
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('dashboard')">📊 Dashboard</button>
-        <button class="tab-btn" onclick="switchTab('atletas')">🤸 Atletas</button>
-        <button class="tab-btn" onclick="switchTab('financeiro')">💰 Financeiro</button>
-        <button class="tab-btn" onclick="switchTab('uniformes')">👕 Uniformes</button>
-        <button class="tab-btn" onclick="switchTab('agenda')">📅 Agenda</button>
-        <button class="tab-btn" onclick="switchTab('saude')">🏥 Saúde</button>
-        <button class="tab-btn" onclick="switchTab('taticas')">🎯 Táticas</button>
-        <button class="tab-btn" onclick="switchTab('documentos')">📄 Documentos</button>
-        <button class="tab-btn" onclick="switchTab('ajustes')">⚙️ Ajustes</button>
-      </div>
-
-      <!-- Dashboard Tab -->
-      <div id="tab-dashboard" class="tab-content active">
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">Total de Atletas</div>
-            <div class="stat-value" id="stat-atletas">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Cobranças Pendentes</div>
-            <div class="stat-value" id="stat-pendentes">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Eventos</div>
-            <div class="stat-value" id="stat-eventos">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Uniformes</div>
-            <div class="stat-value" id="stat-uniformes">0</div>
-          </div>
-        </div>
-        <div class="card">
-          <h2>Bem-vindo ao OAB/PA Master</h2>
-          <p>Sistema de gestão completo para o time de advogados.</p>
-          <p>Use as abas acima para gerenciar atletas, financeiro, uniformes, agenda, saúde, táticas, documentos e ajustes.</p>
-        </div>
-      </div>
-
-      <!-- Atletas Tab -->
-      <div id="tab-atletas" class="tab-content">
-        <button class="btn btn-primary" onclick="openNewAtletaModal()">+ Novo Atleta</button>
-        <div style="margin-top:20px" id="atletas-container">
-          <div class="empty-state">
-            <div class="empty-state-icon">🤸</div>
-            <p>Nenhum atleta cadastrado</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Financeiro Tab -->
-      <div id="tab-financeiro" class="tab-content">
-        <button class="btn btn-primary" onclick="openNewCobrancaModal()">+ Nova Cobrança</button>
-        <button class="btn btn-primary" style="margin-left:10px" onclick="openNewDespesaModal()">+ Nova Despesa</button>
-        <div style="margin-top:20px" id="financeiro-container">
-          <div class="card">
-            <h3>Cobranças</h3>
-            <div id="cobrancas-list"></div>
-          </div>
-          <div class="card">
-            <h3>Despesas</h3>
-            <div id="despesas-list"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Uniformes Tab -->
-      <div id="tab-uniformes" class="tab-content">
-        <button class="btn btn-primary" onclick="openNewUniformeModal()">+ Novo Uniforme</button>
-        <div style="margin-top:20px" id="uniformes-container">
-          <div class="empty-state">
-            <div class="empty-state-icon">👕</div>
-            <p>Nenhum uniforme cadastrado</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Agenda Tab -->
-      <div id="tab-agenda" class="tab-content">
-        <button class="btn btn-primary" onclick="openNewEventoModal()">+ Novo Evento</button>
-        <div style="margin-top:20px" id="agenda-container">
-          <div class="empty-state">
-            <div class="empty-state-icon">📅</div>
-            <p>Nenhum evento agendado</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Saúde Tab -->
-      <div id="tab-saude" class="tab-content">
-        <div class="card">
-          <h2>Saúde</h2>
-          <p>Ficha de saúde dos atletas em desenvolvimento...</p>
-        </div>
-      </div>
-
-      <!-- Táticas Tab -->
-      <div id="tab-taticas" class="tab-content">
-        <div class="card">
-          <h2>Táticas</h2>
-          <p>Gestão de táticas em desenvolvimento...</p>
-        </div>
-      </div>
-
-      <!-- Documentos Tab -->
-      <div id="tab-documentos" class="tab-content">
-        <div class="card">
-          <h2>Documentos</h2>
-          <p>Gestão de documentos em desenvolvimento...</p>
-        </div>
-      </div>
-
-      <!-- Ajustes Tab -->
-      <div id="tab-ajustes" class="tab-content">
-        <div class="card">
-          <h2>Ajustes</h2>
-          <p>Configurações do sistema em desenvolvimento...</p>
-        </div>
-      </div>
-    </div>
+    <button class="btn btn-primary" onclick="handleLogin()">Entrar</button>
   </div>
 </div>
 
-<!-- Modals -->
-<div id="modal-atleta" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <span>Novo Atleta</span>
-      <button class="modal-close" onclick="closeModal('modal-atleta')">×</button>
-    </div>
-    <div class="form-group">
-      <label>Nome</label>
-      <input type="text" id="atleta-nome" placeholder="Nome completo">
-    </div>
-    <div class="form-group">
-      <label>Posição</label>
-      <input type="text" id="atleta-posicao" placeholder="Ex: Goleiro">
-    </div>
-    <div class="form-group">
-      <label>Número</label>
-      <input type="number" id="atleta-numero" placeholder="1">
-    </div>
-    <button class="btn btn-primary" onclick="saveAtleta()">Salvar</button>
-    <button class="btn btn-secondary" onclick="closeModal('modal-atleta')">Cancelar</button>
-  </div>
+<div id="main-page">
+  <h1>Bem-vindo!</h1>
+  <p id="userInfo"></p>
+  <button onclick="handleLogout()">Sair</button>
 </div>
 
-<div id="modal-cobranca" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <span>Nova Cobrança</span>
-      <button class="modal-close" onclick="closeModal('modal-cobranca')">×</button>
-    </div>
-    <div class="form-group">
-      <label>Descrição</label>
-      <input type="text" id="cobranca-desc" placeholder="Ex: Mensalidade">
-    </div>
-    <div class="form-group">
-      <label>Valor</label>
-      <input type="number" id="cobranca-valor" placeholder="0.00" step="0.01">
-    </div>
-    <div class="form-group">
-      <label>Vencimento</label>
-      <input type="date" id="cobranca-venc">
-    </div>
-    <button class="btn btn-primary" onclick="saveCobranca()">Salvar</button>
-    <button class="btn btn-secondary" onclick="closeModal('modal-cobranca')">Cancelar</button>
-  </div>
-</div>
-
-<div id="modal-despesa" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <span>Nova Despesa</span>
-      <button class="modal-close" onclick="closeModal('modal-despesa')">×</button>
-    </div>
-    <div class="form-group">
-      <label>Descrição</label>
-      <input type="text" id="despesa-desc" placeholder="Ex: Aluguel quadra">
-    </div>
-    <div class="form-group">
-      <label>Valor</label>
-      <input type="number" id="despesa-valor" placeholder="0.00" step="0.01">
-    </div>
-    <div class="form-group">
-      <label>Data</label>
-      <input type="date" id="despesa-data">
-    </div>
-    <button class="btn btn-primary" onclick="saveDespesa()">Salvar</button>
-    <button class="btn btn-secondary" onclick="closeModal('modal-despesa')">Cancelar</button>
-  </div>
-</div>
-
-<div id="modal-uniforme" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <span>Novo Uniforme</span>
-      <button class="modal-close" onclick="closeModal('modal-uniforme')">×</button>
-    </div>
-    <div class="form-group">
-      <label>Descrição</label>
-      <input type="text" id="uniforme-desc" placeholder="Ex: Camisa principal">
-    </div>
-    <div class="form-group">
-      <label>Quantidade</label>
-      <input type="number" id="uniforme-qtd" placeholder="1">
-    </div>
-    <button class="btn btn-primary" onclick="saveUniforme()">Salvar</button>
-    <button class="btn btn-secondary" onclick="closeModal('modal-uniforme')">Cancelar</button>
-  </div>
-</div>
-
-<div id="modal-evento" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <span>Novo Evento</span>
-      <button class="modal-close" onclick="closeModal('modal-evento')">×</button>
-    </div>
-    <div class="form-group">
-      <label>Título</label>
-      <input type="text" id="evento-titulo" placeholder="Ex: Treino">
-    </div>
-    <div class="form-group">
-      <label>Data</label>
-      <input type="date" id="evento-data">
-    </div>
-    <div class="form-group">
-      <label>Hora</label>
-      <input type="time" id="evento-hora" value="19:00">
-    </div>
-    <div class="form-group">
-      <label>Local</label>
-      <input type="text" id="evento-local" placeholder="Ex: Quadra">
-    </div>
-    <button class="btn btn-primary" onclick="saveEvento()">Salvar</button>
-    <button class="btn btn-secondary" onclick="closeModal('modal-evento')">Cancelar</button>
-  </div>
-</div>
-
-<div id="toast-container" class="toast-container"></div>
+<div id="status"></div>
+<div id="logs"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = 'https://pzodgfsekqpumvgigeii.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6b2RnZnNla3FwdW12Z2lnZWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNjEyNzYsImV4cCI6MjA5OTgzNzI3Nn0.-tQn-ECR6t-waBBuihIesi6LhxJ3s22xORzR3OwMoeQ';
 
-let currentUser = null;
-let appData = {
-  atletas: [],
-  cobrancas: [],
-  despesas: [],
-  eventos: [],
-  uniformes: []
-};
-
 let supabaseClient = null;
+let currentUser = null;
 
-// Initialize Supabase
 function initSupabase() {
+  if (!window.supabase) {
+    throw new Error('Supabase CDN não carregou');
+  }
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
-// Auth Functions
+function showAlert(elementId, message, type) {
+  const element = document.getElementById(elementId);
+  if (element) {
+    const className = type === 'error' ? 'alert-error' : 'alert-success';
+    element.innerHTML = '<div class="alert ' + className + '">' + message + '</div>';
+    setTimeout(() => { element.innerHTML = ''; }, 5000);
+  }
+}
+
 async function handleLogin() {
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
@@ -392,51 +191,19 @@ async function handleLogin() {
 
     currentUser = data.user;
     showAlert('login-alert', 'Login realizado!', 'success');
-    setTimeout(() => showMainApp(), 500);
+    setTimeout(() => showMainPage(), 500);
   } catch (error) {
     showAlert('login-alert', error.message, 'error');
   }
 }
 
-async function handleSignup() {
-  const email = document.getElementById('loginEmail').value;
-  const password = document.getElementById('loginPassword').value;
-
-  if (!email || !password) {
-    showAlert('login-alert', 'Preencha email e senha', 'error');
-    return;
-  }
-
+async function handleLogout() {
   try {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
-
-    showAlert('login-alert', 'Conta criada! Faça login.', 'success');
+    await supabaseClient.auth.signOut();
+    currentUser = null;
+    showLoginPage();
   } catch (error) {
     showAlert('login-alert', error.message, 'error');
-  }
-}
-
-function handleLogout() {
-  supabaseClient.auth.signOut();
-  currentUser = null;
-  showLoginPage();
-  showAlert('', '', '');
-}
-
-// UI Functions
-function toggleAuthMode() {
-  const btn = event.target;
-  if (btn.textContent === 'Criar Conta') {
-    btn.textContent = 'Voltar ao Login';
-    btn.onclick = toggleAuthMode;
-    document.querySelector('.btn-primary').onclick = handleSignup;
-    document.querySelector('.login-box h1').textContent = 'Criar Conta';
-  } else {
-    btn.textContent = 'Criar Conta';
-    btn.onclick = toggleAuthMode;
-    document.querySelector('.btn-primary').onclick = handleLogin;
-    document.querySelector('.login-box h1').textContent = 'OAB/PA Master';
   }
 }
 
@@ -445,397 +212,19 @@ function showLoginPage() {
   document.getElementById('main-page').style.display = 'none';
 }
 
-function showMainApp() {
+function showMainPage() {
   document.getElementById('login-page').style.display = 'none';
-  document.getElementById('main-page').style.display = 'flex';
-  document.getElementById('userEmail').textContent = currentUser.email;
-  loadAllData();
+  document.getElementById('main-page').style.display = 'block';
+  document.getElementById('userInfo').textContent = 'Olá, ' + currentUser.email;
 }
 
-function switchTab(tabName) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-  document.getElementById('tab-' + tabName).classList.add('active');
-  event.target.classList.add('active');
-  loadTabData(tabName);
-}
-
-function openModal(id) {
-  document.getElementById(id).classList.add('active');
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove('active');
-}
-
-function showAlert(elementId, message, type) {
-  const element = document.getElementById(elementId);
-  if (element) {
-    element.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
-    setTimeout(() => element.innerHTML = '', 5000);
-  }
-}
-
-function showToast(message, type = 'success') {
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.textContent = message;
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
-}
-
-// Modal Functions
-function openNewAtletaModal() {
-  document.getElementById('atleta-nome').value = '';
-  document.getElementById('atleta-posicao').value = '';
-  document.getElementById('atleta-numero').value = '';
-  openModal('modal-atleta');
-}
-
-function openNewCobrancaModal() {
-  document.getElementById('cobranca-desc').value = '';
-  document.getElementById('cobranca-valor').value = '';
-  document.getElementById('cobranca-venc').value = new Date().toISOString().split('T')[0];
-  openModal('modal-cobranca');
-}
-
-function openNewDespesaModal() {
-  document.getElementById('despesa-desc').value = '';
-  document.getElementById('despesa-valor').value = '';
-  document.getElementById('despesa-data').value = new Date().toISOString().split('T')[0];
-  openModal('modal-despesa');
-}
-
-function openNewUniformeModal() {
-  document.getElementById('uniforme-desc').value = '';
-  document.getElementById('uniforme-qtd').value = '1';
-  openModal('modal-uniforme');
-}
-
-function openNewEventoModal() {
-  document.getElementById('evento-titulo').value = '';
-  document.getElementById('evento-data').value = new Date().toISOString().split('T')[0];
-  document.getElementById('evento-hora').value = '19:00';
-  document.getElementById('evento-local').value = '';
-  openModal('modal-evento');
-}
-
-// Save Functions
-async function saveAtleta() {
-  const nome = document.getElementById('atleta-nome').value;
-  const posicao = document.getElementById('atleta-posicao').value;
-  const numero = document.getElementById('atleta-numero').value;
-
-  if (!nome) {
-    showToast('Preencha o nome', 'error');
-    return;
-  }
-
-  try {
-    const { data, error } = await supabaseClient.from('atletas').insert([{
-      nome, posicao, numero: parseInt(numero) || 0, usuario_id: currentUser.id
-    }]).select();
-
-    if (error) throw error;
-
-    appData.atletas.push(data[0]);
-    closeModal('modal-atleta');
-    loadTabData('atletas');
-    showToast('Atleta adicionado!');
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
-
-async function saveCobranca() {
-  const desc = document.getElementById('cobranca-desc').value;
-  const valor = parseFloat(document.getElementById('cobranca-valor').value);
-  const venc = document.getElementById('cobranca-venc').value;
-
-  if (!desc || !valor) {
-    showToast('Preencha todos os campos', 'error');
-    return;
-  }
-
-  try {
-    const { data, error } = await supabaseClient.from('cobrancas').insert([{
-      descricao: desc, valor, vencimento: venc, usuario_id: currentUser.id, status: 'pendente'
-    }]).select();
-
-    if (error) throw error;
-
-    appData.cobrancas.push(data[0]);
-    closeModal('modal-cobranca');
-    loadTabData('financeiro');
-    showToast('Cobrança adicionada!');
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
-
-async function saveDespesa() {
-  const desc = document.getElementById('despesa-desc').value;
-  const valor = parseFloat(document.getElementById('despesa-valor').value);
-  const data_item = document.getElementById('despesa-data').value;
-
-  if (!desc || !valor) {
-    showToast('Preencha todos os campos', 'error');
-    return;
-  }
-
-  try {
-    const { data, error } = await supabaseClient.from('despesas').insert([{
-      descricao: desc, valor, data: data_item, usuario_id: currentUser.id, status: 'pendente'
-    }]).select();
-
-    if (error) throw error;
-
-    appData.despesas.push(data[0]);
-    closeModal('modal-despesa');
-    loadTabData('financeiro');
-    showToast('Despesa adicionada!');
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
-
-async function saveUniforme() {
-  const desc = document.getElementById('uniforme-desc').value;
-  const qtd = parseInt(document.getElementById('uniforme-qtd').value);
-
-  if (!desc || !qtd) {
-    showToast('Preencha todos os campos', 'error');
-    return;
-  }
-
-  try {
-    const { data, error } = await supabaseClient.from('uniformes').insert([{
-      descricao: desc, quantidade: qtd, usuario_id: currentUser.id
-    }]).select();
-
-    if (error) throw error;
-
-    appData.uniformes.push(data[0]);
-    closeModal('modal-uniforme');
-    loadTabData('uniformes');
-    showToast('Uniforme adicionado!');
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
-
-async function saveEvento() {
-  const titulo = document.getElementById('evento-titulo').value;
-  const data_evento = document.getElementById('evento-data').value;
-  const hora = document.getElementById('evento-hora').value;
-  const local = document.getElementById('evento-local').value;
-
-  if (!titulo || !data_evento) {
-    showToast('Preencha título e data', 'error');
-    return;
-  }
-
-  try {
-    const { data, error } = await supabaseClient.from('eventos').insert([{
-      titulo, data: data_evento, hora, local, usuario_id: currentUser.id
-    }]).select();
-
-    if (error) throw error;
-
-    appData.eventos.push(data[0]);
-    closeModal('modal-evento');
-    loadTabData('agenda');
-    showToast('Evento adicionado!');
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
-
-// Data Loading
-async function loadAllData() {
-  try {
-    const [atletas, cobrancas, despesas, eventos, uniformes] = await Promise.all([
-      supabaseClient.from('atletas').select('*').eq('usuario_id', currentUser.id),
-      supabaseClient.from('cobrancas').select('*').eq('usuario_id', currentUser.id),
-      supabaseClient.from('despesas').select('*').eq('usuario_id', currentUser.id),
-      supabaseClient.from('eventos').select('*').eq('usuario_id', currentUser.id),
-      supabaseClient.from('uniformes').select('*').eq('usuario_id', currentUser.id)
-    ]);
-
-    appData.atletas = atletas.data || [];
-    appData.cobrancas = cobrancas.data || [];
-    appData.despesas = despesas.data || [];
-    appData.eventos = eventos.data || [];
-    appData.uniformes = uniformes.data || [];
-
-    updateDashboard();
-    loadTabData('dashboard');
-  } catch (error) {
-    console.error('Erro ao carregar dados:', error);
-  }
-}
-
-function loadTabData(tabName) {
-  switch(tabName) {
-    case 'atletas':
-      renderAtletas();
-      break;
-    case 'financeiro':
-      renderFinanceiro();
-      break;
-    case 'uniformes':
-      renderUniformes();
-      break;
-    case 'agenda':
-      renderAgenda();
-      break;
-    case 'dashboard':
-      updateDashboard();
-      break;
-  }
-}
-
-function updateDashboard() {
-  const pendentes = appData.cobrancas.filter(c => c.status === 'pendente').length;
-  document.getElementById('stat-atletas').textContent = appData.atletas.length;
-  document.getElementById('stat-pendentes').textContent = pendentes;
-  document.getElementById('stat-eventos').textContent = appData.eventos.length;
-  document.getElementById('stat-uniformes').textContent = appData.uniformes.length;
-}
-
-function renderAtletas() {
-  const container = document.getElementById('atletas-container');
-  if (appData.atletas.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🤸</div><p>Nenhum atleta cadastrado</p></div>';
-    return;
-  }
-
-  let html = '<table><thead><tr><th>Nome</th><th>Posição</th><th>Nº</th><th>Ações</th></tr></thead><tbody>';
-  appData.atletas.forEach(atleta => {
-    html += `<tr><td>${atleta.nome}</td><td>${atleta.posicao}</td><td>${atleta.numero}</td><td><button class="btn btn-danger btn-small" onclick="deleteAtleta(${atleta.id})">Deletar</button></td></tr>`;
-  });
-  html += '</tbody></table>';
-  container.innerHTML = html;
-}
-
-function renderFinanceiro() {
-  const recContainer = document.getElementById('cobrancas-list');
-  const despContainer = document.getElementById('despesas-list');
-
-  if (appData.cobrancas.length === 0) {
-    recContainer.innerHTML = '<p style="color:var(--ink2)">Nenhuma cobrança</p>';
-  } else {
-    let html = '<table><thead><tr><th>Descrição</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
-    appData.cobrancas.forEach(c => {
-      html += `<tr><td>${c.descricao}</td><td>R$ ${c.valor.toFixed(2)}</td><td>${c.vencimento}</td><td>${c.status}</td><td><button class="btn btn-danger btn-small" onclick="deleteCobranca(${c.id})">Deletar</button></td></tr>`;
-    });
-    html += '</tbody></table>';
-    recContainer.innerHTML = html;
-  }
-
-  if (appData.despesas.length === 0) {
-    despContainer.innerHTML = '<p style="color:var(--ink2)">Nenhuma despesa</p>';
-  } else {
-    let html = '<table><thead><tr><th>Descrição</th><th>Valor</th><th>Data</th><th>Ações</th></tr></thead><tbody>';
-    appData.despesas.forEach(d => {
-      html += `<tr><td>${d.descricao}</td><td>R$ ${d.valor.toFixed(2)}</td><td>${d.data}</td><td><button class="btn btn-danger btn-small" onclick="deleteDespesa(${d.id})">Deletar</button></td></tr>`;
-    });
-    html += '</tbody></table>';
-    despContainer.innerHTML = html;
-  }
-}
-
-function renderUniformes() {
-  const container = document.getElementById('uniformes-container');
-  if (appData.uniformes.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👕</div><p>Nenhum uniforme cadastrado</p></div>';
-    return;
-  }
-
-  let html = '<table><thead><tr><th>Descrição</th><th>Quantidade</th><th>Ações</th></tr></thead><tbody>';
-  appData.uniformes.forEach(u => {
-    html += `<tr><td>${u.descricao}</td><td>${u.quantidade}</td><td><button class="btn btn-danger btn-small" onclick="deleteUniforme(${u.id})">Deletar</button></td></tr>`;
-  });
-  html += '</tbody></table>';
-  container.innerHTML = html;
-}
-
-function renderAgenda() {
-  const container = document.getElementById('agenda-container');
-  if (appData.eventos.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><p>Nenhum evento agendado</p></div>';
-    return;
-  }
-
-  let html = '<table><thead><tr><th>Título</th><th>Data</th><th>Hora</th><th>Local</th><th>Ações</th></tr></thead><tbody>';
-  appData.eventos.forEach(e => {
-    html += `<tr><td>${e.titulo}</td><td>${e.data}</td><td>${e.hora}</td><td>${e.local}</td><td><button class="btn btn-danger btn-small" onclick="deleteEvento(${e.id})">Deletar</button></td></tr>`;
-  });
-  html += '</tbody></table>';
-  container.innerHTML = html;
-}
-
-// Delete Functions
-async function deleteAtleta(id) {
-  try {
-    await supabaseClient.from('atletas').delete().eq('id', id);
-    appData.atletas = appData.atletas.filter(a => a.id !== id);
-    renderAtletas();
-    showToast('Atleta deletado!');
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
-
-async function deleteCobranca(id) {
-  try {
-    await supabaseClient.from('cobrancas').delete().eq('id', id);
-    appData.cobrancas = appData.cobrancas.filter(c => c.id !== id);
-    renderFinanceiro();
-    showToast('Cobrança deletada!');
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
-
-async function deleteDespesa(id) {
-  try {
-    await supabaseClient.from('despesas').delete().eq('id', id);
-    appData.despesas = appData.despesas.filter(d => d.id !== id);
-    renderFinanceiro();
-    showToast('Despesa deletada!');
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
-
-async function deleteUniforme(id) {
-  try {
-    await supabaseClient.from('uniformes').delete().eq('id', id);
-    appData.uniformes = appData.uniformes.filter(u => u.id !== id);
-    renderUniformes();
-    showToast('Uniforme deletado!');
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
-
-async function deleteEvento(id) {
-  try {
-    await supabaseClient.from('eventos').delete().eq('id', id);
-    appData.eventos = appData.eventos.filter(e => e.id !== id);
-    renderAgenda();
-    showToast('Evento deletado!');
-  } catch (error) {
-    showToast(error.message, 'error');
-  }
-}
-
-// Initialize on page load
 window.addEventListener('DOMContentLoaded', () => {
-  initSupabase();
-  showLoginPage();
+  try {
+    initSupabase();
+    showLoginPage();
+  } catch (error) {
+    showAlert('login-alert', error.message, 'error');
+  }
 });
 </script>
 
