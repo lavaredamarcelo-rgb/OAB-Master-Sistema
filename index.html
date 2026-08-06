@@ -2335,33 +2335,75 @@ async function salvaMultiplasReceitas(){
   fecha(); await recarrega(); toast(`${receitasTemp.length} receita(s) registrada(s)!`);
 }
 function abreLancadorDespesa(){
-  modal(`<h2>➕ Lançar Despesa</h2>
+  despesasTemp=[];
+  const html=`<h2>➕ Lançar Despesas (Múltiplas)</h2>
   <div class="grid g2">
-  <div><label>Data</label><input id="ld_data" type="date" value="${hoje()}"></div>
-  <div><label>Item</label><input id="ld_item" placeholder="Ex.: Aluguel da Arena"></div>
+    <div><label>Data</label><input id="ld_data" type="date" value="${hoje()}"></div>
+    <div><label>Categoria</label><select id="ld_cat">
+      <option value="Aluguel">Aluguel</option>
+      <option value="Água">Água</option>
+      <option value="Arbitragem">Arbitragem</option>
+      <option value="Transporte">Transporte</option>
+      <option value="Material">Material esportivo</option>
+      <option value="Saúde">Saúde/Fisioterapia</option>
+      <option value="Lavagem">Lavagem</option>
+      <option value="Uniformes">Uniformes</option>
+      <option value="Outros">Outros</option>
+    </select></div>
   </div>
-  <div class="grid g2">
-  <div><label>Categoria</label><select id="ld_cat">
-    <option value="Aluguel">Aluguel</option>
-    <option value="Água">Água</option>
-    <option value="Arbitragem">Arbitragem</option>
-    <option value="Transporte">Transporte</option>
-    <option value="Material">Material esportivo</option>
-    <option value="Saúde">Saúde/Fisioterapia</option>
-    <option value="Outros">Outros</option>
-  </select></div>
-  <div><label>Valor (R$)</label><input id="ld_valor" type="number" step="0.01" placeholder="0.00"></div>
-  </div>
+  <label>Item</label><input id="ld_item" placeholder="Ex.: Aluguel da Arena">
+  <label>Valor (R$)</label><input id="ld_valor" type="number" step="0.01" placeholder="0.00">
   <label>Fornecedor (opcional)</label><input id="ld_forn">
   <label>Observação (opcional)</label><input id="ld_obs">
-  <div class="row" style="margin-top:14px"><button onclick="salvaDespesa()">✓ Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+  <div class="row" style="margin-top:10px;gap:8px"><button class="mini" onclick="adicionaDespesaTemp()">➕ Adicionar</button></div>
+
+  <div id="listaDespesasTemp" style="margin-top:15px;max-height:300px;overflow-y:auto"></div>
+
+  <div class="row" style="margin-top:14px;gap:8px"><button onclick="salvaMultiplasDespesas()" id="btnSalvarDesp" disabled>✓ Salvar Tudo</button><button class="sec" onclick="fecha()">Cancelar</button></div>`;
+  modal(html);
+  atualizaListaDespesasTemp();
 }
-async function salvaDespesa(){
-  const data=fval('ld_data'),item=fval('ld_item'),cat=fval('ld_cat'),valor=Number(fval('ld_valor'))||0;
-  if(!data||!item||!cat||valor<=0){toast('Preencha campos obrigatórios');return;}
-  await q(sb.from('despesas').insert({data,item,categoria:cat,qtd:1,valor,fornecedor:fval('ld_forn'),obs:fval('ld_obs'),quem:me.nome}));
-  log('financeiro',`Despesa lançada: ${item} (${brl(valor)})`);
-  fecha(); await recarrega(); toast('Despesa registrada!');
+function adicionaDespesaTemp(){
+  const data=fval('ld_data'),item=fval('ld_item'),cat=fval('ld_cat'),valor=Number(fval('ld_valor'))||0,fornec=fval('ld_forn'),obs=fval('ld_obs');
+  if(!data||!item||!cat||valor<=0){toast('Preencha: Data, Item, Categoria e Valor');return;}
+  despesasTemp.push({data,item,categoria:cat,qtd:1,valor,fornecedor:fornec,obs:obs,quem:me.nome});
+  $('ld_data').value=hoje();
+  $('ld_cat').value='Outros';
+  $('ld_item').value='';
+  $('ld_valor').value='';
+  $('ld_forn').value='';
+  $('ld_obs').value='';
+  atualizaListaDespesasTemp();
+  toast('Despesa adicionada!');
+}
+function atualizaListaDespesasTemp(){
+  const lista=document.getElementById('listaDespesasTemp');
+  if(despesasTemp.length===0){
+    lista.innerHTML='<p class="mut" style="text-align:center">Nenhuma despesa adicionada ainda</p>';
+    document.getElementById('btnSalvarDesp').disabled=true;
+    return;
+  }
+  lista.innerHTML=despesasTemp.map((d,i)=>`
+    <div class="alertline" style="background:var(--bad-soft);margin-bottom:8px">
+      <div style="flex:1">
+        <strong>${esc(d.item)}</strong>
+        <div class="mut" style="font-size:12px">📅 ${dbr(d.data)} | 📂 ${esc(d.categoria)} | 💰 ${brl(d.valor)}</div>
+      </div>
+      <button class="mini sec" onclick="removeDespesaTemp(${i})">✕</button>
+    </div>
+  `).join('');
+  document.getElementById('btnSalvarDesp').disabled=false;
+}
+function removeDespesaTemp(idx){
+  despesasTemp.splice(idx,1);
+  atualizaListaDespesasTemp();
+  toast('Despesa removida');
+}
+async function salvaMultiplasDespesas(){
+  if(despesasTemp.length===0){toast('Adicione pelo menos uma despesa');return;}
+  for(const d of despesasTemp) await q(sb.from('despesas').insert(d));
+  log('financeiro',`${despesasTemp.length} despesa(s) lançada(s)`);
+  fecha(); await recarrega(); toast(`${despesasTemp.length} despesa(s) registrada(s)!`);
 }
 let impBalancoTipo='',impBalancoAcoes=[];
 function importaPlanilhaBalanco(tipo){
