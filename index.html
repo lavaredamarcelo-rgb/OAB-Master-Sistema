@@ -1901,30 +1901,92 @@ function tFinBalanco(){
   ${subB==='r'?tFinBalancoRec():tFinBalancoDesp()}`;
 }
 function tFinBalancoRec(){
-  const receitas=db.balanco.sort((a,b)=>b.data.localeCompare(a.data));
-  const recAuto=receitas.filter(r=>r.tipo.startsWith('mensalidade')||r.tipo==='atleta_avulso');
-  const recManuais=receitas.filter(r=>!r.tipo.startsWith('mensalidade')&&r.tipo!=='atleta_avulso');
-  const total=receitas.reduce((s,r)=>s+Number(r.valor),0);
+  const receitas=db.balanco||[];
+  const hoje_str=hoje();
 
-  setTimeout(ligaCheckboxesReceitas,10);
+  // Agrupar por descrição e calcular totais
+  const grupos={};
+  receitas.forEach(r=>{
+    if(!grupos[r.descricao]) grupos[r.descricao]={itens:[],totalPago:0,totalPendente:0};
+    grupos[r.descricao].itens.push(r);
+    if(r.pago) grupos[r.descricao].totalPago+=Number(r.valor);
+    else grupos[r.descricao].totalPendente+=Number(r.valor);
+  });
+
+  // Ordenar alfabeticamente
+  const descricoes=Object.keys(grupos).sort();
+  const total=receitas.reduce((s,r)=>s+(r.pago?Number(r.valor):0),0);
+
+  const statusItem=(data,pago)=>{
+    if(pago) return '🟢 Pago';
+    if(data<hoje_str) return '🔴 Vencido';
+    return '🟡 Pendente';
+  };
 
   return `<div class="card sect">
-  <div class="spread" style="margin-bottom:12px"><h2 style="margin:0">💵 Receitas do Período</h2><span class="pill p-ok">${brl(total)}</span></div>
+  <div class="spread" style="margin-bottom:12px"><h2 style="margin:0">💵 Receitas (Agrupadas)</h2><span class="pill p-ok">${brl(total)}</span></div>
 
-  ${recAuto.length?`<details open><summary style="color:var(--ok);font-weight:bold">✅ Consolidadas (Cobranças pagas)</summary>
-  <div style="margin-top:8px">${recAuto.map(r=>`<div class="alertline" style="background:var(--ok-soft)"><span style="flex:1"><strong>${esc(r.descricao)}</strong><div class="mut">${dbr(r.data)}</div></span><strong>${brl(r.valor)}</strong></div>`).join('')}</div>
-  </details>`:''}
-
-  ${recManuais.length?`<details><summary style="font-weight:bold">📝 Lançadas Manualmente</summary>
-  <div style="margin-top:8px" id="recManuaisLista">${recManuais.map(r=>`<div class="alertline"><input type="checkbox" class="recManCheck" data-id="${r.id}" style="width:auto"><span style="flex:1"><strong>${esc(r.descricao)}</strong><div class="mut">${dbr(r.data)}</div></span><strong>${brl(r.valor)}</strong><button class="mini sec" onclick="deletaReceita('${r.id}')">✕</button></div>`).join('')}</div>
-  <div class="row" style="margin-top:8px;gap:8px"><button class="mini bad" id="delRecSel" style="display:none" onclick="delReceitasSelecionadas()">🗑️ Deletar selecionadas</button></div>
-  </details>`:''}
+  <div id="receitasAgrupadas" style="display:flex;flex-direction:column;gap:8px">
+  ${descricoes.map(desc=>{
+    const g=grupos[desc];
+    const pagos=g.itens.filter(r=>r.pago).length;
+    const total_itens=g.itens.length;
+    return `
+    <div class="alertline" style="cursor:pointer" onclick="abreDetalhesReceita('${esc(desc)}')">
+      <div style="flex:1">
+        <strong>${esc(desc)}</strong>
+        <div class="mut">${pagos}/${total_itens} pagos</div>
+      </div>
+      <div style="text-align:right">
+        <strong>${brl(g.totalPago)}</strong>
+        <div class="mut">${brl(g.totalPendente)} pendente</div>
+      </div>
+    </div>
+    `;
+  }).join('')}
+  </div>
 
   <div class="row" style="margin-top:12px;gap:8px">
     <button class="mini" onclick="abreLancadorReceita()">➕ Lançar receita</button>
     <button class="gold mini" onclick="lancadorRecorrenteReceita()">🔄 Recorrente</button>
   </div>
   </div>`;
+}
+
+function abreDetalhesReceita(descricao){
+  const receitas=db.balanco||[];
+  const itens=receitas.filter(r=>r.descricao===descricao).sort((a,b)=>a.data.localeCompare(b.data));
+  const hoje_str=hoje();
+
+  const statusItem=(data,pago)=>{
+    if(pago) return '🟢 Pago';
+    if(data<hoje_str) return '🔴 Vencido';
+    return '🟡 Pendente';
+  };
+
+  const html=`<h2>${esc(descricao)}</h2>
+  <div style="max-height:400px;overflow-y:auto">
+  ${itens.map(r=>`
+    <div class="alertline" style="margin-bottom:8px">
+      <div style="flex:1">
+        <div><strong>${dbr(r.data)}</strong> <span class="mut">${statusItem(r.data,r.pago)}</span></div>
+        <div class="mut">${brl(r.valor)}</div>
+      </div>
+      <button class="mini ${r.pago?'':'gold'}" onclick="marcaReceitaPago('${r.id}',${!r.pago}); abreDetalhesReceita('${esc(descricao)}')">
+        ${r.pago?'✓ Desfazer':'Marcar Pago'}
+      </button>
+    </div>
+  `).join('')}
+  </div>
+  <div class="row" style="margin-top:14px"><button class="sec" onclick="fecha()">Fechar</button></div>`;
+
+  modal(html);
+}
+
+async function marcaReceitaPago(id,pago){
+  await q(sb.from('balanco_receitas').update({pago}).eq('id',id));
+  await recarrega();
+  toast(pago?'Marcado como pago':'Marcado como pendente');
 }
 function tFinBalancoDesp(){
   const despesas=db.despesas.sort((a,b)=>b.data.localeCompare(a.data));
