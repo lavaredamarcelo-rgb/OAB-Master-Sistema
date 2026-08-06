@@ -200,7 +200,7 @@ function log(tipo,texto){ sb.from('logs').insert({tipo,texto,quem:me?me.nome:'si
 function mapAtleta(r){ return {id:r.id,nome:r.nome,fone:r.fone,email:r.email,oab:r.oab,posicao:r.posicao,role:r.role,ativo:r.ativo,pendente:!r.aprovado,fundador:!!r.fundador,cargo:r.cargo||'',
   consent:{aceito:r.consent_status==='aceito',recusado:r.consent_status==='recusado',revogado:r.consent_status==='revogado',quando:fdt(r.consent_quando),versao:r.consent_versao||TERMO_LGPD_V},saude:{}}; }
 async function carregaTudo(){
-  const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist]=await Promise.all([
+  const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist,debitos]=await Promise.all([
     q(sb.from('perfis').select('*').order('nome')),
     q(sb.from('saude').select('*')),
     q(sb.from('eventos').select('*').order('data')),
@@ -219,7 +219,8 @@ async function carregaTudo(){
     q(sb.from('config').select('*').eq('id',1).single()),
     sb.from('import_lotes').select('*').order('data_import',{ascending:false}).then(r=>r.data||[]),
     sb.from('balanco_receitas').select('*').order('data',{ascending:false}).then(r=>r.data||[]),
-    sb.from('uniforme_numeros_historico').select('*').order('quando',{ascending:false}).then(r=>r.data||[])
+    sb.from('uniforme_numeros_historico').select('*').order('quando',{ascending:false}).then(r=>r.data||[]),
+    q(sb.from('debitos').select('*').order('periodo_mes',{ascending:false}))
   ]);
   db={};
   db.atletas=perfis.map(mapAtleta);
@@ -254,6 +255,7 @@ async function carregaTudo(){
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,origem:c.origem||'',lote:c.origem_lote||'',importLoteId:c.import_lote_id||'',tipoLancamento:c.tipo_lancamento||'manual',consolidado:c.consolidado||false}));
   db.balanco=balancorec.map(r=>({id:r.id,data:String(r.data),tipo:r.tipo,descricao:r.descricao,valor:r.valor,origem:r.origem||'',cobrancaId:r.cobranca_id||'',autor:r.autor||'',quando:fdt(r.quando),pago:r.pago||false}));
   db.unifHist=unifhist.map(h=>({id:h.id,uniformeId:h.uniforme_id,numero:h.numero,acao:h.acao,atletaId:h.atleta_id||'',nomeConvidado:h.nome_convidado||'',data:String(h.data),notas:h.notas||'',quem:h.quem||'',quando:fdt(h.quando)}));
+  db.debitos=debitos.map(d=>({id:d.id,atletaId:d.atleta_id||'',periodo:d.periodo_mes,valor:d.valor,descricao:d.descricao||'',dataRegistro:String(d.data_registro),quitado:d.quitado||false,dataQuitacao:d.data_quitacao?String(d.data_quitacao):null,quem:d.quem||'',quando:fdt(d.quando)}));
   const eu=at(me.id); if(eu)me=Object.assign(eu,{});
 }
 async function recarrega(){ await carregaTudo(); renderTab(); }
@@ -1995,9 +1997,10 @@ function tFin(){
   return `<div class="tabbtns">
   <button class="${sub==='c'?'on':''}" onclick="subState.finTab='c';renderTab()">💰 Cobranças</button>
   <button class="${sub==='b'?'on':''}" onclick="subState.finTab='b';renderTab()">📊 Balanço Geral</button>
+  <button class="${sub==='deb'?'on':''}" onclick="subState.finTab='deb';renderTab()">⚠️ Débitos Anteriores</button>
   <button class="${sub==='r'?'on':''}" onclick="subState.finTab='r';renderTab()">📄 Relatórios</button>
   <button class="${sub==='a'?'on':''}" onclick="subState.finTab='a';renderTab()">📁 Arquivos</button>
-  </div>${sub==='c'?tFinCob():sub==='b'?tFinBalanco():sub==='r'?tFinRelatorios():tFinArq()}`;
+  </div>${sub==='c'?tFinCob():sub==='b'?tFinBalanco():sub==='deb'?tFinDebitos():sub==='r'?tFinRelatorios():tFinArq()}`;
 }
 function tFinBalanco(){
   const subB=subState.finSubTab||'r';
@@ -2464,9 +2467,9 @@ async function aplicaImportBalanco(){
 function totDespesas(filtro){ return db.despesas.filter(filtro||(()=>true)).reduce((s,d)=>s+Number(d.valor),0); }
 /* ---- seleção em massa ---- */
 let selCob=new Set(), selDesp=new Set();
-function selTog(tipo,id,chk){ const s=tipo==='c'?selCob:selDesp; chk?s.add(id):s.delete(id); selBar(tipo); }
-function selBar(tipo){ const s=tipo==='c'?selCob:selDesp; const el=$('selbar_'+tipo);
-  if(el){ el.style.display=s.size?'flex':'none'; const sp=$('selct_'+tipo); if(sp)sp.textContent=s.size; } }
+function selTog(tipo,id,chk){ const s=tipo==='c'?selCob:tipo==='d'?selDesp:selDeb; chk?s.add(id):s.delete(id); selBar(tipo); }
+function selBar(tipo){ const s=tipo==='c'?selCob:tipo==='d'?selDesp:selDeb; const el=$('selbar_'+(tipo==='deb'?'deb':tipo));
+  if(el){ el.style.display=s.size?'flex':'none'; const sp=$('selct_'+(tipo==='deb'?'deb':tipo)); if(sp)sp.textContent=s.size; } }
 function delSelCob(){
   if(!selCob.size)return;
   const itens=[...selCob].map(id=>byId(db.cobrancas,id)).filter(Boolean);
@@ -2485,6 +2488,86 @@ function delSelDesp(){
     await q(sb.from('despesas').delete().in('id',[...selDesp]));
     log('financeiro',`Exclusão em massa: ${itens.length} despesas (${brl(tot)})`);
     selDesp.clear(); await recarrega(); toast(itens.length+' despesas excluídas 🗑');
+  });
+}
+function abreLancadorDebito(){
+  modal(`<h2>➕ Registrar Débito de Mensalidade</h2>
+  <div class="grid g2">
+    <div><label>Atleta</label><select id="ed_atletaId"><option value="">Selecionar...</option>${db.atletas.map(a=>\`<option value="\${a.id}">\${esc(a.nome)}</option>\`).join('')}</select></div>
+    <div><label>Período (YYYY-MM)</label><input id="ed_periodo" type="month"></div>
+    <div><label>Valor</label><input id="ed_valor" type="number" step="0.01" min="0"></div>
+    <div><label>Descrição (opcional)</label><input id="ed_desc" placeholder="Ex: Mensalidade 2024"></div>
+  </div>
+  <div class="row">
+    <button class="gold" onclick="salvaNovoDebito()">✅ Salvar</button>
+    <button class="sec" onclick="fechaModal()">Cancelar</button>
+  </div>
+  `);
+}
+async function salvaNovoDebito(){
+  const atletaId=document.getElementById('ed_atletaId').value;
+  const periodo=document.getElementById('ed_periodo').value;
+  const valor=Number(document.getElementById('ed_valor').value);
+  const descricao=document.getElementById('ed_desc').value;
+  if(!atletaId||!periodo||!valor){toast('Preencha todos os campos obrigatórios');return;}
+  const novoDebito={atleta_id:atletaId,periodo_mes:periodo,valor,descricao,quem:me.nome};
+  await q(sb.from('debitos').insert(novoDebito));
+  log('financeiro',`Débito registrado: ${nomeAt(atletaId)} - ${periodo} - ${brl(valor)}`);
+  await recarrega();
+  toast('✅ Débito registrado!');
+  fechaModal();
+}
+function editaDebito(id){
+  const d=byId(db.debitos,id);
+  if(!d||d.quitado)return;
+  modal(`<h2>✏️ Editar Débito</h2>
+  <div class="grid g2">
+    <div><label>Atleta</label><select id="ed_atletaId"><option value="">Selecionar...</option>${db.atletas.map(a=>\`<option value="\${a.id}" \${a.id===d.atletaId?'selected':''}>\${esc(a.nome)}</option>\`).join('')}</select></div>
+    <div><label>Período</label><input id="ed_periodo" type="month" value="${d.periodo}"></div>
+    <div><label>Valor</label><input id="ed_valor" type="number" step="0.01" min="0" value="${d.valor}"></div>
+    <div><label>Descrição</label><input id="ed_desc" value="${esc(d.descricao||'')}"></div>
+  </div>
+  <div class="row">
+    <button class="gold" onclick="salvaEdicaoDebito('${id}')">✅ Salvar</button>
+    <button class="sec" onclick="fechaModal()">Cancelar</button>
+  </div>
+  `);
+}
+async function salvaEdicaoDebito(id){
+  const atletaId=document.getElementById('ed_atletaId').value;
+  const periodo=document.getElementById('ed_periodo').value;
+  const valor=Number(document.getElementById('ed_valor').value);
+  const descricao=document.getElementById('ed_desc').value;
+  if(!atletaId||!periodo||!valor){toast('Preencha todos os campos obrigatórios');return;}
+  await q(sb.from('debitos').update({atleta_id:atletaId,periodo_mes:periodo,valor,descricao}).eq('id',id));
+  log('financeiro',`Débito editado: ${id}`);
+  await recarrega();
+  toast('✅ Débito atualizado!');
+  fechaModal();
+}
+async function deletaDebito(id){
+  const d=byId(db.debitos,id);
+  if(!d)return;
+  confirma(`Deletar débito de ${nomeAt(d.atletaId)} (${d.periodo}) - ${brl(d.valor)}?`,async()=>{
+    await q(sb.from('debitos').delete().eq('id',id));
+    log('financeiro',`Débito deletado: ${id}`);
+    await recarrega();
+    toast('Débito removido!');
+  });
+}
+async function quitaDebSelecionados(){
+  if(!selDeb.size){toast('Selecione débitos para quitar');return;}
+  const debitos=[...selDeb].map(id=>byId(db.debitos,id)).filter(Boolean);
+  const tot=debitos.reduce((s,d)=>s+Number(d.valor),0);
+  confirma(`Quitar <strong>${debitos.length} débito(s)</strong> somando <strong>${brl(tot)}</strong>?`,async()=>{
+    const hoje_str=hoje();
+    for(const id of selDeb){
+      await q(sb.from('debitos').update({quitado:true,data_quitacao:hoje_str,quem:me.nome}).eq('id',id));
+    }
+    log('financeiro',`Quitação em massa: ${debitos.length} débitos (${brl(tot)})`);
+    selDeb.clear();
+    await recarrega();
+    toast(`${debitos.length} débito(s) quitado(s)! ✅`);
   });
 }
 function tFinCob(){
@@ -2686,6 +2769,66 @@ function tFinBalancoConsolidado(filtReceb,filtMens,filtDesp){
       </table></div>
     </div>
   </details>`:''}
+  </div>`;
+}
+let selDeb=new Set();
+function tFinDebitos(){
+  const debitos=db.debitos||[];
+  const total=debitos.reduce((s,d)=>s+Number(d.valor),0);
+  const quitados=debitos.filter(d=>d.quitado).reduce((s,d)=>s+Number(d.valor),0);
+
+  // Agrupar por atleta
+  const grupos={};
+  debitos.forEach(d=>{
+    const nome=nomeAt(d.atletaId)||'Sem atleta';
+    if(!grupos[nome]) grupos[nome]=[];
+    grupos[nome].push(d);
+  });
+
+  const nomes=Object.keys(grupos).sort();
+
+  return `<div class="card sect">
+  <div class="spread" style="margin-bottom:12px"><h2 style="margin:0">⚠️ Débitos de Mensalidades Anteriores</h2></div>
+  <div class="row sect">
+    <button class="mini" onclick="abreLancadorDebito()">➕ Registrar débito</button>
+  </div>
+  <div style="margin:12px 0;font-size:13px">
+    <div class="spread"><span>Total em débito:</span><strong style="color:var(--bad)">${brl(total)}</strong></div>
+    <div class="spread"><span>Quitado:</span><strong style="color:var(--ok)">${brl(quitados)}</strong></div>
+  </div>
+  <div id="selbar_deb" class="alertline al-bad sect" style="display:${selDeb.size?'flex':'none'};align-items:center">✅ <strong><span id="selct_deb">${selDeb.size}</span> selecionada(s)</strong><span style="flex:1"></span><button class="ok mini" onclick="quitaDebSelecionados()">Quitar selecionados</button><button class="mini sec" onclick="selDeb.clear();renderTab()">Limpar</button></div>
+
+  ${nomes.length===0?'<p class="mut">Nenhum débito registrado.</p>':''}
+
+  ${nomes.map(nome=>{
+    const items=grupos[nome];
+    const valor_nome=items.reduce((s,d)=>s+Number(d.valor),0);
+    const naoQuitados=items.filter(d=>!d.quitado).length;
+    return `<details>
+      <summary style="cursor:pointer;font-weight:bold;padding:8px;background:var(--bg2);border-radius:4px">
+        ${esc(nome)}
+        <span class="pill p-bad">${brl(valor_nome)}</span>
+        <span class="mut" style="font-size:11px">${naoQuitados} em aberto, ${items.filter(d=>d.quitado).length} quitado</span>
+      </summary>
+      <div style="padding:8px;background:var(--bg3);border-radius:4px;margin-top:4px">
+        ${items.sort((a,b)=>b.periodo.localeCompare(a.periodo)).map(d=>`
+          <div class="alertline" style="background:${d.quitado?'var(--ok-soft)':'var(--bad-soft)'};margin-bottom:6px">
+            <input type="checkbox" onchange="selTog('deb','${d.id}',this.checked)" ${selDeb.has(d.id)?'checked':''} style="width:auto" ${d.quitado?'disabled':''}>
+            <div style="flex:1;font-size:12px">
+              <div><strong>${d.periodo}</strong><span class="mut" style="font-size:10px;margin-left:6px">${d.descricao?esc(d.descricao):'Mensalidade anterior'}</span></div>
+              <div class="mut">Registrado: ${dbr(d.dataRegistro)}</div>
+              ${d.quitado?`<div class="mut" style="color:var(--ok)">✅ Quitado em ${dbr(d.dataQuitacao)}</div>`:''}
+            </div>
+            <div style="text-align:right">
+              <div>${brl(d.valor)}</div>
+            </div>
+            <button class="mini gold" onclick="editaDebito('${d.id}')" ${d.quitado?'disabled':''}>✏️</button>
+            <button class="mini sec" onclick="deletaDebito('${d.id}')">✕</button>
+          </div>
+        `).join('')}
+      </div>
+    </details>`;
+  }).join('')}
   </div>`;
 }
 function tFinConsolidado(){
