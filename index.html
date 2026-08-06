@@ -1192,6 +1192,24 @@ function tAval(){
   const ats=elenco();
   const sel=souAtleta?me.id:(subState.avalId||'');
   const podeEditar=!souAtleta;
+
+  // Quadro de status de avaliações
+  const statusQuadro=`<div class="card sect">
+    <div class="spread"><h2>📊 Status de Avaliações</h2>${podeEditar?`<button class="gold mini" onclick="convocarAvaliacao()">📢 Convocar para Avaliação</button>`:''}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:12px">
+    ${ats.map(a=>{
+      const temAval=db.avaliacoes.some(v=>v.atletaId===a.id);
+      const cor=temAval?'var(--ok)':'var(--bad)';
+      const emoji=temAval?'✅':'❌';
+      return `<div style="background:${temAval?'var(--ok-soft)':'var(--bad-soft)'};border-radius:4px;padding:8px;text-align:center;cursor:pointer" onclick="subState.avalId='${a.id}';renderTab()">
+        <div style="font-size:20px;margin-bottom:4px">${emoji}</div>
+        <div style="font-size:12px;font-weight:bold;color:${cor}">${esc(a.nome)}</div>
+        <div class="mut" style="font-size:11px">${temAval?'Avaliado':'Pendente'}</div>
+      </div>`;
+    }).join('')}
+    </div>
+  </div>`;
+
   let corpo='';
   if(sel){
     const avs=db.avaliacoes.filter(v=>v.atletaId===sel).sort((a,b)=>b.data.localeCompare(a.data));
@@ -1205,7 +1223,7 @@ function tAval(){
     ${podeEditar&&m.status!=='atingida'?`<button class="mini sec" onclick="metaOk('${m.id}')">Marcar atingida</button>`:''}
     ${podeEditar?`<button class="mini sec" onclick="delMeta('${m.id}')">✕</button>`:''}</div>`).join(''):'<p class="mut">Sem metas cadastradas.</p>'}</div>`;
   }
-  return `${souAtleta?'':`<div class="card sect"><label style="margin-top:0">Atleta</label>
+  return `${statusQuadro}${souAtleta?'':`<div class="card sect"><label style="margin-top:0">Atleta</label>
   <select onchange="subState.avalId=this.value;renderTab()"><option value="">— selecionar —</option>${ats.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.nome)}</option>`).join('')}</select></div>`}${corpo}`;
 }
 function formAval(aid){
@@ -1235,6 +1253,90 @@ async function salvaMeta(aid){ const d=fval('m_desc'); if(!d){toast('Descreva a 
   fecha(); await recarrega(); toast('Meta criada'); }
 async function metaOk(id){ await q(sb.from('metas').update({status:'atingida'}).eq('id',id)); await recarrega(); toast('Meta atingida! 🎉'); }
 function delMeta(id){ const m=byId(db.metas,id); confirma(`Excluir a meta "${esc(m?m.desc:'')}"?`,async()=>{ await q(sb.from('metas').delete().eq('id',id)); await recarrega(); toast('Meta excluída'); }); }
+function convocarAvaliacao(){
+  modal(`<h2>📢 Convocar para Avaliação Física</h2>
+  <label>Data da avaliação</label><input id="conv_data" type="date" value="${hoje()}">
+  <label style="margin-top:12px">Horário</label><input id="conv_hora" type="time" value="18:00">
+  <label style="margin-top:12px">Local (opcional)</label><input id="conv_local" placeholder="Ex.: Quadra 1, Praça do Centro...">
+  <div style="background:var(--bg2);padding:12px;border-radius:4px;margin-top:12px;max-height:300px;overflow-y:auto;font-size:13px">
+    <div class="mut" style="font-size:11px;margin-bottom:8px">📝 Texto da convocação (editável):</div>
+    <textarea id="conv_texto" style="width:100%;height:250px;font-size:12px">⚽ ATENÇÃO, GALERA DA OAB MASTER! ⚽
+
+Chegou a hora de dar um upgrade no nosso futebol.
+
+Vamos realizar a AVALIAÇÃO FÍSICA de todos os atletas do grupo — e a sua participação é fundamental!
+
+O que vamos avaliar:
+1️⃣ Percentual de gordura
+2️⃣ Força
+3️⃣ Potência
+4️⃣ Soccer Test (resistência aeróbia)
+
+Por que isso importa?
+
+Não é sobre virar atleta profissional — é sobre jogar melhor, cansar menos, evitar lesão e, principalmente, cuidar da saúde. Com os números na mão, cada um vai saber exatamente onde está e o que precisa melhorar. A partir daí, traçamos metas individuais e coletivas.
+
+Afinal, quem não mede, não melhora. 📈
+
+Para se cadastrar, envie:
+• Nome completo
+• Data de nascimento
+• Peso
+• Altura
+• Posição em que joga
+
+Bola no chão, cabeça erguida e vamos juntos elevar o nível do nosso time! 💪🔥
+
+Confirme sua presença e mande seus dados o quanto antes.
+
+---
+📅 DATA: ${dbr(hoje())}
+🕒 HORÁRIO: 18:00
+📍 LOCAL: [A confirmar]</textarea>
+  </div>
+  <div class="row" style="margin-top:14px"><button class="gold" onclick="enviaConvocacaoAval()">📱 Enviar via WhatsApp</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+async function enviaConvocacaoAval(){
+  const data=fval('conv_data'), hora=fval('conv_hora'), local=fval('conv_local'), texto=fval('conv_texto');
+  if(!data){toast('Selecione a data');return;}
+
+  const ats=elenco();
+  const semAval=ats.filter(a=>!db.avaliacoes.some(v=>v.atletaId===a.id));
+
+  if(!semAval.length){toast('Todos os atletas já fizeram avaliação!');return;}
+
+  const msgs=semAval.map(a=>{
+    let msg=texto.replace('[A confirmar]',local||'[Local a confirmar]')
+                 .replace('${dbr(hoje())}',dbr(data))
+                 .replace('18:00',hora||'18:00');
+    return {nome:a.nome,whats:a.whats||'',msg};
+  });
+
+  // Se tiver número de WhatsApp, mostrar opção de enviar individual
+  const comWhats=msgs.filter(m=>m.whats).length;
+
+  if(comWhats>0){
+    modal(`<h2>📱 Convocação Pronta</h2>
+    <p class="mut"><strong>${comWhats}</strong> atleta(s) com WhatsApp cadastrado.</p>
+    <div class="row" style="margin-top:12px;gap:8px">
+      <button class="gold" onclick="copiaTextoConvocacao('${btoa(JSON.stringify(msgs))}')">📋 Copiar texto</button>
+      <button class="sec" onclick="fecha()">Fechar</button>
+    </div>
+    <p class="mut" style="margin-top:14px;font-size:12px">💡 Copie o texto e envie individualmente via WhatsApp, ou envie para o grupo caso tenha um.</p>`);
+  } else {
+    modal(`<h2>📋 Convocação Pronta</h2>
+    <p class="mut">Texto copiado! Envie para o grupo de WhatsApp:</p>
+    <textarea readonly style="width:100%;height:250px;margin:12px 0;font-size:12px;background:var(--bg2);padding:8px;border-radius:4px">${texto}</textarea>
+    <div class="row"><button class="sec" onclick="fecha()">Fechar</button></div>`);
+  }
+
+  fecha();
+}
+function copiaTextoConvocacao(encoded){
+  const msgs=JSON.parse(atob(encoded));
+  const texto=msgs.map(m=>`${m.nome}:\n${m.msg}`).join('\n\n---\n\n');
+  navigator.clipboard.writeText(texto).then(()=>toast('✅ Copiado! Envie no WhatsApp'));
+}
 
 /* ================= DESEMPENHO ================= */
 function statDe(evId,atId){ return db.stats.find(s=>s.eventoId===evId&&s.atletaId===atId); }
