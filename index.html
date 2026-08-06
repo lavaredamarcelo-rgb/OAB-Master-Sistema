@@ -2637,7 +2637,7 @@ function tFinConsolidado(){
         <td>${dbr(c.venc)}</td>
         <td>${esc(nomeAt(c.atletaId||''))}</td>
         <td><strong>${brl(valorDe(c))}</strong></td>
-        <td>${c.status==='pago'?'✅ Pago':c.status==='atrasado?'⚠️ Atrasado':'⏳ Pendente'}</td>
+        <td>${c.status==='pago'?'✅ Pago':c.status==='atrasado'?'⚠️ Atrasado':'⏳ Pendente'}</td>
       </tr>`).join(''):'<tr><td colspan="4" class="mut">Nenhuma mensalidade neste mês</td></tr>'}
       </table></div>
     </div>
