@@ -1948,28 +1948,71 @@ function tFinBalancoDesp(){
   </div>`;
 }
 /* ---- Lançadores de Balanço ---- */
+let receitasTemp=[];
 function abreLancadorReceita(){
-  modal(`<h2>➕ Lançar Receita</h2>
+  receitasTemp=[];
+  const html=`<h2>➕ Lançar Receitas (Múltiplas)</h2>
   <div class="grid g2">
-  <div><label>Data</label><input id="lr_data" type="date" value="${hoje()}"></div>
-  <div><label>Tipo</label><select id="lr_tipo">
-    <option value="patrocinio">Patrocínio</option>
-    <option value="auxilio">Auxílio</option>
-    <option value="venda">Venda</option>
-    <option value="doacao">Doação</option>
-    <option value="outro">Outro</option>
-  </select></div>
+    <div><label>Data</label><input id="lr_data" type="date" value="${hoje()}"></div>
+    <div><label>Tipo</label><select id="lr_tipo">
+      <option value="patrocinio">Patrocínio</option>
+      <option value="auxilio">Auxílio</option>
+      <option value="venda">Venda</option>
+      <option value="doacao">Doação</option>
+      <option value="outro">Outro</option>
+    </select></div>
   </div>
-  <label>Descrição</label><input id="lr_desc" placeholder="Ex.: Patrocínio Empresa X">
+  <label>Fornecedor/Origem</label><input id="lr_fornecedor" placeholder="Ex.: Empresa X, Pessoa Y">
+  <label>Quem Forneceu (Nome)</label><input id="lr_quem" placeholder="Ex.: João Silva">
   <label>Valor (R$)</label><input id="lr_valor" type="number" step="0.01" placeholder="0.00">
-  <div class="row" style="margin-top:14px"><button onclick="salvaReceita()">✓ Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+  <div class="row" style="margin-top:10px;gap:8px"><button class="mini" onclick="adicionaReceitaTemp()">➕ Adicionar</button></div>
+
+  <div id="listaReceitasTemp" style="margin-top:15px;max-height:300px;overflow-y:auto"></div>
+
+  <div class="row" style="margin-top:14px;gap:8px"><button onclick="salvaMultiplasReceitas()" id="btnSalvarTodas" disabled>✓ Salvar Tudo</button><button class="sec" onclick="fecha()">Cancelar</button></div>`;
+  modal(html);
+  atualizaListaReceitasTemp();
 }
-async function salvaReceita(){
-  const data=fval('lr_data'),tipo=fval('lr_tipo'),desc=fval('lr_desc'),valor=Number(fval('lr_valor'))||0;
-  if(!data||!tipo||!desc||valor<=0){toast('Preencha todos os campos');return;}
-  await q(sb.from('balanco_receitas').insert({data,tipo,descricao:desc,valor,origem:'Lançamento manual'}));
-  log('financeiro',`Receita lançada: ${desc} (${brl(valor)})`);
-  fecha(); await recarrega(); toast('Receita registrada!');
+function adicionaReceitaTemp(){
+  const data=fval('lr_data'),tipo=fval('lr_tipo'),fornec=fval('lr_fornecedor'),quem=fval('lr_quem'),valor=Number(fval('lr_valor'))||0;
+  if(!data||!tipo||!fornec||!quem||valor<=0){toast('Preencha todos os campos');return;}
+  receitasTemp.push({data,tipo,descricao:fornec,valor,quem_forneceu:quem,origem:'Lançamento manual'});
+  fval('lr_data',hoje());
+  fval('lr_tipo','patrocinio');
+  fval('lr_fornecedor','');
+  fval('lr_quem','');
+  fval('lr_valor','');
+  atualizaListaReceitasTemp();
+  toast('Receita adicionada!');
+}
+function atualizaListaReceitasTemp(){
+  const lista=document.getElementById('listaReceitasTemp');
+  if(receitasTemp.length===0){
+    lista.innerHTML='<p class="mut" style="text-align:center">Nenhuma receita adicionada ainda</p>';
+    document.getElementById('btnSalvarTodas').disabled=true;
+    return;
+  }
+  lista.innerHTML=receitasTemp.map((r,i)=>`
+    <div class="alertline" style="background:var(--ok-soft);margin-bottom:8px">
+      <div style="flex:1">
+        <strong>${r.descricao}</strong>
+        <div class="mut" style="font-size:12px">📅 ${dbr(r.data)} | 👤 ${r.quem_forneceu} | 💰 ${brl(r.valor)}</div>
+      </div>
+      <button class="mini sec" onclick="removeReceitaTemp(${i})">✕</button>
+    </div>
+  `).join('');
+  document.getElementById('btnSalvarTodas').disabled=false;
+}
+function removeReceitaTemp(idx){
+  receitasTemp.splice(idx,1);
+  atualizaListaReceitasTemp();
+  toast('Receita removida');
+}
+async function salvaMultiplasReceitas(){
+  if(receitasTemp.length===0){toast('Adicione pelo menos uma receita');return;}
+  for(const r of receitasTemp) await q(sb.from('balanco_receitas').insert(r));
+  log('financeiro',`${receitasTemp.length} receita(s) lançada(s)`);
+  fecha(); await recarrega(); toast(`${receitasTemp.length} receita(s) registrada(s)!`);
 }
 function abreLancadorDespesa(){
   modal(`<h2>➕ Lançar Despesa</h2>
