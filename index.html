@@ -2340,17 +2340,7 @@ function abreLancadorDespesa(){
   const html=`<h2>➕ Lançar Despesas (Múltiplas)</h2>
   <div class="grid g2">
     <div><label>Data</label><input id="ld_data" type="date" value="${hoje()}"></div>
-    <div><label>Categoria</label><select id="ld_cat">
-      <option value="Aluguel">Aluguel</option>
-      <option value="Água">Água</option>
-      <option value="Arbitragem">Arbitragem</option>
-      <option value="Transporte">Transporte</option>
-      <option value="Material">Material esportivo</option>
-      <option value="Saúde">Saúde/Fisioterapia</option>
-      <option value="Lavagem">Lavagem</option>
-      <option value="Uniformes">Uniformes</option>
-      <option value="Outros">Outros</option>
-    </select></div>
+    <div><label>Categoria (customizável)</label><input id="ld_cat" placeholder="Ex: Aluguel, Lavagem, Uniformes..." value="Outros"></div>
   </div>
   <label>Item</label><input id="ld_item" placeholder="Ex.: Aluguel da Arena">
   <label>Valor (R$)</label><input id="ld_valor" type="number" step="0.01" placeholder="0.00">
@@ -2367,9 +2357,9 @@ function abreLancadorDespesa(){
 function adicionaDespesaTemp(){
   const data=fval('ld_data'),item=fval('ld_item'),cat=fval('ld_cat'),valor=Number(fval('ld_valor'))||0,fornec=fval('ld_forn'),obs=fval('ld_obs');
   if(!data||!item||!cat||valor<=0){toast('Preencha: Data, Item, Categoria e Valor');return;}
-  despesasTemp.push({data,item,categoria:cat,qtd:1,valor,fornecedor:fornec,obs:obs,quem:me.nome});
+  despesasTemp.push({data,item,categoria:cat,qtd:1,valor,fornecedor:fornec,obs:obs,quem:me.nome,pago:false});
   $('ld_data').value=hoje();
-  $('ld_cat').value='Outros';
+  $('ld_cat').value='';
   $('ld_item').value='';
   $('ld_valor').value='';
   $('ld_forn').value='';
