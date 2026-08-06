@@ -4206,32 +4206,38 @@ function ligaCheckboxesDespesas(){
 /* ================= LANÇAMENTOS RECORRENTES ================= */
 function lancadorRecorrenteDespesa(){
   const anoAtual=new Date().getFullYear();
-  modal(`<h2>🔄 Despesa Recorrente (jan-dez)</h2>
-  <p class="mut">Cria a despesa para todos os meses de 2025. Você marca cada mês como pago quando pagar.</p>
+  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  modal(`<h2>🔄 Despesa Recorrente</h2>
   <div class="grid g2">
-  <div><label>Item/Descrição</label><input id="lrd_item" placeholder="Ex: Treinador"></div>
-  <div><label>Categoria</label><input id="lrd_cat" placeholder="Ex: Pessoal"></div>
+  <div><label>Item/Descrição</label><input id="lrd_item" placeholder="Ex: Aluguel"></div>
+  <div><label>Categoria</label><input id="lrd_cat" placeholder="Ex: Aluguel"></div>
   </div>
   <label>Valor mensal</label><input id="lrd_valor" type="number" step="0.01" placeholder="Ex: 5000">
   <div class="grid g2">
-  <div><label>Fornecedor/Responsável</label><input id="lrd_fornec" placeholder="Ex: João Silva"></div>
+  <div><label>Fornecedor/Responsável</label><input id="lrd_fornec" placeholder="Ex: Proprietário"></div>
   <div><label>Vencimento (dia do mês)</label><input id="lrd_venc" type="number" min="1" max="31" value="10"></div>
   </div>
+  <label>Selecione os meses:</label>
+  <div class="grid g3" style="margin-bottom:12px">
+    ${meses.map((m,i)=>`<label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="mes_${i}" value="${i+1}" checked> ${m}</label>`).join('')}
+  </div>
   <label>Observações</label><textarea id="lrd_obs" rows="2" placeholder="Notas adicionais"></textarea>
-  <div class="row" style="margin-top:14px"><button onclick="salvaRecorrenteDespesa()">✓ Criar (12 meses)</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+  <div class="row" style="margin-top:14px"><button onclick="salvaRecorrenteDespesa()">✓ Criar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function salvaRecorrenteDespesa(){
   const item=fval('lrd_item'),cat=fval('lrd_cat'),valor=Number(fval('lrd_valor')),fornec=fval('lrd_fornec'),obs=fval('lrd_obs'),venc=Number(fval('lrd_venc'))||10;
   if(!item||!cat||!valor){toast('Preencha item, categoria e valor');return;}
+  const mesesSel=[...document.querySelectorAll('input[id^="mes_"]:checked')].map(el=>Number(el.value));
+  if(mesesSel.length===0){toast('Selecione pelo menos um mês');return;}
   const anoAtual=new Date().getFullYear();
   const rows=[];
-  for(let mes=1;mes<=12;mes++){
+  for(const mes of mesesSel){
     const dataStr=`${anoAtual}-${String(mes).padStart(2,'0')}-${String(venc).padStart(2,'0')}`;
-    rows.push({data:dataStr,item,categoria:cat,qtd:1,valor,fornecedor:fornec,obs,status:'pendente',tipo_recorrencia:'mensal',mes_referencia:mes,ano_referencia:anoAtual,tipo_lancamento:'recorrente',quem:me?.nome||'Sistema'});
+    rows.push({data:dataStr,item,categoria:cat,qtd:1,valor,fornecedor:fornec,obs,quem:me?.nome||'Sistema'});
   }
   await q(sb.from('despesas').insert(rows));
-  log('financeiro',`Despesa recorrente criada: ${item} (12 meses)`);
-  fecha(); await recarrega(); toast('✅ 12 meses criados!');
+  log('financeiro',`Despesa recorrente criada: ${item} (${mesesSel.length} meses)`);
+  fecha(); await recarrega(); toast(`✅ ${mesesSel.length} mês/meses criados!`);
 }
 
 function lancadorRecorrenteReceita(){
