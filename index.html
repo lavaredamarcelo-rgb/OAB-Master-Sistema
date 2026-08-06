@@ -1893,8 +1893,10 @@ function tFin(){
   return `<div class="tabbtns">
   <button class="${sub==='c'?'on':''}" onclick="subState.finTab='c';renderTab()">💰 Cobranças</button>
   <button class="${sub==='b'?'on':''}" onclick="subState.finTab='b';renderTab()">📊 Balanço Geral</button>
+  <button class="${sub==='t'?'on':''}" onclick="subState.finTab='t';renderTab()">📋 Consolidado</button>
+  <button class="${sub==='r'?'on':''}" onclick="subState.finTab='r';renderTab()">📄 Relatórios</button>
   <button class="${sub==='a'?'on':''}" onclick="subState.finTab='a';renderTab()">📁 Arquivos</button>
-  </div>${sub==='c'?tFinCob():sub==='b'?tFinBalanco():tFinArq()}`;
+  </div>${sub==='c'?tFinCob():sub==='b'?tFinBalanco():sub==='t'?tFinConsolidado():sub==='r'?tFinRelatorios():tFinArq()}`;
 }
 function tFinBalanco(){
   const subB=subState.finSubTab||'r';
@@ -2456,6 +2458,179 @@ function tFinDesp(){
   <div class="card"><h2>📊 Total por categoria</h2>
   ${Object.keys(porCat).length?Object.entries(porCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div class="alertline" style="background:var(--bg)"><span style="flex:1">${esc(c)}</span><strong>${brl(v)}</strong></div>`).join(''):'<p class="mut">Sem registros.</p>'}
   <p class="mut" style="margin-top:8px">💡 A coluna "Unitário" facilita comparar compras: mesmo item, fornecedores e épocas diferentes.</p></div>`;
+}
+function tFinConsolidado(){
+  const mesAtual=hoje().slice(0,7);
+  const mesFilter=subState.finMesFilter||mesAtual;
+
+  const itens=[];
+  // Receitas
+  db.balanco.filter(r=>r.data.startsWith(mesFilter.slice(0,7))).forEach(r=>{
+    itens.push({data:r.data,tipo:'receita',desc:r.descricao,valor:r.valor,status:r.pago?'Pago':'Pendente',id:r.id});
+  });
+  // Cobranças como Mensalidades
+  db.cobrancas.filter(c=>c.venc.startsWith(mesFilter.slice(0,7))).forEach(c=>{
+    itens.push({data:c.venc,tipo:'mensalidade',desc:'Mensalidade - '+nomeAt(c.atletaId||''),valor:valorDe(c),status:c.status==='pago'?'Pago':c.status==='atrasado'?'Atrasado':'Pendente',id:c.id});
+  });
+  // Despesas
+  db.despesas.filter(d=>d.data.startsWith(mesFilter.slice(0,7))).forEach(d=>{
+    itens.push({data:d.data,tipo:'despesa',desc:d.item+' ('+d.categoria+')',valor:d.valor,status:'Registrada',id:d.id});
+  });
+
+  itens.sort((a,b)=>b.data.localeCompare(a.data));
+  const totalRec=itens.filter(i=>i.tipo==='receita').reduce((s,i)=>s+Number(i.valor),0);
+  const totalMes=itens.filter(i=>i.tipo==='mensalidade').reduce((s,i)=>s+Number(i.valor),0);
+  const totalDes=itens.filter(i=>i.tipo==='despesa').reduce((s,i)=>s+Number(i.valor),0);
+
+  return `<div class="card sect">
+  <div class="row" style="margin-bottom:12px;gap:8px;align-items:center">
+    <strong>Mês:</strong>
+    <input type="month" value="${mesFilter}" onchange="subState.finMesFilter=this.value;renderTab()" style="max-width:140px">
+  </div>
+  <div class="grid g3" style="margin-bottom:12px">
+    <div class="card stat"><div class="n" style="color:var(--ok)">${brl(totalRec)}</div><div class="l">Receitas</div></div>
+    <div class="card stat"><div class="n" style="color:var(--ok)">${brl(totalMes)}</div><div class="l">Mensalidades</div></div>
+    <div class="card stat"><div class="n" style="color:var(--bad)">${brl(totalDes)}</div><div class="l">Despesas</div></div>
+  </div>
+  <div class="tblwrap"><table><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Status</th></tr>
+  ${itens.map(i=>`<tr>
+    <td>${dbr(i.data)}</td>
+    <td>${esc(i.desc)}</td>
+    <td><span class="pill p-${i.tipo==='despesa'?'bad':i.tipo==='mensalidade'?'ok':'mut'}">${i.tipo}</span></td>
+    <td><strong>${brl(i.valor)}</strong></td>
+    <td>${i.status}</td>
+  </tr>`).join('')}</table></div>
+  </div>`;
+}
+function tFinRelatorios(){
+  const mesAtual=hoje().slice(0,7);
+  return `<div class="card sect">
+  <h2>📄 Relatórios Financeiros</h2>
+  <p class="mut" style="margin-bottom:16px">Gere relatórios em PDF ou Excel com todos os dados consolidados.</p>
+
+  <div class="row" style="margin-bottom:16px;gap:8px;flex-wrap:wrap">
+    <button class="gold" onclick="gerarPDFFinanceiro()">📊 PDF - Financeiro Completo</button>
+    <button class="gold" onclick="gerarPDFMes()">📅 PDF - Mês Atual</button>
+    <button class="sec" onclick="exportarExcelFinanceiro()">📈 Excel - Financeiro</button>
+    <button class="sec" onclick="exportarExcelMensalidades()">📈 Excel - Mensalidades</button>
+  </div>
+
+  <div class="card" style="background:var(--bg2);padding:12px;border-radius:4px;margin-top:12px">
+    <h3 style="margin-top:0">📊 Resumo do Período</h3>
+    <div class="tblwrap"><table><tr><th>Período</th><th>Receitas</th><th>Mensalidades</th><th>Despesas</th><th>Saldo</th></tr>
+    ${Array.from({length:12},((_,i)=>{
+      const ano=new Date().getFullYear();
+      const mes=String(i+1).padStart(2,'0');
+      const prefix=ano+'-'+mes;
+      const rec=db.balanco.filter(r=>r.data.startsWith(prefix)).reduce((s,r)=>s+Number(r.valor),0);
+      const men=db.cobrancas.filter(c=>c.venc.startsWith(prefix)&&c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
+      const des=db.despesas.filter(d=>d.data.startsWith(prefix)).reduce((s,d)=>s+Number(d.valor),0);
+      const saldo=rec+men-des;
+      return `<tr><td><strong>${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][i]}</strong></td>
+        <td style="color:var(--ok)">${brl(rec)}</td>
+        <td style="color:var(--ok)">${brl(men)}</td>
+        <td style="color:var(--bad)">${brl(des)}</td>
+        <td style="font-weight:bold;color:${saldo>=0?'var(--ok)':'var(--bad)'}">${brl(saldo)}</td></tr>`;
+    })).join('')}</table></div>
+  </div>
+  </div>`;
+}
+function gerarPDFFinanceiro(){
+  const ano=new Date().getFullYear();
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Relatório Financeiro ${ano}</title>
+  <style>body{font-family:Arial;margin:20px;color:#333}h1{text-align:center;color:#c41e3a}h2{margin-top:20px;border-bottom:2px solid #c41e3a;padding-bottom:8px}
+  table{width:100%;border-collapse:collapse;margin:12px 0}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#c41e3a;color:white;font-weight:bold}
+  tr:nth-child(even){background:#f9f9f9}.stat{background:#f0f0f0;padding:10px;margin:10px 0;border-radius:4px}
+  .total{font-weight:bold;background:#e8f4f8;padding:10px}.ok{color:#28a745}.bad{color:#c41e3a}</style></head><body>
+  <h1>⚽ OAB/PA Master - Relatório Financeiro</h1>
+  <p style="text-align:center;color:#666">Período: ${ano}</p>
+
+  <h2>📊 Resumo Anual</h2>
+  <div class="stat">Receitas: <span class="ok">${brl(db.balanco.filter(r=>r.data.startsWith(ano)).reduce((s,r)=>s+Number(r.valor),0))}</span></div>
+  <div class="stat">Mensalidades Recebidas: <span class="ok">${brl(db.cobrancas.filter(c=>c.venc.startsWith(ano)&&c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0))}</span></div>
+  <div class="stat">Despesas: <span class="bad">${brl(db.despesas.filter(d=>d.data.startsWith(ano)).reduce((s,d)=>s+Number(d.valor),0))}</span></div>
+
+  <h2>💵 Receitas (${ano})</h2>
+  <table><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Status</th></tr>
+  ${db.balanco.filter(r=>r.data.startsWith(ano)).sort((a,b)=>b.data.localeCompare(a.data)).map(r=>`<tr>
+    <td>${dbr(r.data)}</td><td>${esc(r.descricao)}</td><td>${r.tipo}</td><td>${brl(r.valor)}</td><td>${r.pago?'Pago':'Pendente'}</td></tr>`).join('')}
+  </table>
+
+  <h2>🧾 Despesas (${ano})</h2>
+  <table><tr><th>Data</th><th>Item</th><th>Categoria</th><th>Valor</th></tr>
+  ${db.despesas.filter(d=>d.data.startsWith(ano)).sort((a,b)=>b.data.localeCompare(a.data)).map(d=>`<tr>
+    <td>${dbr(d.data)}</td><td>${esc(d.item)}</td><td>${esc(d.categoria)}</td><td>${brl(d.valor)}</td></tr>`).join('')}
+  </table>
+
+  <p style="margin-top:30px;text-align:center;color:#666;font-size:12px">Relatório gerado em ${new Date().toLocaleString('pt-BR')}</p>
+  </body></html>`;
+  const blob=new Blob([html],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`financeiro-${ano}.html`;
+  a.click();
+  toast('✅ Relatório HTML gerado (abra com navegador para imprimir como PDF)');
+}
+function gerarPDFMes(){
+  const mes=subState.finMesFilter||hoje().slice(0,7);
+  const [ano,mesNum]=mes.split('-');
+  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const mesNome=meses[Number(mesNum)-1];
+
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Relatório ${mesNome}/${ano}</title>
+  <style>body{font-family:Arial;margin:20px;color:#333}h1{text-align:center;color:#c41e3a}
+  table{width:100%;border-collapse:collapse;margin:12px 0}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#c41e3a;color:white}
+  .stat{background:#f0f0f0;padding:10px;margin:10px 0}.ok{color:#28a745}.bad{color:#c41e3a}</style></head><body>
+  <h1>Relatório Financeiro - ${mesNome}/${ano}</h1>
+
+  <div class="stat">Receitas: <span class="ok">${brl(db.balanco.filter(r=>r.data.startsWith(mes)).reduce((s,r)=>s+Number(r.valor),0))}</span></div>
+  <div class="stat">Mensalidades: <span class="ok">${brl(db.cobrancas.filter(c=>c.venc.startsWith(mes)&&c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0))}</span></div>
+  <div class="stat">Despesas: <span class="bad">${brl(db.despesas.filter(d=>d.data.startsWith(mes)).reduce((s,d)=>s+Number(d.valor),0))}</span></div>
+
+  <h2>Lançamentos do Mês</h2>
+  <table><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Status</th></tr>
+  ${(() => {
+    const itens = [];
+    db.balanco.filter(r=>r.data.startsWith(mes)).forEach(r=>itens.push({data:r.data,desc:r.descricao,tipo:'Receita',valor:r.valor,status:r.pago?'Pago':'Pendente'}));
+    db.cobrancas.filter(c=>c.venc.startsWith(mes)).forEach(c=>itens.push({data:c.venc,desc:'Mensalidade',tipo:'Receita',valor:valorDe(c),status:c.status}));
+    db.despesas.filter(d=>d.data.startsWith(mes)).forEach(d=>itens.push({data:d.data,desc:d.item,tipo:'Despesa',valor:d.valor,status:'Registrada'}));
+    return itens.sort((a,b)=>b.data.localeCompare(a.data)).map(i=>`<tr><td>${dbr(i.data)}</td><td>${esc(i.desc)}</td><td>${i.tipo}</td><td>${brl(i.valor)}</td><td>${i.status}</td></tr>`).join('');
+  })()}
+  </table>
+  </body></html>`;
+  const blob=new Blob([html],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`financeiro-${mes}.html`;
+  a.click();
+  toast('✅ Relatório do mês gerado');
+}
+function exportarExcelFinanceiro(){
+  let csv='Data,Descrição,Tipo,Valor,Status\n';
+  const ano=new Date().getFullYear();
+  db.balanco.filter(r=>r.data.startsWith(ano)).forEach(r=>csv+=`"${r.data}","${r.descricao}","Receita","${r.valor}","${r.pago?'Pago':'Pendente'}"\n`);
+  db.cobrancas.filter(c=>c.venc.startsWith(ano)).forEach(c=>csv+=`"${c.venc}","Mensalidade","Receita","${valorDe(c)}","${c.status}"\n`);
+  db.despesas.filter(d=>d.data.startsWith(ano)).forEach(d=>csv+=`"${d.data}","${d.item}","Despesa","${d.valor}","Registrada"\n`);
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`financeiro-${ano}.csv`;
+  a.click();
+  toast('✅ Excel (CSV) exportado');
+}
+function exportarExcelMensalidades(){
+  let csv='Data de Vencimento,Atleta,Valor,Status,Pago em\n';
+  db.cobrancas.forEach(c=>csv+=`"${c.venc}","${nomeAt(c.atletaId||'')||c.convidado}","${c.valor}","${c.status}","${c.pagoEm||''}"\n`);
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`mensalidades-${new Date().getFullYear()}.csv`;
+  a.click();
+  toast('✅ Planilha de mensalidades exportada');
 }
 function tFinArq(){
   const lotes={};
