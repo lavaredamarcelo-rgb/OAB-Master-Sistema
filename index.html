@@ -2231,6 +2231,7 @@ function tFinBalancoDesp(){
   <div style="margin:12px 0;font-size:13px">
     <div class="spread"><span>Total de despesas:</span><strong style="color:var(--bad)">${brl(total)}</strong></div>
   </div>
+  <div id="selbar_d" class="alertline al-bad sect" style="display:${selDesp.size?'flex':'none'};align-items:center">🗑 <strong><span id="selct_d">${selDesp.size}</span> selecionada(s)</strong><span style="flex:1"></span><button class="bad mini" onclick="delSelDesp()">Excluir selecionadas</button><button class="mini sec" onclick="selDesp.clear();renderTab()">Limpar</button></div>
 
   ${categorias.length===0?'<p class="mut">Nenhuma despesa registrada.</p>':''}
 
@@ -2245,7 +2246,8 @@ function tFinBalancoDesp(){
       </summary>
       <div style="padding:8px;background:var(--bg3);border-radius:4px;margin-top:4px">
         ${items.sort((a,b)=>b.data.localeCompare(a.data)).map(d=>`
-          <div class="alertline" style="background:var(--bg3);margin-bottom:6px">
+          <div class="alertline" style="background:var(--bad-soft);margin-bottom:6px">
+            <input type="checkbox" onchange="selTog('d','${d.id}',this.checked)" ${selDesp.has(d.id)?'checked':''} style="width:auto">
             <div style="flex:1;font-size:12px">
               <div><strong>${esc(d.item)}</strong><span class="mut" style="font-size:10px;margin-left:6px">${esc(d.categoria)}</span></div>
               <div class="mut">${dbr(d.data)}</div>
