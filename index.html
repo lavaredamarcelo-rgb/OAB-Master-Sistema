@@ -200,7 +200,7 @@ function log(tipo,texto){ sb.from('logs').insert({tipo,texto,quem:me?me.nome:'si
 function mapAtleta(r){ return {id:r.id,nome:r.nome,fone:r.fone,email:r.email,oab:r.oab,posicao:r.posicao,role:r.role,ativo:r.ativo,pendente:!r.aprovado,fundador:!!r.fundador,cargo:r.cargo||'',
   consent:{aceito:r.consent_status==='aceito',recusado:r.consent_status==='recusado',revogado:r.consent_status==='revogado',quando:fdt(r.consent_quando),versao:r.consent_versao||TERMO_LGPD_V},saude:{}}; }
 async function carregaTudo(){
-  const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist,debitos]=await Promise.all([
+  const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist]=await Promise.all([
     q(sb.from('perfis').select('*').order('nome')),
     q(sb.from('saude').select('*')),
     q(sb.from('eventos').select('*').order('data')),
@@ -219,8 +219,7 @@ async function carregaTudo(){
     q(sb.from('config').select('*').eq('id',1).single()),
     sb.from('import_lotes').select('*').order('data_import',{ascending:false}).then(r=>r.data||[]),
     sb.from('balanco_receitas').select('*').order('data',{ascending:false}).then(r=>r.data||[]),
-    sb.from('uniforme_numeros_historico').select('*').order('quando',{ascending:false}).then(r=>r.data||[]),
-    q(sb.from('debitos').select('*').order('periodo_mes',{ascending:false}))
+    sb.from('uniforme_numeros_historico').select('*').order('quando',{ascending:false}).then(r=>r.data||[])
   ]);
   db={};
   db.atletas=perfis.map(mapAtleta);
@@ -255,7 +254,7 @@ async function carregaTudo(){
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,origem:c.origem||'',lote:c.origem_lote||'',importLoteId:c.import_lote_id||'',tipoLancamento:c.tipo_lancamento||'manual',consolidado:c.consolidado||false}));
   db.balanco=balancorec.map(r=>({id:r.id,data:String(r.data),tipo:r.tipo,descricao:r.descricao,valor:r.valor,origem:r.origem||'',cobrancaId:r.cobranca_id||'',autor:r.autor||'',quando:fdt(r.quando),pago:r.pago||false}));
   db.unifHist=unifhist.map(h=>({id:h.id,uniformeId:h.uniforme_id,numero:h.numero,acao:h.acao,atletaId:h.atleta_id||'',nomeConvidado:h.nome_convidado||'',data:String(h.data),notas:h.notas||'',quem:h.quem||'',quando:fdt(h.quando)}));
-  db.debitos=debitos.map(d=>({id:d.id,atletaId:d.atleta_id||'',periodo:d.periodo_mes,valor:d.valor,descricao:d.descricao||'',dataRegistro:String(d.data_registro),quitado:d.quitado||false,dataQuitacao:d.data_quitacao?String(d.data_quitacao):null,quem:d.quem||'',quando:fdt(d.quando)}));
+  db.debitos=[];
   const eu=at(me.id); if(eu)me=Object.assign(eu,{});
 }
 async function recarrega(){ await carregaTudo(); renderTab(); }
