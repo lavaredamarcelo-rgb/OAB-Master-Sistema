@@ -1995,31 +1995,55 @@ function tFin(){
   return `<div class="tabbtns">
   <button class="${sub==='c'?'on':''}" onclick="subState.finTab='c';renderTab()">💰 Cobranças</button>
   <button class="${sub==='b'?'on':''}" onclick="subState.finTab='b';renderTab()">📊 Balanço Geral</button>
-  <button class="${sub==='t'?'on':''}" onclick="subState.finTab='t';renderTab()">📋 Consolidado</button>
   <button class="${sub==='r'?'on':''}" onclick="subState.finTab='r';renderTab()">📄 Relatórios</button>
   <button class="${sub==='a'?'on':''}" onclick="subState.finTab='a';renderTab()">📁 Arquivos</button>
-  </div>${sub==='c'?tFinCob():sub==='b'?tFinBalanco():sub==='t'?tFinConsolidado():sub==='r'?tFinRelatorios():tFinArq()}`;
+  </div>${sub==='c'?tFinCob():sub==='b'?tFinBalanco():sub==='r'?tFinRelatorios():tFinArq()}`;
 }
 function tFinBalanco(){
   const subB=subState.finSubTab||'r';
   const ano=new Date().getFullYear();
   const mesAtual=hoje().slice(0,7);
 
+  // Filtros de visualização (Consolidado)
+  const filtReceb=subState.filtReceb!==false;
+  const filtMens=subState.filtMens!==false;
+  const filtDesp=subState.filtDesp!==false;
+
   // Mensais (até hoje)
   const receitasMes=db.balanco.filter(r=>r.data>=mesAtual+'-01'&&r.data<=hoje());
   const despesasMes=db.despesas.filter(d=>d.data>=mesAtual+'-01'&&d.data<=hoje());
   const totalRecMes=receitasMes.reduce((s,r)=>s+Number(r.valor),0);
   const totalDesMes=despesasMes.reduce((s,d)=>s+Number(d.valor),0);
-  const saldoMes=totalRecMes-totalDesMes;
+  const totalMensMes=db.cobrancas.filter(c=>c.venc>=mesAtual+'-01'&&c.venc<=hoje()&&c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
+  const saldoMes=totalRecMes+totalMensMes-totalDesMes;
 
   // Anuais (jan-dez do ano atual)
   const receitasAno=db.balanco.filter(r=>r.data.startsWith(ano));
   const despesasAno=db.despesas.filter(d=>d.data.startsWith(ano));
   const totalRecAno=receitasAno.reduce((s,r)=>s+Number(r.valor),0);
   const totalDesAno=despesasAno.reduce((s,d)=>s+Number(d.valor),0);
-  const saldoAno=totalRecAno-totalDesAno;
+  const totalMensAno=db.cobrancas.filter(c=>c.venc.startsWith(ano)&&c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
+  const saldoAno=totalRecAno+totalMensAno-totalDesAno;
 
   return `<div class="sect">
+  <div class="card" style="padding:12px;background:var(--bg2);margin-bottom:12px;border-radius:4px">
+    <div class="mut" style="font-size:11px;margin-bottom:8px">🔍 Filtros de visualização (Consolidado):</div>
+    <div class="row" style="gap:16px;flex-wrap:wrap">
+      <label style="display:flex;gap:6px;align-items:center;margin:0">
+        <input type="checkbox" ${filtReceb?'checked':''} onchange="subState.filtReceb=this.checked;renderTab()" style="width:auto">
+        💵 Receitas
+      </label>
+      <label style="display:flex;gap:6px;align-items:center;margin:0">
+        <input type="checkbox" ${filtMens?'checked':''} onchange="subState.filtMens=this.checked;renderTab()" style="width:auto">
+        💳 Mensalidades
+      </label>
+      <label style="display:flex;gap:6px;align-items:center;margin:0">
+        <input type="checkbox" ${filtDesp?'checked':''} onchange="subState.filtDesp=this.checked;renderTab()" style="width:auto">
+        🧾 Despesas
+      </label>
+    </div>
+  </div>
+
   <div style="margin-bottom:16px">
     <div class="mut" style="font-size:12px;margin-bottom:6px;font-weight:bold">📅 MÊS ATUAL (${mesAtual})</div>
     <div class="grid g3">
@@ -2042,8 +2066,9 @@ function tFinBalanco(){
   <div class="tabbtns" style="margin:12px 0">
     <button class="${subB==='r'?'on':''}" onclick="subState.finSubTab='r';renderTab()">💵 Receitas</button>
     <button class="${subB==='d'?'on':''}" onclick="subState.finSubTab='d';renderTab()">💸 Despesas</button>
+    <button class="${subB==='c'?'on':''}" onclick="subState.finSubTab='c';renderTab()">📋 Consolidado</button>
   </div>
-  ${subB==='r'?tFinBalancoRec():tFinBalancoDesp()}`;
+  ${subB==='r'?tFinBalancoRec():subB==='d'?tFinBalancoDesp():tFinBalancoConsolidado(filtReceb,filtMens,filtDesp)}`;
 }
 function tFinBalancoRec(){
   const receitas=db.balanco||[];
@@ -2482,7 +2507,6 @@ function tFinCob(){
   </div>
   <div class="row sect">
     <button class="sec" onclick="exportXlsx()">⬇ Excel (.xlsx)</button>
-    <button class="sec" onclick="exportModelo()">⬇ Planilha modelo do time</button>
     <button class="sec" onclick="importPlanilha()">⬆ Importar planilha</button>
     <button class="sec" onclick="csvFin()">⬇ CSV</button>
   </div>
@@ -2561,6 +2585,106 @@ function tFinDesp(){
   <div class="card"><h2>📊 Total por categoria</h2>
   ${Object.keys(porCat).length?Object.entries(porCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div class="alertline" style="background:var(--bg)"><span style="flex:1">${esc(c)}</span><strong>${brl(v)}</strong></div>`).join(''):'<p class="mut">Sem registros.</p>'}
   <p class="mut" style="margin-top:8px">💡 A coluna "Unitário" facilita comparar compras: mesmo item, fornecedores e épocas diferentes.</p></div>`;
+}
+function tFinBalancoConsolidado(filtReceb,filtMens,filtDesp){
+  const mesAtual=hoje().slice(0,7);
+  const anoAtual=hoje().slice(0,4);
+  const anoFilter=subState.finAnoFilter||anoAtual;
+  const mesFilter=subState.finMesFilter||(anoFilter===anoAtual?mesAtual:anoFilter+'-01');
+
+  const filtroAtivo=anoFilter!==anoAtual || mesFilter.slice(0,7)!==mesAtual;
+
+  // Receitas
+  const receitas=filtReceb?db.balanco.filter(r=>r.data.startsWith(mesFilter)).sort((a,b)=>b.data.localeCompare(a.data)):[];
+  const totalRec=receitas.reduce((s,r)=>s+Number(r.valor),0);
+  const pagoRec=receitas.filter(r=>r.pago).reduce((s,r)=>s+Number(r.valor),0);
+
+  // Cobranças como Mensalidades
+  const mensalidades=filtMens?db.cobrancas.filter(c=>c.venc.startsWith(mesFilter)).sort((a,b)=>b.venc.localeCompare(a.venc)):[];
+  const totalMen=mensalidades.reduce((s,c)=>s+Number(valorDe(c)),0);
+  const pagoMen=mensalidades.filter(c=>c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
+
+  // Despesas
+  const despesas=filtDesp?db.despesas.filter(d=>d.data.startsWith(mesFilter)).sort((a,b)=>b.data.localeCompare(a.data)):[];
+  const totalDes=despesas.reduce((s,d)=>s+Number(d.valor),0);
+
+  const saldo=(totalRec+totalMen)-totalDes;
+
+  return `<div class="card sect">
+  <div class="row" style="margin-bottom:12px;gap:8px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;align-items:center">
+      <strong>Ano:</strong>
+      <select onchange="subState.finAnoFilter=this.value;subState.finMesFilter=null;renderTab()" style="max-width:100px">
+        ${[anoAtual-2,anoAtual-1,anoAtual,anoAtual+1].map(a=>`<option value="${a}" ${a===Number(anoFilter)?'selected':''}>${a}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <strong>Mês:</strong>
+      <input type="month" value="${mesFilter}" onchange="subState.finMesFilter=this.value;renderTab()" style="max-width:140px">
+    </div>
+    ${filtroAtivo?`<button class="mini sec" onclick="subState.finAnoFilter=null;subState.finMesFilter=null;renderTab()">Limpar</button>`:''}
+  </div>
+  <div class="grid g4" style="margin-bottom:12px">
+    ${filtReceb?`<div class="card stat"><div class="n" style="color:var(--ok)">${brl(totalRec)}</div><div class="l">Receitas</div></div>`:''}
+    ${filtMens?`<div class="card stat"><div class="n" style="color:var(--ok)">${brl(totalMen)}</div><div class="l">Mensalidades</div></div>`:''}
+    ${filtDesp?`<div class="card stat"><div class="n" style="color:var(--bad)">${brl(totalDes)}</div><div class="l">Despesas</div></div>`:''}
+    <div class="card stat" style="background:${saldo>=0?'var(--ok-soft)':'var(--bad-soft)'}"><div class="n" style="color:${saldo>=0?'var(--ok)':'var(--bad)'}">${brl(saldo)}</div><div class="l">Saldo</div></div>
+  </div>
+
+  ${filtReceb?`<details>
+    <summary style="cursor:pointer;font-weight:bold;padding:8px;background:var(--bg2);border-radius:4px">
+      💵 Receitas
+      <span class="pill p-ok">${brl(pagoRec)} pago</span>
+      ${receitas.filter(r=>!r.pago).length?`<span class="pill p-warn">${receitas.filter(r=>!r.pago).length} pendente</span>`:''}
+    </summary>
+    <div style="padding:8px;background:var(--bg3);border-radius:4px;margin-top:4px">
+      <div class="tblwrap"><table><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Status</th></tr>
+      ${receitas.length?receitas.map(r=>`<tr>
+        <td>${dbr(r.data)}</td>
+        <td>${esc(r.descricao)}</td>
+        <td><strong>${brl(r.valor)}</strong></td>
+        <td>${r.pago?'✅ Pago':'⏳ Pendente'}</td>
+      </tr>`).join(''):'<tr><td colspan="4" class="mut">Nenhuma receita neste período</td></tr>'}
+      </table></div>
+    </div>
+  </details>`:''}
+
+  ${filtMens?`<details>
+    <summary style="cursor:pointer;font-weight:bold;padding:8px;background:var(--bg2);border-radius:4px;margin-top:8px">
+      💳 Mensalidades
+      <span class="pill p-ok">${brl(pagoMen)} quitado</span>
+      ${mensalidades.filter(c=>c.status!=='pago').length?`<span class="pill p-warn">${mensalidades.filter(c=>c.status!=='pago').length} em aberto</span>`:''}
+    </summary>
+    <div style="padding:8px;background:var(--bg3);border-radius:4px;margin-top:4px">
+      <div class="tblwrap"><table><tr><th>Vencimento</th><th>Atleta</th><th>Valor</th><th>Status</th></tr>
+      ${mensalidades.length?mensalidades.map(c=>`<tr>
+        <td>${dbr(c.venc)}</td>
+        <td>${esc(nomeAt(c.atletaId||''))}</td>
+        <td><strong>${brl(valorDe(c))}</strong></td>
+        <td>${c.status==='pago'?'✅ Pago':c.status==='atrasado'?'⚠️ Atrasado':'⏳ Pendente'}</td>
+      </tr>`).join(''):'<tr><td colspan="4" class="mut">Nenhuma mensalidade neste período</td></tr>'}
+      </table></div>
+    </div>
+  </details>`:''}
+
+  ${filtDesp?`<details>
+    <summary style="cursor:pointer;font-weight:bold;padding:8px;background:var(--bg2);border-radius:4px;margin-top:8px">
+      🧾 Despesas
+      <span class="pill p-bad">${brl(totalDes)}</span>
+      <span class="pill p-mut">${despesas.length} item${despesas.length!==1?'ns':''}</span>
+    </summary>
+    <div style="padding:8px;background:var(--bg3);border-radius:4px;margin-top:4px">
+      <div class="tblwrap"><table><tr><th>Data</th><th>Item</th><th>Categoria</th><th>Valor</th></tr>
+      ${despesas.length?despesas.map(d=>`<tr>
+        <td>${dbr(d.data)}</td>
+        <td>${esc(d.item)}</td>
+        <td><span class="pill p-mut">${esc(d.categoria)}</span></td>
+        <td><strong>${brl(d.valor)}</strong></td>
+      </tr>`).join(''):'<tr><td colspan="4" class="mut">Nenhuma despesa neste período</td></tr>'}
+      </table></div>
+    </div>
+  </details>`:''}
+  </div>`;
 }
 function tFinConsolidado(){
   const mesAtual=hoje().slice(0,7);
