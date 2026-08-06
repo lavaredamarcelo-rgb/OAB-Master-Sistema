@@ -2168,6 +2168,18 @@ async function pagaReceitasSelec(){
   renderTab();
   toast(`✅ ${items.length} receita(s) marcada(s) como paga(s)!`);
 }
+async function pagaDespesasSelec(){
+  const items=[...selDesp].map(id=>db.despesas.find(d=>d.id===id)).filter(Boolean);
+  if(!items.length){toast('Selecione itens para pagar');return;}
+  for(const item of items){
+    await q(sb.from('despesas').update({pago:true,data_pagamento:hoje()}).eq('id',item.id));
+    item.pago=true;
+    item.dataPagamento=hoje();
+  }
+  selDesp.clear();
+  renderTab();
+  toast(`✅ ${items.length} despesa(s) marcada(s) como paga(s)!`);
+}
 function editaReceita(id){
   const r=db.balanco.find(x=>x.id===id);
   if(!r) return;
@@ -2220,8 +2232,9 @@ async function salvaEdicaoDespesa(id){
 }
 function tFinBalancoDesp(){
   const despesas=db.despesas||[];
-  const total=despesas.reduce((s,d)=>s+Number(d.valor),0);
-  const pagoDes=despesas.filter(d=>d.pago).reduce((s,d)=>s+Number(d.valor),0);
+  const hoje_str=hoje();
+  const totalPago=despesas.filter(d=>d.pago).reduce((s,d)=>s+Number(d.valor),0);
+  const totalPendente=despesas.filter(d=>!d.pago).reduce((s,d)=>s+Number(d.valor),0);
 
   // Agrupar por categoria
   const grupos={};
@@ -2239,38 +2252,44 @@ function tFinBalancoDesp(){
     <button class="gold mini" onclick="lancadorRecorrenteDespesa()">🔄 Recorrente</button>
   </div>
   <div style="margin:12px 0;font-size:13px">
-    <div class="spread"><span>Total de despesas:</span><strong style="color:var(--bad)">${brl(total)}</strong></div>
-    <div class="spread"><span>Despesas pagas:</span><strong style="color:var(--ok)">${brl(pagoDes)}</strong></div>
+    <div class="spread"><span>Total pago:</span><strong style="color:var(--ok)">${brl(totalPago)}</strong></div>
+    <div class="spread"><span>Total pendente:</span><strong style="color:var(--warn)">${brl(totalPendente)}</strong></div>
   </div>
-  <div id="selbar_d" class="alertline al-bad sect" style="display:${selDesp.size?'flex':'none'};align-items:center">🗑 <strong><span id="selct_d">${selDesp.size}</span> selecionada(s)</strong><span style="flex:1"></span><button class="bad mini" onclick="delSelDesp()">Excluir selecionadas</button><button class="mini sec" onclick="selDesp.clear();renderTab()">Limpar</button></div>
+  <div id="selbar_d" class="alertline al-bad sect" style="display:${selDesp.size?'flex':'none'};align-items:center">✓ <strong><span id="selct_d">${selDesp.size}</span> selecionada(s)</strong><span style="flex:1"></span><button class="mini gold" onclick="pagaDespesasSelec()">Pagar selecionadas</button><button class="bad mini" onclick="delSelDesp()">Excluir selecionadas</button><button class="mini sec" onclick="selDesp.clear();renderTab()">Limpar</button></div>
 
   ${categorias.length===0?'<p class="mut">Nenhuma despesa registrada.</p>':''}
 
   ${categorias.map(cat=>{
     const items=grupos[cat];
-    const valor_cat=items.reduce((s,d)=>s+Number(d.valor),0);
+    const pagos=items.filter(d=>d.pago).length;
+    const valor_pago=items.filter(d=>d.pago).reduce((s,d)=>s+Number(d.valor),0);
+    const vencidos=items.filter(d=>!d.pago&&d.data<hoje_str).length;
     return `<details>
       <summary style="cursor:pointer;font-weight:bold;padding:8px;background:var(--bg2);border-radius:4px">
         ${esc(cat)}
-        <span class="pill p-bad">${brl(valor_cat)}</span>
-        <span class="mut" style="font-size:11px">${items.length} item(ns)</span>
+        <span class="pill p-ok">${brl(valor_pago)} pago</span>
+        ${pagos<items.length?`<span class="pill p-warn">${items.length-pagos} pendente</span>`:''}
+        ${vencidos?`<span class="pill p-bad">${vencidos} vencido</span>`:''}
       </summary>
       <div style="padding:8px;background:var(--bg3);border-radius:4px;margin-top:4px">
-        ${items.sort((a,b)=>b.data.localeCompare(a.data)).map(d=>`
-          <div class="alertline" style="background:${d.pago?'var(--ok-soft)':'var(--bad-soft)'};margin-bottom:6px">
-            <input type="checkbox" onchange="selTog('d','${d.id}',this.checked)" ${selDesp.has(d.id)?'checked':''} style="width:auto">
+        ${items.sort((a,b)=>b.data.localeCompare(a.data)).map(d=>{
+          const venc=d.data<hoje_str;
+          const bg=d.pago?'var(--ok-soft)':venc?'var(--bad-soft)':'var(--warn-soft)';
+          return `<div class="alertline" style="background:${bg};margin-bottom:6px">
+            <input type="checkbox" ${d.pago?'disabled':''}  onchange="selTog('d','${d.id}',this.checked)" ${selDesp.has(d.id)?'checked':''} style="width:auto">
             <div style="flex:1;font-size:12px">
-              <div><strong>${esc(d.item)}</strong><span class="mut" style="font-size:10px;margin-left:6px">${esc(d.categoria)}</span></div>
-              <div class="mut">${dbr(d.data)} ${d.pago?'✅ Pago':'⏳ Pendente'}</div>
+              <div><strong>${dbr(d.data)}</strong> ${d.pago?'🟢 Pago':venc?'🔴 Vencido':'🟡 Pendente'}</div>
+              <div class="mut">${esc(d.item)} · ${esc(d.categoria)}</div>
             </div>
             <div style="text-align:right">
               <div>${brl(d.valor)}</div>
             </div>
-            <button class="mini gold" onclick="marcaDespesaPago('${d.id}',${!d.pago})">${d.pago?'↩️ Desfazer':'✅ Pagar'}</button>
             <button class="mini gold" onclick="editaDespesa('${d.id}')">✏️</button>
-            <button class="mini sec" onclick="deletaDespesa('${d.id}')">✕</button>
-          </div>
-        `).join('')}
+            <button class="mini ${d.pago?'sec':'gold'}" onclick="marcaDespesaPago('${d.id}',${!d.pago})">
+              ${d.pago?'Desfazer':'Pago'}
+            </button>
+          </div>`;
+        }).join('')}
       </div>
     </details>`;
   }).join('')}
