@@ -2690,11 +2690,10 @@ function tFinBalancoConsolidado(filtReceb,filtMens,filtDesp){
 }
 function tFinConsolidado(){
   const mesAtual=hoje().slice(0,7);
-  const anoAtual=hoje().slice(0,4);
-  const anoFilter=subState.finAnoFilter||anoAtual;
+  const anoFilter=subState.finAnoFilter||'2026';
   const mesFilter=subState.finMesFilter||'';
 
-  const filtroAtivo=anoFilter!==anoAtual || mesFilter!=='';
+  const filtroAtivo=anoFilter!=='2026' || mesFilter!=='';
 
   // Filtrar dados por ano, e opcionalmente por mês
   const filtro=item=>{
@@ -2732,7 +2731,7 @@ function tFinConsolidado(){
       <strong>Mês:</strong>
       <input type="month" value="${mesFilter}" onchange="subState.finMesFilter=this.value;renderTab()" style="max-width:140px">
     </div>
-    ${filtroAtivo?`<button class="mini sec" onclick="subState.finAnoFilter='${anoAtual}';subState.finMesFilter='';renderTab()">Limpar</button>`:''}
+    ${filtroAtivo?`<button class="mini sec" onclick="subState.finAnoFilter='2026';subState.finMesFilter='';renderTab()">Limpar</button>`:''}
   </div>
   <div class="grid g4" style="margin-bottom:12px">
     <div class="card stat"><div class="n" style="color:var(--ok)">${brl(totalRec)}</div><div class="l">Receitas</div></div>
