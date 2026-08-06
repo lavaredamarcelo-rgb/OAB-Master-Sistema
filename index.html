@@ -252,7 +252,7 @@ async function carregaTudo(){
   db.lotes=lotes.map(l=>({id:l.id,nomeArquivo:l.nome_arquivo,versao:l.versao,hash:l.hash_arquivo,dataImport:fdt(l.data_import),dataAtualizacao:l.data_atualizacao?fdt(l.data_atualizacao):'',status:l.status,totalCobracas:l.total_cobracas||0,totalDespesas:l.total_despesas||0,totalEntrada:l.total_entrada||0,totalSaida:l.total_saida||0,notas:l.notas||'',autor:l.autor||'',lotePosteriorId:l.lote_anterior_id||''}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,origem:c.origem||'',lote:c.origem_lote||'',importLoteId:c.import_lote_id||'',tipoLancamento:c.tipo_lancamento||'manual',consolidado:c.consolidado||false}));
-  db.balanco=balancorec.map(r=>({id:r.id,data:String(r.data),tipo:r.tipo,descricao:r.descricao,valor:r.valor,origem:r.origem||'',cobrancaId:r.cobranca_id||'',autor:r.autor||'',quando:fdt(r.quando)}));
+  db.balanco=balancorec.map(r=>({id:r.id,data:String(r.data),tipo:r.tipo,descricao:r.descricao,valor:r.valor,origem:r.origem||'',cobrancaId:r.cobranca_id||'',autor:r.autor||'',quando:fdt(r.quando),pago:r.pago||false}));
   db.unifHist=unifhist.map(h=>({id:h.id,uniformeId:h.uniforme_id,numero:h.numero,acao:h.acao,atletaId:h.atleta_id||'',nomeConvidado:h.nome_convidado||'',data:String(h.data),notas:h.notas||'',quem:h.quem||'',quando:fdt(h.quando)}));
   const eu=at(me.id); if(eu)me=Object.assign(eu,{});
 }
