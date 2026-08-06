@@ -247,7 +247,7 @@ async function carregaTudo(){
   const {data:pats}=await sb.from('patrocinadores').select('*').order('ordem').order('nome');
   db.pats=pats||[];
   const {data:desps}=await sb.from('despesas').select('*').order('data',{ascending:false});
-  db.despesas=(desps||[]).map(d=>({id:d.id,data:String(d.data),item:d.item,categoria:d.categoria,qtd:d.qtd,valor:d.valor,fornecedor:d.fornecedor,obs:d.obs,reciboPath:d.recibo_path,quem:d.quem,origem:d.origem||'',lote:d.origem_lote||'',importLoteId:d.import_lote_id||'',tipoLancamento:d.tipo_lancamento||'manual'}));
+  db.despesas=(desps||[]).map(d=>({id:d.id,data:String(d.data),item:d.item,categoria:d.categoria,qtd:d.qtd,valor:d.valor,fornecedor:d.fornecedor,obs:d.obs,reciboPath:d.recibo_path,quem:d.quem,origem:d.origem||'',lote:d.origem_lote||'',importLoteId:d.import_lote_id||'',tipoLancamento:d.tipo_lancamento||'manual',pago:d.pago||false,dataPagamento:d.data_pagamento?String(d.data_pagamento):null}));
   db.config={time:cfg.time_nome,pix:cfg.pix,grupo:cfg.grupo,limiteFaltas:cfg.limite_faltas||0,encarregado:cfg.encarregado,encContato:cfg.enc_contato,codigo:cfg.codigo_time,docsObrig:cfg.docs_obrigatorios||[],mensAuto:cfg.mensalidade_auto!==false,mensValor:cfg.mensalidade_valor||130,mensApos:cfg.mensalidade_valor_apos||150,mensDia:cfg.mensalidade_dia||10,avulsoValor:cfg.avulso_valor||30,saldoIni:Number(cfg.saldo_inicial)||0,saldoIniObs:cfg.saldo_inicial_obs||''};
   db.lotes=lotes.map(l=>({id:l.id,nomeArquivo:l.nome_arquivo,versao:l.versao,hash:l.hash_arquivo,dataImport:fdt(l.data_import),dataAtualizacao:l.data_atualizacao?fdt(l.data_atualizacao):'',status:l.status,totalCobracas:l.total_cobracas||0,totalDespesas:l.total_despesas||0,totalEntrada:l.total_entrada||0,totalSaida:l.total_saida||0,notas:l.notas||'',autor:l.autor||'',lotePosteriorId:l.lote_anterior_id||''}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
@@ -2141,6 +2141,14 @@ async function marcaReceitaPago(id,pago){
   renderTab();
   toast(pago?'✅ Marcado como pago':'↩️ Marcado como pendente');
 }
+async function marcaDespesaPago(id,pago){
+  const dataPagamento=pago?hoje():null;
+  await q(sb.from('despesas').update({pago,data_pagamento:dataPagamento}).eq('id',id));
+  const item=db.despesas.find(d=>d.id===id);
+  if(item){item.pago=pago;item.dataPagamento=dataPagamento;}
+  renderTab();
+  toast(pago?'✅ Despesa marcada como paga':'↩️ Despesa marcada como pendente');
+}
 function sel(tipo,id,checked){
   if(tipo==='Rec') checked?selRec.add(id):selRec.delete(id);
   // Atualiza barra de seleção sem render completo
@@ -2213,6 +2221,7 @@ async function salvaEdicaoDespesa(id){
 function tFinBalancoDesp(){
   const despesas=db.despesas||[];
   const total=despesas.reduce((s,d)=>s+Number(d.valor),0);
+  const pagoDes=despesas.filter(d=>d.pago).reduce((s,d)=>s+Number(d.valor),0);
 
   // Agrupar por categoria
   const grupos={};
@@ -2231,6 +2240,7 @@ function tFinBalancoDesp(){
   </div>
   <div style="margin:12px 0;font-size:13px">
     <div class="spread"><span>Total de despesas:</span><strong style="color:var(--bad)">${brl(total)}</strong></div>
+    <div class="spread"><span>Despesas pagas:</span><strong style="color:var(--ok)">${brl(pagoDes)}</strong></div>
   </div>
   <div id="selbar_d" class="alertline al-bad sect" style="display:${selDesp.size?'flex':'none'};align-items:center">🗑 <strong><span id="selct_d">${selDesp.size}</span> selecionada(s)</strong><span style="flex:1"></span><button class="bad mini" onclick="delSelDesp()">Excluir selecionadas</button><button class="mini sec" onclick="selDesp.clear();renderTab()">Limpar</button></div>
 
@@ -2247,15 +2257,16 @@ function tFinBalancoDesp(){
       </summary>
       <div style="padding:8px;background:var(--bg3);border-radius:4px;margin-top:4px">
         ${items.sort((a,b)=>b.data.localeCompare(a.data)).map(d=>`
-          <div class="alertline" style="background:var(--bad-soft);margin-bottom:6px">
+          <div class="alertline" style="background:${d.pago?'var(--ok-soft)':'var(--bad-soft)'};margin-bottom:6px">
             <input type="checkbox" onchange="selTog('d','${d.id}',this.checked)" ${selDesp.has(d.id)?'checked':''} style="width:auto">
             <div style="flex:1;font-size:12px">
               <div><strong>${esc(d.item)}</strong><span class="mut" style="font-size:10px;margin-left:6px">${esc(d.categoria)}</span></div>
-              <div class="mut">${dbr(d.data)}</div>
+              <div class="mut">${dbr(d.data)} ${d.pago?'✅ Pago':'⏳ Pendente'}</div>
             </div>
             <div style="text-align:right">
               <div>${brl(d.valor)}</div>
             </div>
+            <button class="mini gold" onclick="marcaDespesaPago('${d.id}',${!d.pago})">${d.pago?'↩️ Desfazer':'✅ Pagar'}</button>
             <button class="mini gold" onclick="editaDespesa('${d.id}')">✏️</button>
             <button class="mini sec" onclick="deletaDespesa('${d.id}')">✕</button>
           </div>
