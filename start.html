@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>OAB/PA Master - Iniciando...</title>
+</head>
+<body style="font-family: system-ui; padding: 40px; text-align: center; background: #f5f5f5;">
+
+<h1>🔄 OAB/PA Master</h1>
+<p>Limpando cache e iniciando o sistema...</p>
+<div id="status" style="margin-top: 20px; font-size: 14px; color: #666;"></div>
+
+<script>
+async function init() {
+  const log = (msg) => {
+    console.log(msg);
+    document.getElementById('status').innerHTML += msg + '<br>';
+  };
+
+  try {
+    log('1️⃣ Limpando localStorage...');
+    localStorage.clear();
+
+    log('2️⃣ Limpando sessionStorage...');
+    sessionStorage.clear();
+
+    log('3️⃣ Desregistrando Service Workers...');
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) {
+        await reg.unregister();
+        log(`   ✅ Service Worker desregistrado`);
+      }
+    }
+
+    log('4️⃣ Limpando cache do navegador...');
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      for (const cacheName of cacheNames) {
+        await caches.delete(cacheName);
+        log(`   ✅ Cache "${cacheName}" deletado`);
+      }
+    }
+
+    log('5️⃣ Carregando sistema original...');
+    // Aguarda um pouco para garantir que tudo foi limpo
+    await new Promise(r => setTimeout(r, 1000));
+
+    // Redireciona para o index original com versioning para evitar cache
+    window.location.href = '/index.html?v=' + Date.now();
+
+  } catch (err) {
+    log('❌ Erro: ' + err.message);
+    document.getElementById('status').innerHTML += '<br><strong>Tente fazer: Ctrl+Shift+Delete (limpar cache do navegador)</strong><br>Depois atualize a página.';
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>

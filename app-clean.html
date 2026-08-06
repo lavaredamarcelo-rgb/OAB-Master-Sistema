@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OAB/PA Master — Sistema Limpo</title>
+<script>
+// Limpar TUDO antes de carregar qualquer coisa
+localStorage.clear();
+sessionStorage.clear();
+if('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(reg => reg.unregister());
+  });
+}
+console.log('✅ Cache e localStorage limpos');
+</script>
+</head>
+<body>
+
+<h1>Limpando cache...</h1>
+<p>Aguarde, o sistema original está sendo carregado...</p>
+
+<script>
+setTimeout(() => {
+  // Agora carrega o HTML original
+  fetch('/index-original.html')
+    .then(r => r.text())
+    .then(html => {
+      document.documentElement.innerHTML = html;
+      console.log('✅ Sistema original carregado!');
+    })
+    .catch(err => {
+      document.body.innerHTML = '<h2>❌ Erro ao carregar:</h2><p>' + err.message + '</p>';
+    });
+}, 500);
+</script>
+
+</body>
+</html>
