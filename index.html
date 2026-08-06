@@ -2692,22 +2692,30 @@ function tFinConsolidado(){
   const mesAtual=hoje().slice(0,7);
   const anoAtual=hoje().slice(0,4);
   const anoFilter=subState.finAnoFilter||anoAtual;
-  const mesFilter=subState.finMesFilter||(anoFilter===anoAtual?mesAtual:anoFilter+'-01');
+  const mesFilter=subState.finMesFilter||'';
 
-  const filtroAtivo=anoFilter!==anoAtual || mesFilter.slice(0,7)!==mesAtual;
+  const filtroAtivo=anoFilter!==anoAtual || mesFilter!=='';
+
+  // Filtrar dados por ano, e opcionalmente por mês
+  const filtro=item=>{
+    const data=item.data||item.venc;
+    if(!data.startsWith(anoFilter)) return false;
+    if(mesFilter) return data.startsWith(mesFilter);
+    return true;
+  };
 
   // Receitas
-  const receitas=db.balanco.filter(r=>r.data.startsWith(mesFilter)).sort((a,b)=>b.data.localeCompare(a.data));
+  const receitas=db.balanco.filter(filtro).sort((a,b)=>b.data.localeCompare(a.data));
   const totalRec=receitas.reduce((s,r)=>s+Number(r.valor),0);
   const pagoRec=receitas.filter(r=>r.pago).reduce((s,r)=>s+Number(r.valor),0);
 
   // Cobranças como Mensalidades
-  const mensalidades=db.cobrancas.filter(c=>c.venc.startsWith(mesFilter)).sort((a,b)=>b.venc.localeCompare(a.venc));
+  const mensalidades=db.cobrancas.filter(filtro).sort((a,b)=>b.venc.localeCompare(a.venc));
   const totalMen=mensalidades.reduce((s,c)=>s+Number(valorDe(c)),0);
   const pagoMen=mensalidades.filter(c=>c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
 
   // Despesas
-  const despesas=db.despesas.filter(d=>d.data.startsWith(mesFilter)).sort((a,b)=>b.data.localeCompare(a.data));
+  const despesas=db.despesas.filter(filtro).sort((a,b)=>b.data.localeCompare(a.data));
   const totalDes=despesas.reduce((s,d)=>s+Number(d.valor),0);
 
   const saldo=(totalRec+totalMen)-totalDes;
@@ -2716,15 +2724,15 @@ function tFinConsolidado(){
   <div class="row" style="margin-bottom:12px;gap:8px;align-items:center;flex-wrap:wrap">
     <div style="display:flex;gap:8px;align-items:center">
       <strong>Ano:</strong>
-      <select onchange="subState.finAnoFilter=this.value;subState.finMesFilter=null;renderTab()" style="max-width:100px">
-        ${[anoAtual-2,anoAtual-1,anoAtual,anoAtual+1].map(a=>`<option value="${a}" ${a===anoFilter?'selected':''}>${a}</option>`).join('')}
+      <select onchange="subState.finAnoFilter=this.value;subState.finMesFilter='';renderTab()" style="max-width:100px">
+        ${[2024,2025,2026].map(a=>`<option value="${String(a)}" ${String(a)===anoFilter?'selected':''}>${a}</option>`).join('')}
       </select>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <strong>Mês:</strong>
       <input type="month" value="${mesFilter}" onchange="subState.finMesFilter=this.value;renderTab()" style="max-width:140px">
     </div>
-    ${filtroAtivo?`<button class="mini sec" onclick="subState.finAnoFilter=null;subState.finMesFilter=null;renderTab()">Limpar</button>`:''}
+    ${filtroAtivo?`<button class="mini sec" onclick="subState.finAnoFilter='${anoAtual}';subState.finMesFilter='';renderTab()">Limpar</button>`:''}
   </div>
   <div class="grid g4" style="margin-bottom:12px">
     <div class="card stat"><div class="n" style="color:var(--ok)">${brl(totalRec)}</div><div class="l">Receitas</div></div>
