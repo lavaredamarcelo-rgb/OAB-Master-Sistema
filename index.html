@@ -1903,110 +1903,118 @@ function tFinBalanco(){
 function tFinBalancoRec(){
   const receitas=db.balanco||[];
   const hoje_str=hoje();
+  const totalPago=receitas.filter(r=>r.pago).reduce((s,r)=>s+Number(r.valor),0);
+  const totalPendente=receitas.filter(r=>!r.pago).reduce((s,r)=>s+Number(r.valor),0);
 
-  // Agrupar por descrição e calcular totais
+  // Agrupar por descrição
   const grupos={};
   receitas.forEach(r=>{
-    if(!grupos[r.descricao]) grupos[r.descricao]={itens:[],totalPago:0,totalPendente:0};
-    grupos[r.descricao].itens.push(r);
-    if(r.pago) grupos[r.descricao].totalPago+=Number(r.valor);
-    else grupos[r.descricao].totalPendente+=Number(r.valor);
+    if(!grupos[r.descricao]) grupos[r.descricao]=[];
+    grupos[r.descricao].push(r);
   });
 
-  // Ordenar alfabeticamente
   const descricoes=Object.keys(grupos).sort();
-  const total=receitas.reduce((s,r)=>s+(r.pago?Number(r.valor):0),0);
-
-  const statusItem=(data,pago)=>{
-    if(pago) return '🟢 Pago';
-    if(data<hoje_str) return '🔴 Vencido';
-    return '🟡 Pendente';
-  };
 
   return `<div class="card sect">
-  <div class="spread" style="margin-bottom:12px"><h2 style="margin:0">💵 Receitas (Agrupadas)</h2><span class="pill p-ok">${brl(total)}</span></div>
-
-  <div id="receitasAgrupadas" style="display:flex;flex-direction:column;gap:8px">
-  ${descricoes.map(desc=>{
-    const g=grupos[desc];
-    const pagos=g.itens.filter(r=>r.pago).length;
-    const total_itens=g.itens.length;
-    return `
-    <div class="alertline" style="cursor:pointer" onclick="abreDetalhesReceita('${esc(desc)}')">
-      <div style="flex:1">
-        <strong>${esc(desc)}</strong>
-        <div class="mut">${pagos}/${total_itens} pagos</div>
-      </div>
-      <div style="text-align:right">
-        <strong>${brl(g.totalPago)}</strong>
-        <div class="mut">${brl(g.totalPendente)} pendente</div>
-      </div>
-    </div>
-    `;
-  }).join('')}
-  </div>
-
-  <div class="row" style="margin-top:12px;gap:8px">
+  <div class="spread" style="margin-bottom:12px"><h2 style="margin:0">💵 Receitas</h2></div>
+  <div class="row sect">
     <button class="mini" onclick="abreLancadorReceita()">➕ Lançar receita</button>
     <button class="gold mini" onclick="lancadorRecorrenteReceita()">🔄 Recorrente</button>
   </div>
-  </div>`;
-}
-
-function abreDetalhesReceita(descricao){
-  const receitas=db.balanco||[];
-  const itens=receitas.filter(r=>r.descricao===descricao).sort((a,b)=>a.data.localeCompare(b.data));
-  const hoje_str=hoje();
-
-  const statusItem=(data,pago)=>{
-    if(pago) return '🟢 Pago';
-    if(data<hoje_str) return '🔴 Vencido';
-    return '🟡 Pendente';
-  };
-
-  const html=`<h2>${esc(descricao)}</h2>
-  <div style="max-height:400px;overflow-y:auto">
-  ${itens.map(r=>`
-    <div class="alertline" style="margin-bottom:8px">
-      <div style="flex:1">
-        <div><strong>${dbr(r.data)}</strong> <span class="mut">${statusItem(r.data,r.pago)}</span></div>
-        <div class="mut">${brl(r.valor)}</div>
-      </div>
-      <button class="mini ${r.pago?'':'gold'}" onclick="marcaReceitaPago('${r.id}',${!r.pago}); abreDetalhesReceita('${esc(descricao)}')">
-        ${r.pago?'✓ Desfazer':'Marcar Pago'}
-      </button>
-    </div>
-  `).join('')}
+  <div style="margin:12px 0;font-size:13px">
+    <div class="spread"><span>Total pago:</span><strong>${brl(totalPago)}</strong></div>
+    <div class="spread"><span>Total pendente:</span><strong style="color:var(--warn)">${brl(totalPendente)}</strong></div>
   </div>
-  <div class="row" style="margin-top:14px"><button class="sec" onclick="fecha()">Fechar</button></div>`;
 
-  modal(html);
+  ${descricoes.map(desc=>{
+    const items=grupos[desc];
+    const pagos=items.filter(r=>r.pago).length;
+    const valor_pago=items.filter(r=>r.pago).reduce((s,r)=>s+Number(r.valor),0);
+    const vencidos=items.filter(r=>!r.pago&&r.data<hoje_str).length;
+    return `<details>
+      <summary style="cursor:pointer;font-weight:bold;padding:8px;background:var(--bg2);border-radius:4px">
+        ${esc(desc)}
+        <span class="pill p-ok">${brl(valor_pago)} pago</span>
+        ${pagos<items.length?`<span class="pill p-warn">${items.length-pagos} pendente</span>`:''}
+        ${vencidos?`<span class="pill p-bad">${vencidos} vencido</span>`:''}
+      </summary>
+      <div style="padding:8px;background:var(--bg3);border-radius:4px;margin-top:4px">
+        ${items.sort((a,b)=>b.data.localeCompare(a.data)).map(r=>{
+          const venc=r.data<hoje_str;
+          const bg=r.pago?'var(--ok-soft)':venc?'var(--bad-soft)':'var(--bg3)';
+          return `<div class="alertline" style="background:${bg};margin-bottom:6px">
+            <div style="flex:1;font-size:12px">
+              <div><strong>${dbr(r.data)}</strong> ${r.pago?'🟢 Pago':venc?'🔴 Vencido':'🟡 Pendente'}</div>
+            </div>
+            <div style="text-align:right">
+              <div>${brl(r.valor)}</div>
+            </div>
+            <button class="mini ${r.pago?'sec':'gold'}" onclick="marcaReceitaPago('${r.id}',${!r.pago})">
+              ${r.pago?'Desfazer':'Pagar'}
+            </button>
+          </div>`;
+        }).join('')}
+      </div>
+    </details>`;
+  }).join('')}
+  </div>`;
 }
 
 async function marcaReceitaPago(id,pago){
   await q(sb.from('balanco_receitas').update({pago}).eq('id',id));
   await recarrega();
-  toast(pago?'Marcado como pago':'Marcado como pendente');
+  toast(pago?'✅ Marcado como pago':'↩️ Marcado como pendente');
 }
 function tFinBalancoDesp(){
-  const despesas=db.despesas.sort((a,b)=>b.data.localeCompare(a.data));
+  const despesas=db.despesas||[];
   const total=despesas.reduce((s,d)=>s+Number(d.valor),0);
 
-  setTimeout(ligaCheckboxesDespesas,10);
+  // Agrupar por categoria
+  const grupos={};
+  despesas.forEach(d=>{
+    if(!grupos[d.categoria]) grupos[d.categoria]=[];
+    grupos[d.categoria].push(d);
+  });
+
+  const categorias=Object.keys(grupos).sort();
 
   return `<div class="card sect">
-  <div class="spread" style="margin-bottom:12px"><h2 style="margin:0">💸 Despesas do Período</h2><span class="pill p-bad">${brl(total)}</span></div>
-
-  ${despesas.length?`<div class="tblwrap" id="despesasTabela"><table style="font-size:13px">
-  <tr><th style="width:24px"></th><th>Data</th><th>Item</th><th>Categoria</th><th>Valor</th><th style="width:40px"></th></tr>
-  ${despesas.map(d=>`<tr><td><input type="checkbox" class="despCheck" data-id="${d.id}" style="width:auto"></td><td>${dbr(d.data)}</td><td><strong>${esc(d.item)}</strong></td><td><span class="pill p-mut">${esc(d.categoria)}</span></td><td>${brl(d.valor)}</td><td><button class="mini sec" onclick="deletaDespesa('${d.id}')">✕</button></td></tr>`).join('')}
-  </table></div>
-  <div class="row" style="margin-top:8px;gap:8px"><button class="mini bad" id="delDesSel" style="display:none" onclick="delDespesasSelecionadas()">🗑️ Deletar selecionadas</button></div>`:'<p class="mut">Sem despesas registradas.</p>'}
-
-  <div class="row" style="margin-top:12px;gap:8px">
+  <div class="spread" style="margin-bottom:12px"><h2 style="margin:0">💸 Despesas</h2></div>
+  <div class="row sect">
     <button class="mini" onclick="abreLancadorDespesa()">➕ Lançar despesa</button>
     <button class="gold mini" onclick="lancadorRecorrenteDespesa()">🔄 Recorrente</button>
   </div>
+  <div style="margin:12px 0;font-size:13px">
+    <div class="spread"><span>Total de despesas:</span><strong style="color:var(--bad)">${brl(total)}</strong></div>
+  </div>
+
+  ${categorias.length===0?'<p class="mut">Nenhuma despesa registrada.</p>':''}
+
+  ${categorias.map(cat=>{
+    const items=grupos[cat];
+    const valor_cat=items.reduce((s,d)=>s+Number(d.valor),0);
+    return `<details>
+      <summary style="cursor:pointer;font-weight:bold;padding:8px;background:var(--bg2);border-radius:4px">
+        ${esc(cat)}
+        <span class="pill p-bad">${brl(valor_cat)}</span>
+        <span class="mut" style="font-size:11px">${items.length} item(ns)</span>
+      </summary>
+      <div style="padding:8px;background:var(--bg3);border-radius:4px;margin-top:4px">
+        ${items.sort((a,b)=>b.data.localeCompare(a.data)).map(d=>`
+          <div class="alertline" style="background:var(--bg3);margin-bottom:6px">
+            <div style="flex:1;font-size:12px">
+              <div><strong>${esc(d.item)}</strong></div>
+              <div class="mut">${dbr(d.data)}</div>
+            </div>
+            <div style="text-align:right">
+              <div>${brl(d.valor)}</div>
+            </div>
+            <button class="mini sec" onclick="deletaDespesa('${d.id}')">✕</button>
+          </div>
+        `).join('')}
+      </div>
+    </details>`;
+  }).join('')}
   </div>`;
 }
 /* ---- Lançadores de Balanço ---- */
