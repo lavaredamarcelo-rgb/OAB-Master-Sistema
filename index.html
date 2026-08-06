@@ -1881,19 +1881,43 @@ function tFin(){
 }
 function tFinBalanco(){
   const subB=subState.finSubTab||'r';
-  const receitas=db.balanco.filter(r=>r.data>=hoje().slice(0,7)+'-01'&&r.data<=hoje());
-  const despesas=db.despesas.filter(d=>d.data>=hoje().slice(0,7)+'-01'&&d.data<=hoje());
-  const totalRec=receitas.reduce((s,r)=>s+Number(r.valor),0);
-  const totalDesp=despesas.reduce((s,d)=>s+Number(d.valor),0);
-  const saldo=totalRec-totalDesp;
+  const ano=new Date().getFullYear();
+  const mesAtual=hoje().slice(0,7);
+
+  // Mensais (até hoje)
+  const receitasMes=db.balanco.filter(r=>r.data>=mesAtual+'-01'&&r.data<=hoje());
+  const despesasMes=db.despesas.filter(d=>d.data>=mesAtual+'-01'&&d.data<=hoje());
+  const totalRecMes=receitasMes.reduce((s,r)=>s+Number(r.valor),0);
+  const totalDesMes=despesasMes.reduce((s,d)=>s+Number(d.valor),0);
+  const saldoMes=totalRecMes-totalDesMes;
+
+  // Anuais (jan-dez do ano atual)
+  const receitasAno=db.balanco.filter(r=>r.data.startsWith(ano));
+  const despesasAno=db.despesas.filter(d=>d.data.startsWith(ano));
+  const totalRecAno=receitasAno.reduce((s,r)=>s+Number(r.valor),0);
+  const totalDesAno=despesasAno.reduce((s,d)=>s+Number(d.valor),0);
+  const saldoAno=totalRecAno-totalDesAno;
 
   return `<div class="sect">
-  <div class="grid g3">
-    <div class="card stat"><div class="n" style="color:var(--ok)">${brl(totalRec)}</div><div class="l">Receitas (mês)</div></div>
-    <div class="card stat"><div class="n" style="color:var(--bad)">${brl(totalDesp)}</div><div class="l">Despesas (mês)</div></div>
-    <div class="card stat" style="background:${saldo>=0?'var(--ok-soft)':'var(--bad-soft)'}"><div class="n" style="color:${saldo>=0?'var(--ok)':'var(--bad)'}">${brl(saldo)}</div><div class="l">Saldo</div></div>
+  <div style="margin-bottom:16px">
+    <div class="mut" style="font-size:12px;margin-bottom:6px;font-weight:bold">📅 MÊS ATUAL (${mesAtual})</div>
+    <div class="grid g3">
+      <div class="card stat"><div class="n" style="color:var(--ok)">${brl(totalRecMes)}</div><div class="l">Receitas (mês)</div></div>
+      <div class="card stat"><div class="n" style="color:var(--bad)">${brl(totalDesMes)}</div><div class="l">Despesas (mês)</div></div>
+      <div class="card stat" style="background:${saldoMes>=0?'var(--ok-soft)':'var(--bad-soft)'}"><div class="n" style="color:${saldoMes>=0?'var(--ok)':'var(--bad)'}">${brl(saldoMes)}</div><div class="l">Saldo (mês)</div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="mut" style="font-size:12px;margin-bottom:6px;font-weight:bold">📊 ANO ATUAL (${ano})</div>
+    <div class="grid g3">
+      <div class="card stat"><div class="n" style="color:var(--ok)">${brl(totalRecAno)}</div><div class="l">Receitas (ano)</div></div>
+      <div class="card stat"><div class="n" style="color:var(--bad)">${brl(totalDesAno)}</div><div class="l">Despesas (ano)</div></div>
+      <div class="card stat" style="background:${saldoAno>=0?'var(--ok-soft)':'var(--bad-soft)'}"><div class="n" style="color:${saldoAno>=0?'var(--ok)':'var(--bad)'}">${brl(saldoAno)}</div><div class="l">Saldo (ano)</div></div>
+    </div>
   </div>
   </div>
+
   <div class="tabbtns" style="margin:12px 0">
     <button class="${subB==='r'?'on':''}" onclick="subState.finSubTab='r';renderTab()">💵 Receitas</button>
     <button class="${subB==='d'?'on':''}" onclick="subState.finSubTab='d';renderTab()">💸 Despesas</button>
@@ -1939,18 +1963,20 @@ function tFinBalancoRec(){
         ${vencidos?`<span class="pill p-bad">${vencidos} vencido</span>`:''}
       </summary>
       <div style="padding:8px;background:var(--bg3);border-radius:4px;margin-top:4px">
+        ${items.filter(r=>!r.pago).length>0?`<div class="row" style="margin-bottom:8px;gap:8px;font-size:12px"><button class="mini gold" onclick="pagaReceitasSelec('${desc}')">✓ Pagar selecionados</button><button class="mini sec" onclick="selRec.clear();renderTab()">Limpar</button></div>`:''}
         ${items.sort((a,b)=>b.data.localeCompare(a.data)).map(r=>{
           const venc=r.data<hoje_str;
           const bg=r.pago?'var(--ok-soft)':venc?'var(--bad-soft)':'var(--bg3)';
           return `<div class="alertline" style="background:${bg};margin-bottom:6px">
+            <input type="checkbox" ${r.pago?'disabled':''}  onchange="sel('Rec','${r.id}',this.checked)" ${selRec.has(r.id)?'checked':''} style="width:auto">
             <div style="flex:1;font-size:12px">
               <div><strong>${dbr(r.data)}</strong> ${r.pago?'🟢 Pago':venc?'🔴 Vencido':'🟡 Pendente'}</div>
             </div>
             <div style="text-align:right">
               <div>${brl(r.valor)}</div>
             </div>
-            <button class="mini ${r.pago?'sec':'gold'}" onclick="marcaReceitaPago('${r.id}',${!r.pago})">
-              ${r.pago?'Desfazer':'Pagar'}
+            <button class="mini ${r.pago?'sec':'gold'}" onclick="marcaReceitaPago('${r.id}',${!r.pago})" ${r.pago?'':'disabled'}>
+              ${r.pago?'Desfazer':'Pago'}
             </button>
           </div>`;
         }).join('')}
@@ -1966,6 +1992,21 @@ async function marcaReceitaPago(id,pago){
   if(item) item.pago=pago;
   renderTab();
   toast(pago?'✅ Marcado como pago':'↩️ Marcado como pendente');
+}
+function sel(tipo,id,checked){
+  if(tipo==='Rec') checked?selRec.add(id):selRec.delete(id);
+  renderTab();
+}
+async function pagaReceitasSelec(desc){
+  const items=[...selRec].map(id=>db.balanco.find(r=>r.id===id)).filter(Boolean);
+  if(!items.length){toast('Selecione itens para pagar');return;}
+  for(const item of items){
+    await q(sb.from('balanco_receitas').update({pago:true}).eq('id',item.id));
+    item.pago=true;
+  }
+  selRec.clear();
+  renderTab();
+  toast(`✅ ${items.length} receita(s) marcada(s) como paga(s)!`);
 }
 function tFinBalancoDesp(){
   const despesas=db.despesas||[];
@@ -2021,6 +2062,7 @@ function tFinBalancoDesp(){
 }
 /* ---- Lançadores de Balanço ---- */
 let receitasTemp=[];
+let selRec=new Set();
 function abreLancadorReceita(){
   receitasTemp=[];
   const html=`<h2>➕ Lançar Receitas (Múltiplas)</h2>
