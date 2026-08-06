@@ -1962,7 +1962,9 @@ function tFinBalancoRec(){
 
 async function marcaReceitaPago(id,pago){
   await q(sb.from('balanco_receitas').update({pago}).eq('id',id));
-  await recarrega();
+  const item=db.balanco.find(r=>r.id===id);
+  if(item) item.pago=pago;
+  renderTab();
   toast(pago?'✅ Marcado como pago':'↩️ Marcado como pendente');
 }
 function tFinBalancoDesp(){
