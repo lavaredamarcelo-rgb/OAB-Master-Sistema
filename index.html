@@ -656,10 +656,27 @@ function vai(t,push=true){ if(!NAV[me.role].includes(t))return; if(push&&t!==tab
 function voltar(){ if(!navHist.length)return; vai(navHist.pop(),false); }
 function renderTab(){
   if(!$('pgtitle'))return;
+  // Salva quais details estavam abertos
+  const detailsAbertos=new Set();
+  document.querySelectorAll('#content details').forEach(d=>{
+    if(d.open){
+      const summary=d.querySelector('summary')?.textContent?.trim();
+      if(summary) detailsAbertos.add(summary);
+    }
+  });
+
   $('pgtitle').textContent=NAVLBL[tab][1];
   const bk=$('btn_back'); if(bk)bk.style.display=navHist.length?'':'none';
   const R={painel:tPainel,atletas:tAtletas,docs:tDocs,saude:tSaude,avaliacao:tAval,desempenho:tDesemp,taticas:tTaticas,agenda:tAgenda,presencas:tPres,financeiro:tFin,uniformes:tUni,lgpd:tLGPD,ajustes:tAjustes,meu:tMeu};
   $('content').innerHTML=R[tab]();
+
+  // Reabra os details que estavam abertos
+  setTimeout(()=>{
+    document.querySelectorAll('#content details').forEach(d=>{
+      const summary=d.querySelector('summary')?.textContent?.trim();
+      if(summary && detailsAbertos.has(summary)) d.open=true;
+    });
+  },0);
 }
 
 /* ================= PENDÊNCIAS / ALERTAS ================= */
@@ -1949,6 +1966,7 @@ function tFinBalancoRec(){
     <div class="spread"><span>Total pago:</span><strong>${brl(totalPago)}</strong></div>
     <div class="spread"><span>Total pendente:</span><strong style="color:var(--warn)">${brl(totalPendente)}</strong></div>
   </div>
+  <div id="selbar_r" class="alertline al-bad sect" style="display:${selRec.size?'flex':'none'};align-items:center">✓ <strong><span id="selct_r">${selRec.size}</span> selecionado(s)</strong><span style="flex:1"></span><button class="mini gold" onclick="pagaReceitasSelec()">Pagar selecionados</button><button class="mini sec" onclick="selRec.clear();renderTab()">Limpar</button></div>
 
   ${descricoes.map(desc=>{
     const items=grupos[desc];
@@ -1963,7 +1981,6 @@ function tFinBalancoRec(){
         ${vencidos?`<span class="pill p-bad">${vencidos} vencido</span>`:''}
       </summary>
       <div style="padding:8px;background:var(--bg3);border-radius:4px;margin-top:4px">
-        ${items.filter(r=>!r.pago).length>0?`<div class="row" style="margin-bottom:8px;gap:8px;font-size:12px"><button class="mini gold" onclick="pagaReceitasSelec('${desc}')">✓ Pagar selecionados</button><button class="mini sec" onclick="selRec.clear();renderTab()">Limpar</button></div>`:''}
         ${items.sort((a,b)=>b.data.localeCompare(a.data)).map(r=>{
           const venc=r.data<hoje_str;
           const bg=r.pago?'var(--ok-soft)':venc?'var(--bad-soft)':'var(--bg3)';
@@ -1976,7 +1993,7 @@ function tFinBalancoRec(){
               <div>${brl(r.valor)}</div>
             </div>
             <button class="mini gold" onclick="editaReceita('${r.id}')">✏️</button>
-            <button class="mini ${r.pago?'sec':'gold'}" onclick="marcaReceitaPago('${r.id}',${!r.pago})" ${r.pago?'':'disabled'}>
+            <button class="mini ${r.pago?'sec':'gold'}" onclick="marcaReceitaPago('${r.id}',${!r.pago})">
               ${r.pago?'Desfazer':'Pago'}
             </button>
           </div>`;
@@ -1996,9 +2013,13 @@ async function marcaReceitaPago(id,pago){
 }
 function sel(tipo,id,checked){
   if(tipo==='Rec') checked?selRec.add(id):selRec.delete(id);
-  renderTab();
+  // Atualiza barra de seleção sem render completo
+  const el=$('selbar_r');
+  if(el) el.style.display=selRec.size?'flex':'none';
+  const ct=$('selct_r');
+  if(ct) ct.textContent=selRec.size;
 }
-async function pagaReceitasSelec(desc){
+async function pagaReceitasSelec(){
   const items=[...selRec].map(id=>db.balanco.find(r=>r.id===id)).filter(Boolean);
   if(!items.length){toast('Selecione itens para pagar');return;}
   for(const item of items){
