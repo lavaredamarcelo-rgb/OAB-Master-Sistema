@@ -2267,12 +2267,13 @@ function abreLancadorReceita(){
 function adicionaReceitaTemp(){
   const data=fval('lr_data'),tipo=fval('lr_tipo'),fornec=fval('lr_fornecedor'),quem=fval('lr_quem'),valor=Number(fval('lr_valor'))||0;
   if(!data||!tipo||!fornec||!quem||valor<=0){toast('Preencha todos os campos');return;}
-  receitasTemp.push({data,tipo,descricao:fornec,valor,quem_forneceu:quem,origem:'Lançamento manual'});
-  fval('lr_data',hoje());
-  fval('lr_tipo','patrocinio');
-  fval('lr_fornecedor','');
-  fval('lr_quem','');
-  fval('lr_valor','');
+  receitasTemp.push({data,tipo,descricao:fornec,valor});
+  // Reseta os campos
+  $('lr_data').value=hoje();
+  $('lr_tipo').value='patrocinio';
+  $('lr_fornecedor').value='';
+  $('lr_quem').value='';
+  $('lr_valor').value='';
   atualizaListaReceitasTemp();
   toast('Receita adicionada!');
 }
