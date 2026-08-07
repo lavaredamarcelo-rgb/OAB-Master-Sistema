@@ -2155,16 +2155,17 @@ function tFinBalancoRec(){
         ${items.sort((a,b)=>b.data.localeCompare(a.data)).map(r=>{
           const venc=r.data<hoje_str;
           const bg=r.pago?'var(--ok-soft)':venc?'var(--bad-soft)':'var(--bg3)';
-          return `<div class="alertline" style="background:${bg};margin-bottom:6px">
-            <input type="checkbox" ${r.pago?'disabled':''}  onchange="sel('Rec','${r.id}',this.checked)" ${selRec.has(r.id)?'checked':''} style="width:auto">
+          return `<div class="alertline" style="background:${bg};margin-bottom:6px;cursor:pointer" onclick="mostraDetalheReceita('${r.id}')">
+            <input type="checkbox" ${r.pago?'disabled':''}  onchange="sel('Rec','${r.id}',this.checked);event.stopPropagation()" ${selRec.has(r.id)?'checked':''} style="width:auto">
             <div style="flex:1;font-size:12px">
               <div><strong>${dbr(r.data)}</strong> ${r.pago?'🟢 Pago':venc?'🔴 Vencido':'🟡 Pendente'}</div>
+              <div class="mut" style="font-size:11px">${esc(r.descricao)}${r.pessoa?` — ${esc(r.pessoa)}`:''}${r.detalhes?` (${esc(r.detalhes.substring(0,40))}...)`:''}</div>
             </div>
             <div style="text-align:right">
               <div>${brl(r.valor)}</div>
             </div>
-            <button class="mini gold" onclick="editaReceita('${r.id}')">✏️</button>
-            <button class="mini ${r.pago?'sec':'gold'}" onclick="marcaReceitaPago('${r.id}',${!r.pago})">
+            <button class="mini gold" onclick="event.stopPropagation();editaReceita('${r.id}')">✏️</button>
+            <button class="mini ${r.pago?'sec':'gold'}" onclick="event.stopPropagation();marcaReceitaPago('${r.id}',${!r.pago})">
               ${r.pago?'Desfazer':'Pago'}
             </button>
           </div>`;
@@ -2220,6 +2221,33 @@ async function pagaDespesasSelec(){
   selDesp.clear();
   renderTab();
   toast(`✅ ${items.length} despesa(s) marcada(s) como paga(s)!`);
+}
+function mostraDetalheReceita(id){
+  const r=db.balanco.find(x=>x.id===id);
+  if(!r) return;
+  const venc=r.data<hoje();
+  modal(`<h2>📋 Detalhes da Receita</h2>
+  <div class="card" style="background:var(--bg2);padding:12px;border-radius:4px;margin-bottom:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
+      <div><span class="mut">Data:</span><br><strong>${dbr(r.data)}</strong></div>
+      <div><span class="mut">Valor:</span><br><strong style="font-size:16px;color:var(--ok)">${brl(r.valor)}</strong></div>
+      <div><span class="mut">Tipo:</span><br><strong>${r.tipo}</strong></div>
+      <div><span class="mut">Status:</span><br><strong>${r.pago?'🟢 Pago':venc?'🔴 Vencido':'🟡 Pendente'}</strong></div>
+    </div>
+  </div>
+  <div>
+    <strong style="font-size:13px;color:var(--text-secondary)">Descrição:</strong>
+    <p style="margin:6px 0;padding:8px;background:var(--bg2);border-radius:4px">${esc(r.descricao)}</p>
+  </div>
+  ${r.pessoa?`<div>
+    <strong style="font-size:13px;color:var(--text-secondary)">Pessoa/Empresa:</strong>
+    <p style="margin:6px 0;padding:8px;background:var(--bg2);border-radius:4px">${esc(r.pessoa)}</p>
+  </div>`:''}
+  ${r.detalhes?`<div>
+    <strong style="font-size:13px;color:var(--text-secondary)">Detalhes:</strong>
+    <p style="margin:6px 0;padding:8px;background:var(--bg2);border-radius:4px;white-space:pre-wrap">${esc(r.detalhes)}</p>
+  </div>`:''}
+  <div class="row" style="margin-top:14px;gap:8px"><button class="gold" onclick="editaReceita('${id}')">✏️ Editar</button><button class="sec" onclick="fecha()">Fechar</button></div>`);
 }
 function editaReceita(id){
   const r=db.balanco.find(x=>x.id===id);
