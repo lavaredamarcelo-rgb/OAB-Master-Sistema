@@ -747,11 +747,19 @@ function agrupaAlertasPorAssunto(als){
     else if(a.m.includes('Patrocínio'))grupos['🤝 Patrocínios'].push(a);
     else if(a.m.includes('Tarefa'))grupos['📌 Tarefas'].push(a);
   });
-  return Object.entries(grupos).filter(([,items])=>items.length).map(([titulo,items])=>{
-    return `<div style="margin-bottom:12px"><div style="font-weight:500;color:var(--text-secondary);font-size:12px;padding:8px 0;border-bottom:1px solid var(--border)">${titulo} <span class="mut">(${items.length})</span></div>${items.map(a=>{
+  return Object.entries(grupos).filter(([,items])=>items.length).map(([titulo,items],idx)=>{
+    const id='alerta'+idx;
+    return `<div style="margin-bottom:8px"><div class="alertline al-${items[0].t} clickable" style="cursor:pointer;display:flex;align-items:center;gap:8px" onclick="toggleAlerta('${id}')"><span style="flex:1"><strong>${titulo}</strong> <span class="mut">${items.length} item${items.length!==1?'ns':''}</span></span><span class="mut" id="${id}_ico">▶</span></div><div id="${id}" style="display:none;margin-top:6px;padding-left:8px;border-left:2px solid var(--border)">${items.map(a=>{
       const ok=NAV[me.role].includes(a.tab);
-      return `<div class="alertline al-${a.t} ${ok?'clickable':''}" style="margin-top:6px" ${ok?`onclick="vai('${a.tab}')"`:''}>${a.m}</div>`;}).join('')}</div>`;
+      return `<div class="alertline al-${a.t} ${ok?'clickable':''}" style="margin-bottom:6px" ${ok?`onclick="vai('${a.tab}')"`:''}>${a.m}</div>`;}).join('')}</div></div>`;
   }).join('');
+}
+function toggleAlerta(id){
+  const el=$(id), ico=$(id+'_ico');
+  if(!el)return;
+  const isOpen=el.style.display!=='none';
+  el.style.display=isOpen?'none':'block';
+  ico.textContent=isOpen?'▶':'▼';
 }
 
 /* ================= DASHBOARD ================= */
