@@ -251,7 +251,7 @@ async function carregaTudo(){
   db.config={time:cfg.time_nome,pix:cfg.pix,grupo:cfg.grupo,limiteFaltas:cfg.limite_faltas||0,encarregado:cfg.encarregado,encContato:cfg.enc_contato,codigo:cfg.codigo_time,docsObrig:cfg.docs_obrigatorios||[],mensAuto:cfg.mensalidade_auto!==false,mensValor:cfg.mensalidade_valor||130,mensApos:cfg.mensalidade_valor_apos||150,mensDia:cfg.mensalidade_dia||10,avulsoValor:cfg.avulso_valor||30,saldoIni:Number(cfg.saldo_inicial)||0,saldoIniObs:cfg.saldo_inicial_obs||''};
   db.lotes=lotes.map(l=>({id:l.id,nomeArquivo:l.nome_arquivo,versao:l.versao,hash:l.hash_arquivo,dataImport:fdt(l.data_import),dataAtualizacao:l.data_atualizacao?fdt(l.data_atualizacao):'',status:l.status,totalCobracas:l.total_cobracas||0,totalDespesas:l.total_despesas||0,totalEntrada:l.total_entrada||0,totalSaida:l.total_saida||0,notas:l.notas||'',autor:l.autor||'',lotePosteriorId:l.lote_anterior_id||''}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
-    status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,origem:c.origem||'',lote:c.origem_lote||'',importLoteId:c.import_lote_id||'',tipoLancamento:c.tipo_lancamento||'manual',consolidado:c.consolidado||false}));
+    status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,origem:c.origem||'',lote:c.origem_lote||'',importLoteId:c.import_lote_id||'',tipoLancamento:c.tipo_lancamento||'manual',consolidado:c.consolidado||false,pessoa:c.pessoa||'',detalhes:c.detalhes||''}));
   db.balanco=balancorec.map(r=>({id:r.id,data:String(r.data),tipo:r.tipo,descricao:r.descricao,valor:r.valor,origem:r.origem||'',cobrancaId:r.cobranca_id||'',autor:r.autor||'',quando:fdt(r.quando),pago:r.pago||false,pessoa:r.pessoa||'',detalhes:r.detalhes||''}));
   db.unifHist=unifhist.map(h=>({id:h.id,uniformeId:h.uniforme_id,numero:h.numero,acao:h.acao,atletaId:h.atleta_id||'',nomeConvidado:h.nome_convidado||'',data:String(h.data),notas:h.notas||'',quem:h.quem||'',quando:fdt(h.quando)}));
   db.debitos=[];
@@ -2697,13 +2697,13 @@ function tFinCob(){
         <button style="background:var(--bad);font-weight:700" onclick="cobraTudoWhats('${p.id}')">📱 Cobrar tudo no WhatsApp (${brl(p.aberto)})</button>
         <button class="mini gold" onclick="quitacaoLote('${p.id}')">💳 Quitar deste jogador</button></div>`:''}
       <div class="tblwrap" style="margin-top:6px"><table><tr><th></th><th>Descrição</th><th>Valor</th><th>Venc.</th><th>Situação</th><th></th></tr>
-      ${p.list.sort((a,b)=>b.venc.localeCompare(a.venc)).map(c=>`<tr>
-        <td><input type="checkbox" onchange="selTog('c','${c.id}',this.checked)" ${selCob.has(c.id)?'checked':''} style="width:auto"></td>
-        <td>${esc(c.desc)}${c.origem?`<div class="mut">📄 ${esc(c.origem)}</div>`:''}</td>
+      ${p.list.sort((a,b)=>b.venc.localeCompare(a.venc)).map(c=>`<tr style="cursor:pointer" onclick="mostraDetalheCobranca('${c.id}')">
+        <td><input type="checkbox" onchange="selTog('c','${c.id}',this.checked);event.stopPropagation()" ${selCob.has(c.id)?'checked':''} style="width:auto"></td>
+        <td>${esc(c.desc)}${c.pessoa?`<div class="mut" style="font-size:11px">👤 ${esc(c.pessoa)}</div>`:''}${c.origem?`<div class="mut" style="font-size:11px">📄 ${esc(c.origem)}</div>`:''}</td>
         <td>${brl(valorDe(c))}${ehMensal(c)&&c.status==='atrasado'?`<div class="mut">era ${brl(c.valor)} até dia ${db.config.mensDia}</div>`:''}</td>
         <td>${dbr(c.venc)}</td>
         <td>${c.status==='pago'?`<span class="pill p-ok">Pago ${dbr(c.pagoEm)}</span>`:c.status==='atrasado'?'<span class="pill p-bad">Atrasado</span>':'<span class="pill p-warn">Pendente</span>'}</td>
-        <td class="row">${c.status!=='pago'?`<button style="background:var(--bad);font-weight:700;padding:7px 14px" onclick="cobraWhats('${c.id}')">📱 Cobrar</button><button class="mini" style="background:var(--ok)" onclick="formPagamento('${c.id}')">✔ Pago</button>`:`<button class="mini sec" onclick="editPagamento('${c.id}')">✏️</button>`}
+        <td class="row" onclick="event.stopPropagation()">${c.status!=='pago'?`<button style="background:var(--bad);font-weight:700;padding:7px 14px" onclick="cobraWhats('${c.id}')">📱 Cobrar</button><button class="mini" style="background:var(--ok)" onclick="formPagamento('${c.id}')">✔ Pago</button>`:`<button class="mini sec" onclick="editPagamento('${c.id}')">✏️</button>`}
         <button class="mini sec" onclick="delCobranca('${c.id}')">✕</button></td></tr>`).join('')}</table></div></details>`).join('');
   })()}</div>
   ${!db.config.pix?'<p class="mut" style="margin-top:10px">💡 Cadastre sua chave Pix em <strong>Ajustes</strong> para incluí-la nas cobranças.</p>':''}`;
@@ -3197,6 +3197,52 @@ async function pagou(id){
   await q(sb.from('cobrancas').update(patch).eq('id',id));
   log('financeiro',`Pagamento baixado: ${nomeAt(byId(db.cobrancas,id).atletaId)}`);
   await recarrega(); toast('Pagamento registrado'); }
+function mostraDetalheCobranca(id){
+  const c=byId(db.cobrancas,id);
+  if(!c) return;
+  const a=at(c.atletaId);
+  modal(`<h2>📋 Detalhes da Cobrança</h2>
+  <div class="card" style="background:var(--bg2);padding:12px;border-radius:4px;margin-bottom:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
+      <div><span class="mut">Atleta:</span><br><strong>${esc(a?a.nome:c.convidado)}</strong></div>
+      <div><span class="mut">Valor:</span><br><strong style="font-size:16px;color:var(--bad)">${brl(valorDe(c))}</strong></div>
+      <div><span class="mut">Vencimento:</span><br><strong>${dbr(c.venc)}</strong></div>
+      <div><span class="mut">Status:</span><br><strong>${c.status==='pago'?'🟢 Pago':c.status==='atrasado'?'🔴 Atrasado':'🟡 Pendente'}</strong></div>
+    </div>
+  </div>
+  <div>
+    <strong style="font-size:13px;color:var(--text-secondary)">Descrição:</strong>
+    <p style="margin:6px 0;padding:8px;background:var(--bg2);border-radius:4px">${esc(c.desc)}</p>
+  </div>
+  ${c.pessoa?`<div>
+    <strong style="font-size:13px;color:var(--text-secondary)">Referência/Pessoa:</strong>
+    <p style="margin:6px 0;padding:8px;background:var(--bg2);border-radius:4px">${esc(c.pessoa)}</p>
+  </div>`:''}
+  ${c.detalhes?`<div>
+    <strong style="font-size:13px;color:var(--text-secondary)">Detalhes:</strong>
+    <p style="margin:6px 0;padding:8px;background:var(--bg2);border-radius:4px;white-space:pre-wrap">${esc(c.detalhes)}</p>
+  </div>`:''}
+  <div class="row" style="margin-top:14px;gap:8px"><button class="gold" onclick="editaCobranca('${id}')">✏️ Editar</button><button class="sec" onclick="fecha()">Fechar</button></div>`);
+}
+function editaCobranca(id){
+  const c=byId(db.cobrancas,id);
+  if(!c) return;
+  modal(`<h2>✏️ Editar Cobrança</h2>
+  <label>Descrição</label><input id="ed_desc" value="${esc(c.desc)}">
+  <label>Referência/Pessoa (opcional)</label><input id="ed_pessoa" placeholder="Ex: jogador transferido, pagamento atrasado entrou..." value="${esc(c.pessoa||'')}">
+  <label>Detalhes (opcional)</label><textarea id="ed_detalhes" placeholder="Ex: mês de agosto, referente a..." style="height:80px">${esc(c.detalhes||'')}</textarea>
+  <div class="row" style="margin-top:14px"><button onclick="salvaEdicaoCobranca('${id}')">✓ Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+async function salvaEdicaoCobranca(id){
+  const desc=fval('ed_desc'),pessoa=fval('ed_pessoa'),detalhes=fval('ed_detalhes');
+  if(!desc){toast('Preencha a descrição');return;}
+  const c=byId(db.cobrancas,id);
+  if(c){
+    await q(sb.from('cobrancas').update({descricao:desc,pessoa:pessoa||null,detalhes:detalhes||null}).eq('id',id));
+    c.desc=desc; c.pessoa=pessoa; c.detalhes=detalhes;
+  }
+  fecha(); renderTab(); toast('✅ Cobrança atualizada!');
+}
 function delCobranca(id){ const c=byId(db.cobrancas,id); confirma(`Excluir a cobrança "${esc(c?c.desc:'')}" de ${esc(c?nomeAt(c.atletaId):'')} (${c?brl(c.valor):''})?`,async()=>{ await q(sb.from('cobrancas').delete().eq('id',id)); await recarrega(); toast('Cobrança excluída'); }); }
 function formAvulso(){
   modal(`<h2>🏃 Treino avulso</h2>
