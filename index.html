@@ -2695,7 +2695,8 @@ function tFinDesp(){
 }
 function tFinBalancoConsolidado(filtReceb,filtMens,filtDesp){
   const mesAtual=hoje().slice(0,7);
-  const anoAtual=hoje().slice(0,4);
+  const anoAtualNum=Number(hoje().slice(0,4));
+  const anoAtual=String(anoAtualNum);
   const anoFilter=subState.finAnoFilter||anoAtual;
   const mesFilter=subState.finMesFilter||(anoFilter===anoAtual?mesAtual:anoFilter+'-01');
 
@@ -2722,7 +2723,7 @@ function tFinBalancoConsolidado(filtReceb,filtMens,filtDesp){
     <div style="display:flex;gap:8px;align-items:center">
       <strong>Ano:</strong>
       <select onchange="subState.finAnoFilter=this.value;subState.finMesFilter=null;renderTab()" style="max-width:100px">
-        ${[anoAtual-2,anoAtual-1,anoAtual,anoAtual+1].map(a=>`<option value="${a}" ${a===Number(anoFilter)?'selected':''}>${a}</option>`).join('')}
+        <option value="${anoAtual}" ${anoFilter===anoAtual?'selected':''}>${anoAtual}</option>
       </select>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
