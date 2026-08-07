@@ -166,7 +166,7 @@ const $=id=>document.getElementById(id);
 const uid=()=>crypto.randomUUID();
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const brl=v=>(Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const ehMensal=c=>/^Mensalidade /.test(c.desc||'');
+const ehMensal=c=>/Mensalidade/i.test(c.desc||'');
 const nomeCob=c=>c.atletaId?nomeAt(c.atletaId):('🎟️ '+(c.convidado||'Convidado'));
 const valorDe=c=>(ehMensal(c)&&c.status==='atrasado')?(db.config.mensApos||c.valor):c.valor;
 const dbr=d=>{ if(!d)return '—'; const[a,m,dd]=String(d).slice(0,10).split('-'); return `${dd}/${m}/${a}`; };
