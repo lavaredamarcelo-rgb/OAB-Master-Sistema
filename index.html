@@ -1827,12 +1827,13 @@ function abrirLancadorRapido(){
     <option value="pendente" selected>⏳ Pendente</option>
   </select>
   <label>Observações</label><textarea id="lr_obs" style="min-height:60px" placeholder="Ex.: Referente ao período anterior, devolvido em X..."></textarea>
+  <label>Detalhes adicionais (opcional)</label><textarea id="lr_detalhes" style="min-height:60px" placeholder="Ex.: pago em data diferente, refer a..."></textarea>
   <div class="row" style="margin-top:14px"><button onclick="salvaLancamentoRapido()">✓ Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function salvaLancamentoRapido(){
-  const data=fval('lr_data'),quem=fval('lr_quem'),tipo=fval('lr_tipo'),valor=Number(fval('lr_valor'))||0,status=fval('lr_status');
+  const data=fval('lr_data'),quem=fval('lr_quem'),tipo=fval('lr_tipo'),valor=Number(fval('lr_valor'))||0,status=fval('lr_status'),detalhes=fval('lr_detalhes');
   if(!data||!quem||!tipo||valor<=0){toast('Preencha todos os campos obrigatórios');return;}
-  await q(sb.from('cobrancas').insert({atleta_id:null,convidado:quem,descricao:tipo,valor,venc:data,status,pago_em:status==='pago'?data:null,tipo_lancamento:'historico'}));
+  await q(sb.from('cobrancas').insert({atleta_id:null,convidado:quem,descricao:tipo,valor,venc:data,status,pago_em:status==='pago'?data:null,tipo_lancamento:'historico',pessoa:quem,detalhes:detalhes||null}));
   log('financeiro',`Lançamento manual de entrada: ${quem} — ${tipo} (${brl(valor)})`);
   fecha(); await recarrega(); toast('Lançamento registrado!');
 }
@@ -3237,16 +3238,17 @@ function formAvulso(){
   <div class="row" style="max-height:150px;overflow-y:auto;border:1px solid var(--line);border-radius:9px;padding:8px">${membros().map(a=>`<label style="display:flex;align-items:center;gap:6px;margin:0;text-transform:none;font-size:14px;font-weight:400;color:var(--ink)"><input type="checkbox" class="av_chk" value="${a.id}" style="width:auto">${esc(pnome(a.nome))}</label>`).join('')}</div>
   <label>Convidados de fora (nomes separados por vírgula)</label><input id="av_conv" placeholder="Ex.: Romulo Amoras, Felipe Santos">
   <div class="row" style="margin-top:8px"><input type="checkbox" id="av_pago" checked style="width:auto"><span>Já pagaram (registrar como pago na data acima)</span></div>
+  <label>Observação/Detalhes (opcional)</label><textarea id="av_detalhes" style="min-height:60px" placeholder="Ex.: treino de preparação, jogo coletivo..."></textarea>
   <div class="row" style="margin-top:14px"><button onclick="salvaAvulso()">Registrar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function salvaAvulso(){
-  const data=fval('av_data')||hoje(), v=Number(fval('av_valor'))||db.config.avulsoValor;
+  const data=fval('av_data')||hoje(), v=Number(fval('av_valor'))||db.config.avulsoValor, detalhes=fval('av_detalhes');
   const ids=[...document.querySelectorAll('.av_chk:checked')].map(c=>c.value);
   const convs=fval('av_conv').split(',').map(s=>s.trim()).filter(Boolean);
   if(!ids.length&&!convs.length){toast('Marque alguém ou informe convidados');return;}
   const pago=$('av_pago').checked;
-  const rows=[...ids.map(aid=>({atleta_id:aid,descricao:'Treino avulso '+dbr(data),valor:v,venc:data,status:pago?'pago':'pendente',pago_em:pago?data:null})),
-    ...convs.map(nm=>({atleta_id:null,convidado:nm,descricao:'Treino avulso '+dbr(data),valor:v,venc:data,status:pago?'pago':'pendente',pago_em:pago?data:null}))];
+  const rows=[...ids.map(aid=>({atleta_id:aid,descricao:'Treino avulso '+dbr(data),valor:v,venc:data,status:pago?'pago':'pendente',pago_em:pago?data:null,detalhes:detalhes||null})),
+    ...convs.map(nm=>({atleta_id:null,convidado:nm,descricao:'Treino avulso '+dbr(data),valor:v,venc:data,status:pago?'pago':'pendente',pago_em:pago?data:null,pessoa:nm,detalhes:detalhes||null}))];
   await q(sb.from('cobrancas').insert(rows));
   log('financeiro',`Treino avulso ${dbr(data)}: ${rows.length} lançamento(s) de ${brl(v)}${pago?' (pagos)':' (em aberto)'}`);
   fecha(); await recarrega(); toast(rows.length+' registro(s) de treino avulso 🏃');
