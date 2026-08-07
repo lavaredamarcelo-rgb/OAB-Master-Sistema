@@ -2232,20 +2232,24 @@ function editaReceita(id){
       <option value="auxilio" ${r.tipo==='auxilio'?'selected':''}>Auxílio</option>
       <option value="venda" ${r.tipo==='venda'?'selected':''}>Venda</option>
       <option value="doacao" ${r.tipo==='doacao'?'selected':''}>Doação</option>
+      <option value="mensalidade" ${r.tipo==='mensalidade'?'selected':''}>Mensalidade</option>
       <option value="outro" ${r.tipo==='outro'?'selected':''}>Outro</option>
     </select></div>
   </div>
   <label>Descrição</label><input id="ed_desc" value="${esc(r.descricao)}">
+  <label>Pessoa/Empresa (opcional)</label><input id="ed_pessoa" placeholder="Ex: Alisso Aires, Patrocinador XYZ" value="${esc(r.pessoa||'')}">
+  <label>Detalhes (opcional)</label><textarea id="ed_detalhes" placeholder="Ex: mensalidades anos anteriores, referente a..." style="height:80px">${esc(r.detalhes||'')}</textarea>
   <label>Valor (R$)</label><input id="ed_valor" type="number" step="0.01" value="${r.valor}">
   <div class="row" style="margin-top:14px"><button onclick="salvaEdicaoReceita('${id}')">✓ Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function salvaEdicaoReceita(id){
   const data=fval('ed_data'),tipo=fval('ed_tipo'),desc=fval('ed_desc'),valor=Number(fval('ed_valor'))||0;
-  if(!data||!tipo||!desc||valor<=0){toast('Preencha todos os campos');return;}
+  const pessoa=fval('ed_pessoa'),detalhes=fval('ed_detalhes');
+  if(!data||!tipo||!desc||valor<=0){toast('Preencha: Data, Tipo, Descrição e Valor');return;}
   const r=db.balanco.find(x=>x.id===id);
   if(r){
-    await q(sb.from('balanco_receitas').update({data,tipo,descricao:desc,valor}).eq('id',id));
-    r.data=data; r.tipo=tipo; r.descricao=desc; r.valor=valor;
+    await q(sb.from('balanco_receitas').update({data,tipo,descricao:desc,valor,pessoa:pessoa||null,detalhes:detalhes||null}).eq('id',id));
+    r.data=data; r.tipo=tipo; r.descricao=desc; r.valor=valor; r.pessoa=pessoa; r.detalhes=detalhes;
   }
   fecha(); renderTab(); toast('✅ Receita atualizada!');
 }
