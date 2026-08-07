@@ -2704,7 +2704,8 @@ function tFinCob(){
         <td>${brl(valorDe(c))}${ehMensal(c)&&c.status==='atrasado'?`<div class="mut">era ${brl(c.valor)} até dia ${db.config.mensDia}</div>`:''}</td>
         <td>${dbr(c.venc)}</td>
         <td>${c.status==='pago'?`<span class="pill p-ok">Pago ${dbr(c.pagoEm)}</span>`:c.status==='atrasado'?'<span class="pill p-bad">Atrasado</span>':'<span class="pill p-warn">Pendente</span>'}</td>
-        <td class="row" onclick="event.stopPropagation()">${c.status!=='pago'?`<button style="background:var(--bad);font-weight:700;padding:7px 14px" onclick="cobraWhats('${c.id}')">📱 Cobrar</button><button class="mini" style="background:var(--ok)" onclick="formPagamento('${c.id}')">✔ Pago</button>`:`<button class="mini sec" onclick="editPagamento('${c.id}')">✏️</button>`}
+        <td class="row" onclick="event.stopPropagation()">${c.status!=='pago'?`<button style="background:var(--bad);font-weight:700;padding:7px 14px" onclick="cobraWhats('${c.id}')">📱 Cobrar</button><button class="mini" style="background:var(--ok)" onclick="formPagamento('${c.id}')">✔ Pago</button>`:`<button class="mini sec" onclick="editPagamento('${c.id}')">✏️ Pgto</button>`}
+        <button class="mini gold" onclick="editaCobranca('${c.id}')">📝 Det</button>
         <button class="mini sec" onclick="delCobranca('${c.id}')">✕</button></td></tr>`).join('')}</table></div></details>`).join('');
   })()}</div>
   ${!db.config.pix?'<p class="mut" style="margin-top:10px">💡 Cadastre sua chave Pix em <strong>Ajustes</strong> para incluí-la nas cobranças.</p>':''}`;
