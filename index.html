@@ -3197,11 +3197,11 @@ async function pagou(id){
   await q(sb.from('cobrancas').update(patch).eq('id',id));
   log('financeiro',`Pagamento baixado: ${nomeAt(byId(db.cobrancas,id).atletaId)}`);
   await recarrega(); toast('Pagamento registrado'); }
-function mostraDetalheCobranca(id){
-  const c=byId(db.cobrancas,id);
+function editaCobranca(id){
+  const c=db.cobrancas.find(x=>x.id===id);
   if(!c) return;
   const a=at(c.atletaId);
-  modal(`<h2>📋 Detalhes da Cobrança</h2>
+  modal(`<h2>✏️ Editar Cobrança</h2>
   <div class="card" style="background:var(--bg2);padding:12px;border-radius:4px;margin-bottom:12px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
       <div><span class="mut">Atleta:</span><br><strong>${esc(a?a.nome:c.convidado)}</strong></div>
@@ -3210,27 +3210,9 @@ function mostraDetalheCobranca(id){
       <div><span class="mut">Status:</span><br><strong>${c.status==='pago'?'🟢 Pago':c.status==='atrasado'?'🔴 Atrasado':'🟡 Pendente'}</strong></div>
     </div>
   </div>
-  <div>
-    <strong style="font-size:13px;color:var(--text-secondary)">Descrição:</strong>
-    <p style="margin:6px 0;padding:8px;background:var(--bg2);border-radius:4px">${esc(c.desc)}</p>
-  </div>
-  ${c.pessoa?`<div>
-    <strong style="font-size:13px;color:var(--text-secondary)">Referência/Pessoa:</strong>
-    <p style="margin:6px 0;padding:8px;background:var(--bg2);border-radius:4px">${esc(c.pessoa)}</p>
-  </div>`:''}
-  ${c.detalhes?`<div>
-    <strong style="font-size:13px;color:var(--text-secondary)">Detalhes:</strong>
-    <p style="margin:6px 0;padding:8px;background:var(--bg2);border-radius:4px;white-space:pre-wrap">${esc(c.detalhes)}</p>
-  </div>`:''}
-  <div class="row" style="margin-top:14px;gap:8px"><button class="gold" onclick="editaCobranca('${id}')">✏️ Editar</button><button class="sec" onclick="fecha()">Fechar</button></div>`);
-}
-function editaCobranca(id){
-  const c=byId(db.cobrancas,id);
-  if(!c) return;
-  modal(`<h2>✏️ Editar Cobrança</h2>
   <label>Descrição</label><input id="ed_desc" value="${esc(c.desc)}">
-  <label>Referência/Pessoa (opcional)</label><input id="ed_pessoa" placeholder="Ex: jogador transferido, pagamento atrasado entrou..." value="${esc(c.pessoa||'')}">
-  <label>Detalhes (opcional)</label><textarea id="ed_detalhes" placeholder="Ex: mês de agosto, referente a..." style="height:80px">${esc(c.detalhes||'')}</textarea>
+  <label>Referência/Pessoa (opcional)</label><input id="ed_pessoa" placeholder="Ex: pagou dezembro em janeiro, transferido..." value="${esc(c.pessoa||'')}">
+  <label>Detalhes (opcional)</label><textarea id="ed_detalhes" placeholder="Ex: mês de dezembro pago em janeiro, referência tal..." style="height:100px">${esc(c.detalhes||'')}</textarea>
   <div class="row" style="margin-top:14px"><button onclick="salvaEdicaoCobranca('${id}')">✓ Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function salvaEdicaoCobranca(id){
