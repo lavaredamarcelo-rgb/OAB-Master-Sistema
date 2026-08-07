@@ -252,7 +252,7 @@ async function carregaTudo(){
   db.lotes=lotes.map(l=>({id:l.id,nomeArquivo:l.nome_arquivo,versao:l.versao,hash:l.hash_arquivo,dataImport:fdt(l.data_import),dataAtualizacao:l.data_atualizacao?fdt(l.data_atualizacao):'',status:l.status,totalCobracas:l.total_cobracas||0,totalDespesas:l.total_despesas||0,totalEntrada:l.total_entrada||0,totalSaida:l.total_saida||0,notas:l.notas||'',autor:l.autor||'',lotePosteriorId:l.lote_anterior_id||''}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,origem:c.origem||'',lote:c.origem_lote||'',importLoteId:c.import_lote_id||'',tipoLancamento:c.tipo_lancamento||'manual',consolidado:c.consolidado||false}));
-  db.balanco=balancorec.map(r=>({id:r.id,data:String(r.data),tipo:r.tipo,descricao:r.descricao,valor:r.valor,origem:r.origem||'',cobrancaId:r.cobranca_id||'',autor:r.autor||'',quando:fdt(r.quando),pago:r.pago||false}));
+  db.balanco=balancorec.map(r=>({id:r.id,data:String(r.data),tipo:r.tipo,descricao:r.descricao,valor:r.valor,origem:r.origem||'',cobrancaId:r.cobranca_id||'',autor:r.autor||'',quando:fdt(r.quando),pago:r.pago||false,pessoa:r.pessoa||'',detalhes:r.detalhes||''}));
   db.unifHist=unifhist.map(h=>({id:h.id,uniformeId:h.uniforme_id,numero:h.numero,acao:h.acao,atletaId:h.atleta_id||'',nomeConvidado:h.nome_convidado||'',data:String(h.data),notas:h.notas||'',quem:h.quem||'',quando:fdt(h.quando)}));
   db.debitos=[];
   const eu=at(me.id); if(eu)me=Object.assign(eu,{});
@@ -2730,22 +2730,23 @@ function tFinBalancoConsolidado(filtReceb,filtMens,filtDesp){
   const anoAtualNum=Number(hoje().slice(0,4));
   const anoAtual=String(anoAtualNum);
   const anoFilter=subState.finAnoFilter||anoAtual;
-  const mesFilter=subState.finMesFilter||(anoFilter===anoAtual?mesAtual:anoFilter+'-01');
+  const apenasAno=subState.finApenasAno||false;
+  const mesFilter=apenasAno?null:(subState.finMesFilter||(anoFilter===anoAtual?mesAtual:anoFilter+'-01'));
 
-  const filtroAtivo=anoFilter!==anoAtual || mesFilter.slice(0,7)!==mesAtual;
+  const filtroAtivo=anoFilter!==anoAtual || (mesFilter && mesFilter.slice(0,7)!==mesAtual) || apenasAno;
 
   // Receitas
-  const receitas=filtReceb?db.balanco.filter(r=>r.data.startsWith(mesFilter)).sort((a,b)=>b.data.localeCompare(a.data)):[];
+  const receitas=filtReceb?db.balanco.filter(r=>apenasAno?r.data.startsWith(anoFilter):r.data.startsWith(mesFilter)).sort((a,b)=>b.data.localeCompare(a.data)):[];
   const totalRec=receitas.reduce((s,r)=>s+Number(r.valor),0);
   const pagoRec=receitas.filter(r=>r.pago).reduce((s,r)=>s+Number(r.valor),0);
 
   // Cobranças como Mensalidades
-  const mensalidades=filtMens?db.cobrancas.filter(c=>c.venc.startsWith(mesFilter)).sort((a,b)=>b.venc.localeCompare(a.venc)):[];
+  const mensalidades=filtMens?db.cobrancas.filter(c=>apenasAno?c.venc.startsWith(anoFilter):c.venc.startsWith(mesFilter)).sort((a,b)=>b.venc.localeCompare(a.venc)):[];
   const totalMen=mensalidades.reduce((s,c)=>s+Number(valorDe(c)),0);
   const pagoMen=mensalidades.filter(c=>c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
 
   // Despesas
-  const despesas=filtDesp?db.despesas.filter(d=>d.data.startsWith(mesFilter)).sort((a,b)=>b.data.localeCompare(a.data)):[];
+  const despesas=filtDesp?db.despesas.filter(d=>apenasAno?d.data.startsWith(anoFilter):d.data.startsWith(mesFilter)).sort((a,b)=>b.data.localeCompare(a.data)):[];
   const totalDes=despesas.reduce((s,d)=>s+Number(d.valor),0);
 
   const saldo=(totalRec+totalMen)-totalDes;
@@ -2758,11 +2759,15 @@ function tFinBalancoConsolidado(filtReceb,filtMens,filtDesp){
         <option value="${anoAtual}" ${anoFilter===anoAtual?'selected':''}>${anoAtual}</option>
       </select>
     </div>
-    <div style="display:flex;gap:8px;align-items:center">
+    <label style="display:flex;gap:6px;align-items:center;margin:0">
+      <input type="checkbox" ${apenasAno?'checked':''} onchange="subState.finApenasAno=this.checked;subState.finMesFilter=null;renderTab()" style="width:auto">
+      <strong>Apanhado anual</strong>
+    </label>
+    ${!apenasAno?`<div style="display:flex;gap:8px;align-items:center">
       <strong>Mês:</strong>
       <input type="month" value="${mesFilter}" onchange="subState.finMesFilter=this.value;renderTab()" style="max-width:140px">
-    </div>
-    ${filtroAtivo?`<button class="mini sec" onclick="subState.finAnoFilter=null;subState.finMesFilter=null;renderTab()">Limpar</button>`:''}
+    </div>`:''}
+    ${filtroAtivo?`<button class="mini sec" onclick="subState.finAnoFilter=null;subState.finMesFilter=null;subState.finApenasAno=false;renderTab()">Limpar</button>`:''}
   </div>
   <div class="grid g4" style="margin-bottom:12px">
     ${filtReceb?`<div class="card stat"><div class="n" style="color:var(--ok)">${brl(totalRec)}</div><div class="l">Receitas</div></div>`:''}
