@@ -724,6 +724,35 @@ function alertas(){
   });
   return A;
 }
+function agrupaAlertasPorAssunto(als){
+  const grupos={
+    '💰 Pagamentos':[],
+    '👤 Cadastros':[],
+    '🚫 Faltas':[],
+    '📁 Documentos':[],
+    '📈 Metas':[],
+    '👕 Uniformes':[],
+    '⚖️ LGPD':[],
+    '🤝 Patrocínios':[],
+    '📌 Tarefas':[]
+  };
+  als.forEach(a=>{
+    if(a.m.includes('Pagamento'))grupos['💰 Pagamentos'].push(a);
+    else if(a.m.includes('Solicitação'))grupos['👤 Cadastros'].push(a);
+    else if(a.m.includes('faltas'))grupos['🚫 Faltas'].push(a);
+    else if(a.m.includes('enviou')||a.m.includes('Documento'))grupos['📁 Documentos'].push(a);
+    else if(a.m.includes('Meta'))grupos['📈 Metas'].push(a);
+    else if(a.m.includes('Uniforme'))grupos['👕 Uniformes'].push(a);
+    else if(a.m.includes('LGPD'))grupos['⚖️ LGPD'].push(a);
+    else if(a.m.includes('Patrocínio'))grupos['🤝 Patrocínios'].push(a);
+    else if(a.m.includes('Tarefa'))grupos['📌 Tarefas'].push(a);
+  });
+  return Object.entries(grupos).filter(([,items])=>items.length).map(([titulo,items])=>{
+    return `<div style="margin-bottom:12px"><div style="font-weight:500;color:var(--text-secondary);font-size:12px;padding:8px 0;border-bottom:1px solid var(--border)">${titulo} <span class="mut">(${items.length})</span></div>${items.map(a=>{
+      const ok=NAV[me.role].includes(a.tab);
+      return `<div class="alertline al-${a.t} ${ok?'clickable':''}" style="margin-top:6px" ${ok?`onclick="vai('${a.tab}')"`:''}>${a.m}</div>`;}).join('')}</div>`;
+  }).join('');
+}
 
 /* ================= DASHBOARD ================= */
 function tPainel(){
@@ -741,9 +770,7 @@ function tPainel(){
     <div class="card stat ${podeFin?'clickable':''}" ${podeFin?`onclick="vai('financeiro')"`:''}><div class="n">${brl(abertoTotal)}</div><div class="l">A receber ${podeFin?'→':''}</div></div>
   </div>
   <div class="grid g2">
-    <div class="card"><h2>🔔 Alertas <span class="mut" style="font-family:inherit;font-size:12px">(clique para abrir)</span></h2>${als.length?als.map(a=>{
-      const ok=NAV[me.role].includes(a.tab);
-      return `<div class="alertline al-${a.t} ${ok?'clickable':''}" ${ok?`onclick="vai('${a.tab}')"`:''}>${a.m}</div>`;}).join(''):'<p class="mut">Nenhum alerta. Tudo em dia! ✅</p>'}</div>
+    <div class="card"><h2>🔔 Alertas <span class="mut" style="font-family:inherit;font-size:12px">(agrupados por assunto)</span></h2>${als.length?agrupaAlertasPorAssunto(als):'<p class="mut">Nenhum alerta. Tudo em dia! ✅</p>'}</div>
     <div class="card"><h2>🗓️ Próximos compromissos</h2>
       ${prox.length?prox.map(e=>`<div class="alertline clickable" style="background:var(--blue-soft)" onclick="vai('agenda')"><div style="flex:1"><strong>${e.tipo==='jogo'?'⚽':'🏃'} ${esc(e.titulo)}</strong><div class="mut">${dbr(e.data)} às ${esc(e.hora)} — ${esc(e.local)}</div></div><button class="mini sec" onclick="event.stopPropagation();modalCal('${e.id}')">📅 Calendário</button></div>`).join(''):'<p class="mut">Nada agendado.</p>'}
       ${prox.length?`<button class="sec mini" onclick="baixarICS(db.eventos.filter(e=>e.data>=hoje()),'agenda-time.ics')">📅 Baixar agenda completa (.ics)</button>`:''}
