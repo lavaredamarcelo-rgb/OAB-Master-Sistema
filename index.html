@@ -2169,6 +2169,7 @@ function tFinBalancoRec(){
             <button class="mini ${r.pago?'sec':'gold'}" onclick="event.stopPropagation();marcaReceitaPago('${r.id}',${!r.pago})">
               ${r.pago?'Desfazer':'Pago'}
             </button>
+            <button class="mini sec" onclick="event.stopPropagation();delReceita('${r.id}')">✕</button>
           </div>`;
         }).join('')}
       </div>
@@ -2282,6 +2283,14 @@ async function salvaEdicaoReceita(id){
   }
   fecha(); renderTab(); toast('✅ Receita atualizada!');
 }
+function delReceita(id){
+  const r=db.balanco.find(x=>x.id===id);
+  confirma(`Excluir a receita "${esc(r?r.descricao:'')}" de ${brl(r?r.valor:'')}?`,async()=>{
+    await q(sb.from('balanco_receitas').delete().eq('id',id));
+    await recarrega();
+    toast('Receita excluída');
+  });
+}
 function mostraDetalheDespesa(id){
   const d=db.despesas.find(x=>x.id===id);
   if(!d) return;
@@ -2332,6 +2341,14 @@ async function salvaEdicaoDespesa(id){
     d.data=data; d.item=item; d.categoria=cat; d.valor=valor; d.pessoa=pessoa; d.detalhes=detalhes;
   }
   fecha(); renderTab(); toast('✅ Despesa atualizada!');
+}
+function delDespesa(id){
+  const d=db.despesas.find(x=>x.id===id);
+  confirma(`Excluir a despesa "${esc(d?d.item:'')}" — ${esc(d?d.categoria:'')} (${brl(d?d.valor:'')}) de ${dbr(d?d.data:'')}?`,async()=>{
+    await q(sb.from('despesas').delete().eq('id',id));
+    await recarrega();
+    toast('Despesa excluída');
+  });
 }
 function tFinBalancoDesp(){
   const despesas=db.despesas||[];
@@ -2391,6 +2408,7 @@ function tFinBalancoDesp(){
             <button class="mini ${d.pago?'sec':'gold'}" onclick="event.stopPropagation();marcaDespesaPago('${d.id}',${!d.pago})">
               ${d.pago?'Desfazer':'Pago'}
             </button>
+            <button class="mini sec" onclick="event.stopPropagation();delDespesa('${d.id}')">✕</button>
           </div>`;
         }).join('')}
       </div>
