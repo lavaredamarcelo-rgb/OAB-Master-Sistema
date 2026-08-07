@@ -2659,7 +2659,7 @@ function tFinCob(){
       const aberto=list.filter(c=>c.status!=='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
       const nAtr=list.filter(c=>c.status==='atrasado').length;
       const guest=String(id).startsWith('g:');
-      return {id,guest,nome:guest?'🎟️ '+id.slice(2)+' (convidado)':nomeAt(id),list,aberto,nAtr}; }).sort((x,y)=>y.aberto-x.aberto||x.nome.localeCompare(y.nome));
+      return {id,guest,nome:guest?'🎟️ '+id.slice(2)+' (convidado)':nomeAt(id),list,aberto,nAtr}; }).sort((x,y)=>x.nome.localeCompare(y.nome));
     if(!pessoas.length)return '<p class="mut">Nenhuma cobrança.</p>';
     return pessoas.map(p=>`<details><summary>${esc(p.nome)}
       ${p.aberto>0?`<span class="pill p-bad">${brl(p.aberto)} em aberto</span>`:'<span class="pill p-ok">Em dia ✅</span>'}
