@@ -156,7 +156,7 @@ const NAV={diretoria:['painel','atletas','docs','saude','avaliacao','desempenho'
   auxiliar:['painel','saude','avaliacao','desempenho','taticas','agenda','presencas'],
   /* auxiliar tem os mesmos poderes do treinador (gestor) */
   preparador:['painel','saude','avaliacao','desempenho','taticas','agenda','presencas'],
-  atleta:['meu','saude','avaliacao','desempenho','taticas','agenda','presencas']};
+  atleta:['meu','saude','avaliacao','desempenho','taticas','agenda','presencas','uniformes']};
 const NAVLBL={painel:['📊','Dashboard'],atletas:['👥','Atletas'],docs:['📁','Documentos'],saude:['🩺','Saúde'],avaliacao:['📈','Avaliação física'],
   desempenho:['🏆','Desempenho'],taticas:['📋','Táticas'],agenda:['🗓️','Agenda'],presencas:['✅','Frequência'],financeiro:['💰','Financeiro'],uniformes:['👕','Uniformes & materiais'],
   lgpd:['⚖️','Termos & LGPD'],ajustes:['⚙️','Ajustes'],meu:['🏠','Meu espaço']};
@@ -4057,11 +4057,30 @@ function upFinDoc(inp){ upFile(inp,10,async f=>{ await enviaArquivo(f,'financeir
 
 /* ================= UNIFORMES & MATERIAIS ================= */
 function tUni(){
+  if(me.role!=='diretoria') return tUniRO();
   return `<div class="spread sect"><p class="mut">Uniformes agrupados por modelo — toque para abrir; em destaque, os números que estão com alguém. Clique ✏️ para editar, ➕ para adicionar números.</p>
   <div class="row"><button onclick="novoUniforme()">➕ Novo uniforme</button><button class="sec" onclick="formItem()">+ Material</button>
   <button class="gold" onclick="relacaoMateriais()">📣 Relação p/ WhatsApp</button></div></div>
   ${tUniformes()}
   ${tInventario()}`;
+}
+function tUniRO(){
+  const meusEmp=[];
+  db.inventario.forEach(i=>(i.emprestimos||[]).forEach(e=>{ if(normNome(e.nome)===normNome(pnome(me.nome))||normNome(e.nome)===normNome(me.nome))meusEmp.push({item:i.nome,...e}); }));
+  return `<p class="mut sect">Relação de materiais do time — visualização. Seus uniformes ficam em <a href="#" onclick="vai('meu');return false">🏠 Meu espaço</a>.</p>
+  ${meusEmp.length?`<div class="card sect" style="border-color:var(--warn)"><h2>📦 Emprestados com você</h2>
+  ${meusEmp.map(e=>`<div class="alertline al-warn"><div style="flex:1"><strong>${e.qtd}× ${esc(e.item)}</strong><div class="mut">desde ${esc(e.quando)}</div></div></div>`).join('')}
+  <p class="mut" style="margin-top:8px">Lembre-se de devolver à diretoria. 🤝</p></div>`:''}
+  <div class="card"><h2>📦 Materiais do time</h2>
+  <div class="tblwrap"><table><tr><th></th><th>Item</th><th>Detalhes</th><th>Disponível</th><th>Emprestado</th></tr>
+  ${db.inventario.length?[...db.inventario].sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>{
+    const emp=i.emprestimos||[]; const empQtd=emp.reduce((s,e)=>s+Number(e.qtd||0),0); const disp=Number(i.qtd)-empQtd;
+    return `<tr>
+  <td>${i.fotoUrl?`<img src="${esc(i.fotoUrl)}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:9px;cursor:pointer" onclick="window.open('${esc(i.fotoUrl)}','_blank')">`:'<span style="font-size:24px">📦</span>'}</td>
+  <td><strong>${esc(i.nome)}</strong>${i.obs?`<div class="mut">${esc(i.obs)}</div>`:''}<div class="mut">${esc(i.cat)}</div></td>
+  <td><div class="row" style="gap:4px">${i.marca?`<span class="pill p-mut">🏷️ ${esc(i.marca)}</span>`:''}${i.cor?`<span class="pill p-gold">🎨 ${esc(i.cor)}</span>`:''}${i.material?`<span class="pill p-warn">🧵 ${esc(i.material)}</span>`:''}</div></td>
+  <td><strong style="color:${disp<0?'var(--bad)':'inherit'}">${disp}</strong><span class="mut">/${i.qtd}</span></td>
+  <td>${emp.length?emp.map(e=>`<div style="font-size:12.5px;margin-bottom:4px">→ <strong>${e.qtd}×</strong> ${esc(e.nome)} <span class="mut">${esc(e.quando)}</span></div>`).join(''):'<span class="mut">—</span>'}</td></tr>`;}).join(''):'<tr><td colspan="5" class="mut">Nenhum material cadastrado.</td></tr>'}</table></div></div>`;
 }
 function nomeUni(u){ return u.atletaId?nomeAt(u.atletaId):(u.convidado?'🎟️ '+u.convidado+' (de fora)':'—'); }
 const PECAS_LBL={camisa:'Camisa',short:'Short',meiao:'Meião'};
