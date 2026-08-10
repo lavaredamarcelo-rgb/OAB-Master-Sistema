@@ -1382,11 +1382,62 @@ function copiaTextoConvocacao(encoded){
 
 /* ================= DESEMPENHO ================= */
 function statDe(evId,atId){ return db.stats.find(s=>s.eventoId===evId&&s.atletaId===atId); }
+function lancAoVivo(evId){
+  const ats=elenco();
+  if(!subState.statsTemp) subState.statsTemp={};
+  if(!subState.statsTemp[evId]) subState.statsTemp[evId]={};
+  const temp=subState.statsTemp[evId];
+  return `<div style="display:grid;gap:12px">
+  ${ats.map(a=>{
+    const t=temp[a.id]||{g:0,as:0,due:0,pas:0};
+    return `<div style="background:var(--bg2);padding:12px;border-radius:8px;border:1px solid var(--border)">
+      <div style="font-weight:500;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+        <span>${esc(a.nome)}</span>
+        <button class="mini sec" onclick="formStat('${evId}','${a.id}')">📝 Detalhe</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+        <div style="background:var(--bg3);padding:8px;border-radius:4px;text-align:center">
+          <div class="mut">⚽ Gols</div>
+          <div style="font-size:20px;font-weight:bold;color:var(--ok)">${t.g}</div>
+          <button class="mini gold" style="margin-top:4px;width:100%" onclick="subState.statsTemp['${evId}']['${a.id}'].g++;renderTab()">+1 Gol</button>
+        </div>
+        <div style="background:var(--bg3);padding:8px;border-radius:4px;text-align:center">
+          <div class="mut">🅰️ Assist</div>
+          <div style="font-size:20px;font-weight:bold;color:var(--warn)">${t.as}</div>
+          <button class="mini gold" style="margin-top:4px;width:100%" onclick="subState.statsTemp['${evId}']['${a.id}'].as++;renderTab()">+1 Assist</button>
+        </div>
+        <div style="background:var(--bg3);padding:8px;border-radius:4px;text-align:center">
+          <div class="mut">⚔️ Duelos</div>
+          <div style="font-size:20px;font-weight:bold;color:var(--bad)">${t.due}</div>
+          <button class="mini gold" style="margin-top:4px;width:100%" onclick="subState.statsTemp['${evId}']['${a.id}'].due++;renderTab()">+1 Duelo</button>
+        </div>
+        <div style="background:var(--bg3);padding:8px;border-radius:4px;text-align:center">
+          <div class="mut">🎯 Passes</div>
+          <div style="font-size:20px;font-weight:bold">${t.pas}</div>
+          <button class="mini gold" style="margin-top:4px;width:100%" onclick="subState.statsTemp['${evId}']['${a.id}'].pas++;renderTab()">+1 Passe</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('')}
+  <button style="margin-top:14px;padding:12px;font-weight:700;background:var(--ok);color:white;border:none;border-radius:4px;cursor:pointer" onclick="salvaStatsAoVivo('${evId}')">💾 Salvar Todos</button>
+  </div>`;
+}
+function salvaStatsAoVivo(evId){
+  const temp=subState.statsTemp?.[evId]||{};
+  if(!Object.keys(temp).length){toast('Nenhuma estatística para salvar');return;}
+  Object.entries(temp).forEach(async ([atId,stats])=>{
+    await q(sb.from('stats').upsert({evento_id:evId,atleta_id:atId,gols:stats.g||0,assist:stats.as||0,duelos:stats.due||0,passes:stats.pas||0},{onConflict:'evento_id,atleta_id'}));
+  });
+  delete subState.statsTemp[evId];
+  recarrega();
+  toast('✅ Estatísticas salvas ao vivo!');
+}
 function tDesemp(){
   const jogos=db.eventos.filter(e=>e.tipo==='jogo').sort((a,b)=>b.data.localeCompare(a.data));
   const podeEditar=gestor();
   const sel=subState.despEv||(jogos[0]&&jogos[0].id)||'';
   const ats=elenco();
+  const modeLancAV=subState.modeLancAV||false;
   const agg={};
   db.stats.forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,pas:0,j:0,notas:[]};
     a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.pas+=+s.passes||0; a.j++; if(s.nota)a.notas.push(+s.nota); });
@@ -1399,9 +1450,9 @@ function tDesemp(){
       return `<tr><td>${esc(a.nome)}</td><td>${s.gols??'—'}</td><td>${s.assist??'—'}</td><td>${s.amarelos??'—'}</td><td>${s.vermelho?'1':'—'}</td><td>${s.desarmes??'—'}</td><td>${s.duelos??'—'}</td><td>${s.passes??'—'}</td><td>${s.nota?`<strong>${s.nota}</strong>`:'—'}</td>
       ${podeEditar?`<td><button class="mini sec" onclick="formStat('${sel}','${a.id}')">✏️ Lançar</button></td>`:''}</tr>`; }).join('')}</table></div>`;
   }
-  return `<div class="card sect"><div class="spread"><label style="margin-top:0">Jogo</label>${podeEditar?`<button class="mini gold" onclick="artePosJogo()">🎨 Arte pós-jogo</button>`:''}</div>
+  return `<div class="card sect"><div class="spread"><label style="margin-top:0">Jogo</label><div style="gap:8px;display:flex">${podeEditar?`<button class="mini ${modeLancAV?'on':'gold'}" onclick="subState.modeLancAV=!subState.modeLancAV;renderTab()">⚡ Rápido</button>`:''}<button class="mini gold" onclick="artePosJogo()">🎨 Arte pós-jogo</button></div></div>
   <select onchange="subState.despEv=this.value;renderTab()">${jogos.length?jogos.map(j=>`<option value="${j.id}" ${j.id===sel?'selected':''}>${dbr(j.data)} — ${esc(j.titulo)}</option>`).join(''):'<option value="">— nenhum jogo cadastrado —</option>'}</select>
-  <div style="margin-top:14px">${lanc}</div></div>
+  <div style="margin-top:14px">${modeLancAV&&sel?lancAoVivo(sel):lanc}</div></div>
   <div class="grid g2 sect">
     <div class="card"><h2>⚽ Artilharia</h2>${rank(a=>a.g)}</div>
     <div class="card"><h2>🅰️ Assistências</h2>${rank(a=>a.as)}</div>
