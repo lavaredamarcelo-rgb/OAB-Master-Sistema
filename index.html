@@ -45,6 +45,7 @@ a{color:var(--blue)}
 .g2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
 .g3{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
 .g4{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.g5{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .spread{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .mut{color:var(--ink2);font-size:13px}
@@ -123,10 +124,21 @@ summary{cursor:pointer;font-weight:600;font-size:14px}
   #main{padding:16px 14px 110px}
   input,select,textarea{font-size:16px;padding:10px 12px}
   button{padding:10px 16px}
-  button.mini{padding:6px 12px;font-size:13.5px}
+  button.mini{padding:9px 14px;font-size:14px;min-height:40px}
   h1{font-size:22px}
   td,th{padding:8px 8px}
-  #modalbg{padding:12px 8px}
+  /* Modal em folha deslizante (bottom sheet) */
+  #modalbg{padding:0;align-items:flex-end}
+  #modal{max-width:100%;border-radius:20px 20px 0 0;max-height:92dvh;overflow-y:auto;padding:20px 16px calc(20px + env(safe-area-inset-bottom));animation:sheetup .22s ease-out}
+  @keyframes sheetup{from{transform:translateY(40px);opacity:.6}to{transform:translateY(0);opacity:1}}
+  /* Tabelas viram cartões empilhados — sem scroll lateral */
+  table.cardz{display:block;border:none}
+  table.cardz tr{display:block;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+  table.cardz tr:has(th){display:none}
+  table.cardz td{display:flex;justify-content:space-between;align-items:center;gap:10px;border:none;padding:5px 0;flex-wrap:wrap;text-align:left}
+  table.cardz td:empty{display:none}
+  table.cardz td[data-l]::before{content:attr(data-l);font-size:10.5px;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;font-weight:700;flex-shrink:0}
+  table.cardz td.row,table.cardz td .row{justify-content:flex-start}
 }
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
@@ -644,7 +656,7 @@ async function reapresentaTermo(aid){
 
 /* ================= SHELL ================= */
 let navHist=[], simAtleta=false;
-const BB={diretoria:['painel','atletas','financeiro','agenda'],treinador:['painel','saude','taticas','agenda'],auxiliar:['painel','saude','taticas','agenda'],preparador:['painel','saude','avaliacao','agenda'],atleta:['meu','agenda','taticas','presencas']};
+const BB={diretoria:['painel','financeiro','presencas','agenda'],treinador:['painel','presencas','taticas','agenda'],auxiliar:['painel','presencas','taticas','agenda'],preparador:['painel','saude','avaliacao','agenda'],atleta:['meu','agenda','taticas','presencas']};
 function toggleSim(){
   if(!simAtleta){ me.roleReal=me.role; me.role='atleta'; simAtleta=true; tab='meu'; }
   else{ me.role=me.roleReal; simAtleta=false; tab='painel'; }
@@ -935,17 +947,17 @@ function tAtletas(){
   ${pendentes.map(a=>`<div class="alertline al-warn"><div style="flex:1"><strong>${esc(a.nome)}</strong><div class="mut">${a.oab?'OAB '+esc(a.oab)+' · ':''}${a.posicao?esc(a.posicao)+' · ':''}${a.fone?'📱 '+esc(a.fone):''} · ${esc(a.email)}</div></div>
   <button class="mini" onclick="aprovaCadastro('${a.id}')">✔ Aprovar</button>
   <button class="mini bad" onclick="recusaCadastro('${a.id}')">✕ Recusar</button></div>`).join('')}</div>`:''}
-  <div class="card tblwrap"><table><tr><th>Nome</th><th>Posição</th><th>WhatsApp</th><th>Status</th><th>Consentimento LGPD</th><th>Pendências</th><th></th></tr>
+  <div class="card tblwrap"><table class="cardz"><tr><th>Nome</th><th>Posição</th><th>WhatsApp</th><th>Status</th><th>Consentimento LGPD</th><th>Pendências</th><th></th></tr>
   ${db.atletas.filter(a=>!a.pendente).map(a=>{
     const cs=a.consent.aceito?`<span class="pill p-ok">Aceito</span>`:a.consent.revogado?'<span class="pill p-bad">Revogado</span>':a.consent.recusado?'<span class="pill p-bad">Recusado</span>':'<span class="pill p-warn">Pendente</span>';
     const P=pendencias(a);
     const isManual=a.cadastroManual;
     return `<tr style="${a.ativo?'':'opacity:.5'}"><td><a href="#" onclick="perfil('${a.id}');return false" style="text-decoration:none"><strong>${esc(a.nome)}</strong></a><div class="mut">${ROLES[a.role]}${a.oab?' · OAB '+esc(a.oab):''}</div></td>
-    <td>${esc(a.posicao||'—')}</td>
-    <td>${a.fone?`<a href="${waLink(a.fone,'Olá, '+pnome(a.nome)+'! ')}" target="_blank" rel="noopener">📱 ${esc(a.fone)}</a>`:'—'}</td>
-    <td>${isManual?`<span class="pill p-gold">📋 Manual</span>`:'<span class="pill p-ok">Ativo</span>'}${a.isentoMens?' <span class="pill p-mut">🧤 Isento</span>':''}</td>
-    <td>${cs}</td>
-    <td>${P.length?`<span class="pill p-bad" style="cursor:pointer" onclick="perfil('${a.id}')">${P.length} pendência${P.length>1?'s':''}</span>`:'<span class="pill p-ok">Em dia</span>'}</td>
+    <td data-l="Posição">${esc(a.posicao||'—')}</td>
+    <td data-l="WhatsApp">${a.fone?`<a href="${waLink(a.fone,'Olá, '+pnome(a.nome)+'! ')}" target="_blank" rel="noopener">📱 ${esc(a.fone)}</a>`:'—'}</td>
+    <td data-l="Status">${isManual?`<span class="pill p-gold">📋 Manual</span>`:'<span class="pill p-ok">Ativo</span>'}${a.isentoMens?' <span class="pill p-mut">🧤 Isento</span>':''}</td>
+    <td data-l="LGPD">${cs}</td>
+    <td data-l="Pendências">${P.length?`<span class="pill p-bad" style="cursor:pointer" onclick="perfil('${a.id}')">${P.length} pendência${P.length>1?'s':''}</span>`:'<span class="pill p-ok">Em dia</span>'}</td>
     <td><button class="mini sec" onclick="formAtleta('${a.id}')">✏️ Editar</button></td></tr>`;
   }).join('')}</table></div>
   <div style="margin-top:14px">${cardPosicoes()}</div>`;
@@ -2198,11 +2210,11 @@ function tAgenda(){
     <p class="mut">Baixe o <strong>.ics</strong> para incluir jogos e treinos no calendário do celular — com lembretes automáticos (1 dia e 3 h antes).</p>
     <div class="row">${podeEditar?`<button onclick="formEvento()">+ Novo compromisso</button>`:''}
     ${evs.length?`<button class="sec" onclick="baixarICS(db.eventos,'agenda-time.ics')">📅 Baixar agenda (.ics)</button>`:''}</div></div>
-  <div class="card tblwrap"><table><tr><th>Data</th><th>Hora</th><th>Compromisso</th><th>Local</th><th></th></tr>
+  <div class="card tblwrap"><table class="cardz"><tr><th>Data</th><th>Hora</th><th>Compromisso</th><th>Local</th><th></th></tr>
   ${evs.length?evs.map(e=>`<tr style="${e.data<hoje()?'opacity:.55':''}">
-    <td>${dbr(e.data)}</td><td>${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''}</td>
+    <td data-l="Data"><strong>${dbr(e.data)}</strong></td><td data-l="Hora">${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''}</td>
     <td><strong>${e.tipo==='jogo'?'⚽':e.tipo==='treino'?'🏃':'📌'} ${esc(e.titulo)}</strong>${e.obs?`<div class="mut">${esc(e.obs)}</div>`:''}</td>
-    <td>${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener" title="Abrir no Google Maps">📍 ${esc(e.local)}</a>`:'—'}</td>
+    <td data-l="Local">${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener" title="Abrir no Google Maps">📍 ${esc(e.local)}</a>`:'—'}</td>
     <td class="row"><button class="mini sec" onclick="modalCal('${e.id}')">📅</button>
     ${podeEditar?`<button class="mini sec" onclick="formEvento('${e.id}')">✏️ Editar</button>
     <button class="mini sec" onclick="convocar('${e.id}')">📣 Convocar</button>
@@ -2296,7 +2308,7 @@ function tPres(){
         <button class="mini gold" onclick="adicionaConvidadoPres()">Adicionar</button>
       </div>
     </div>
-    <div style="margin-top:14px" class="tblwrap"><table><tr><th>Atleta</th><th>Situação</th></tr>${todosAtletas.map(a=>{
+    <div style="margin-top:14px" class="tblwrap"><table class="cardz"><tr><th>Atleta</th><th>Situação</th></tr>${todosAtletas.map(a=>{
       const isConv=String(a.id).startsWith('conv_');
       const p=db.presencas.find(x=>x.eventoId===sel&&(isConv?!x.atletaId&&x.convidado===a.nome:x.atletaId===a.id));
       return `<tr><td>${esc(a.nome)}${isConv?` <span class="pill p-warn" style="font-size:10px">Convidado</span>`:''}</td><td><div class="row">${opts.map(o=>`<button class="mini ${p&&p.status===o?(o==='presente'?'':o==='falta'?'bad':'warn'):'sec'}" onclick="marca('${sel}','${a.id}','${o}')">${lbl[o]}</button>`).join('')}</div></td></tr>`;
@@ -2315,11 +2327,11 @@ function tPres(){
   return `${quadro}
   <div class="card sect"><h2>🏅 Ranking de participação</h2>
   <p class="mut">Quem mais comparece a jogos e treinos (presenças + atrasos contam como comparecimento).</p>
-  ${comDados.length?`<div class="tblwrap"><table><tr><th></th><th>Atleta</th><th>Jogos</th><th>Treinos</th><th>Frequência</th></tr>
-  ${comDados.map((r,i)=>`<tr><td class="medal">${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º'}</td><td>${esc(r.a.nome)}</td><td>${r.jg}</td><td>${r.tr}</td><td><strong>${r.pct}%</strong></td></tr>`).join('')}</table></div>`:'<p class="mut">Nenhuma chamada registrada ainda.</p>'}</div>
+  ${comDados.length?`<div class="tblwrap"><table class="cardz"><tr><th></th><th>Atleta</th><th>Jogos</th><th>Treinos</th><th>Frequência</th></tr>
+  ${comDados.map((r,i)=>`<tr><td class="medal">${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º'}</td><td><strong>${esc(r.a.nome)}</strong></td><td data-l="Jogos">${r.jg}</td><td data-l="Treinos">${r.tr}</td><td data-l="Frequência"><strong>${r.pct}%</strong></td></tr>`).join('')}</table></div>`:'<p class="mut">Nenhuma chamada registrada ainda.</p>'}</div>
   <div class="card"><h2>📊 Faltas e atrasos</h2>
-  ${comDados.length?`<div class="tblwrap"><table><tr><th>Atleta</th><th>Faltas</th><th>Atrasos</th><th>Justificadas</th><th>Situação</th></tr>
-  ${rank.filter(r=>r.f||r.at_||r.j).map(r=>`<tr><td>${esc(r.a.nome)}</td><td>${r.f}</td><td>${r.at_}</td><td>${r.j}</td><td>${db.config.limiteFaltas>0?(r.f>=db.config.limiteFaltas?'<span class="pill p-bad">Limite excedido</span>':'<span class="pill p-ok">Regular</span>'):'<span class="mut">—</span>'}</td></tr>`).join('')||'<tr><td colspan="5" class="mut">Nenhuma falta ou atraso. 👏</td></tr>'}</table></div>
+  ${comDados.length?`<div class="tblwrap"><table class="cardz"><tr><th>Atleta</th><th>Faltas</th><th>Atrasos</th><th>Justificadas</th><th>Situação</th></tr>
+  ${rank.filter(r=>r.f||r.at_||r.j).map(r=>`<tr><td><strong>${esc(r.a.nome)}</strong></td><td data-l="Faltas">${r.f}</td><td data-l="Atrasos">${r.at_}</td><td data-l="Justificadas">${r.j}</td><td data-l="Situação">${db.config.limiteFaltas>0?(r.f>=db.config.limiteFaltas?'<span class="pill p-bad">Limite excedido</span>':'<span class="pill p-ok">Regular</span>'):'<span class="mut">—</span>'}</td></tr>`).join('')||'<tr><td colspan="5" class="mut">Nenhuma falta ou atraso. 👏</td></tr>'}</table></div>
   <div class="row" style="margin-top:12px"><button class="mini" onclick="pdfFrequencia()">📄 Relatório de frequência (PDF)</button><button class="sec mini" onclick="csvFaltas()">⬇ Planilha (CSV)</button></div>`:'<p class="mut">Nenhum registro ainda.</p>'}</div>
   ${minhas.length?`<div class="card" style="margin-top:14px"><h2>🗂️ Meu histórico</h2>
   <div class="tblwrap"><table><tr><th>Data</th><th>Compromisso</th><th>Situação</th></tr>
@@ -3050,6 +3062,19 @@ function delSelDesp(){
     selDesp.clear(); await recarrega(); toast(itens.length+' despesas excluídas 🗑');
   });
 }
+function maisAcoesCob(){
+  modal(`<h2>⋯ Mais ações</h2>
+  <div class="grid g2" style="gap:10px">
+    <button class="sec" style="justify-content:flex-start;display:flex;gap:8px" onclick="fecha();abrirLancadorRapido()">➕ Lançamento avulso</button>
+    <button class="sec" style="justify-content:flex-start;display:flex;gap:8px" onclick="fecha();formAvulso()">🏃 Treino avulso</button>
+    <button class="sec" style="justify-content:flex-start;display:flex;gap:8px" onclick="fecha();gerarRetro()">🧾 Gerar meses anteriores</button>
+    <button class="sec" style="justify-content:flex-start;display:flex;gap:8px" onclick="fecha();cobrarAtrasados()">📣 Aviso geral no grupo</button>
+    <button class="sec" style="justify-content:flex-start;display:flex;gap:8px" onclick="fecha();exportXlsx()">⬇ Excel (.xlsx)</button>
+    <button class="sec" style="justify-content:flex-start;display:flex;gap:8px" onclick="fecha();importPlanilha()">⬆ Importar planilha</button>
+    <button class="sec" style="justify-content:flex-start;display:flex;gap:8px" onclick="fecha();csvFin()">⬇ CSV</button>
+  </div>
+  <div class="row" style="margin-top:14px"><button class="sec" onclick="fecha()">Fechar</button></div>`);
+}
 function tFinCob(){
   const cs=[...db.cobrancas].sort((a,b)=>(a.status==='pago')-(b.status==='pago')||a.venc.localeCompare(b.venc));
   const tot=s=>cs.filter(c=>c.status===s).reduce((x,c)=>x+Number(valorDe(c)),0);
@@ -3061,17 +3086,7 @@ function tFinCob(){
   <div class="row sect">
     <button onclick="formCobranca()">+ Nova cobrança</button>
     <button class="gold" onclick="quitacaoLote()">💳 Quitação em lote</button>
-    <button class="gold" onclick="abrirLancadorRapido()">➕ Lançamento avulso</button>
-  </div>
-  <div class="row sect">
-    <button onclick="formAvulso()">🏃 Treino avulso</button>
-    <button class="sec" onclick="gerarRetro()">🧾 Gerar meses anteriores</button>
-    <button class="warn" onclick="cobrarAtrasados()">📣 Aviso geral no grupo</button>
-  </div>
-  <div class="row sect">
-    <button class="sec" onclick="exportXlsx()">⬇ Excel (.xlsx)</button>
-    <button class="sec" onclick="importPlanilha()">⬆ Importar planilha</button>
-    <button class="sec" onclick="csvFin()">⬇ CSV</button>
+    <button class="sec" onclick="maisAcoesCob()">⋯ Mais ações</button>
   </div>
   <div id="selbar_c" class="alertline al-bad sect" style="display:${selCob.size?'flex':'none'};align-items:center">🗑 <strong><span id="selct_c">${selCob.size}</span> selecionado(s)</strong><span style="flex:1"></span><button class="bad mini" onclick="delSelCob()">Excluir selecionados</button><button class="mini sec" onclick="selCob.clear();renderTab()">Limpar</button></div>
   <div class="card sect"><div class="spread"><h2 style="margin:0">👥 Cobranças por jogador <span class="mut" style="font-family:inherit;font-size:12px">(toque no nome para abrir)</span></h2>
@@ -3091,13 +3106,13 @@ function tFinCob(){
       ${p.aberto>0&&!p.guest?`<div class="row" style="margin:10px 0 4px">
         <button style="background:var(--bad);font-weight:700" onclick="cobraTudoWhats('${p.id}')">📱 Cobrar tudo no WhatsApp (${brl(p.aberto)})</button>
         <button class="mini gold" onclick="quitacaoLote('${p.id}')">💳 Quitar deste jogador</button></div>`:''}
-      <div class="tblwrap" style="margin-top:6px"><table><tr><th></th><th>Descrição</th><th>Valor</th><th>Venc.</th><th>Situação</th><th></th></tr>
+      <div class="tblwrap" style="margin-top:6px"><table class="cardz"><tr><th></th><th>Descrição</th><th>Valor</th><th>Venc.</th><th>Situação</th><th></th></tr>
       ${p.list.sort((a,b)=>b.venc.localeCompare(a.venc)).map(c=>`<tr style="cursor:pointer" onclick="mostraDetalheCobranca('${c.id}')">
         <td><input type="checkbox" onchange="selTog('c','${c.id}',this.checked);event.stopPropagation()" ${selCob.has(c.id)?'checked':''} style="width:auto"></td>
-        <td>${esc(c.desc)}${c.pessoa?`<div class="mut" style="font-size:11px">👤 ${esc(c.pessoa)}</div>`:''}${c.origem?`<div class="mut" style="font-size:11px">📄 ${esc(c.origem)}</div>`:''}</td>
-        <td>${brl(valorDe(c))}${ehMensal(c)&&c.status==='atrasado'?`<div class="mut">era ${brl(c.valor)} até dia ${db.config.mensDia}</div>`:''}</td>
-        <td>${dbr(c.venc)}</td>
-        <td>${c.status==='pago'?`<span class="pill p-ok">Pago ${dbr(c.pagoEm)}</span>`:c.status==='atrasado'?'<span class="pill p-bad">Atrasado</span>':'<span class="pill p-warn">Pendente</span>'}</td>
+        <td><strong>${esc(c.desc)}</strong>${c.pessoa?`<div class="mut" style="font-size:11px">👤 ${esc(c.pessoa)}</div>`:''}${c.origem?`<div class="mut" style="font-size:11px">📄 ${esc(c.origem)}</div>`:''}</td>
+        <td data-l="Valor">${brl(valorDe(c))}${ehMensal(c)&&c.status==='atrasado'?`<div class="mut">era ${brl(c.valor)} até dia ${db.config.mensDia}</div>`:''}</td>
+        <td data-l="Venc.">${dbr(c.venc)}</td>
+        <td data-l="Situação">${c.status==='pago'?`<span class="pill p-ok">Pago ${dbr(c.pagoEm)}</span>`:c.status==='atrasado'?'<span class="pill p-bad">Atrasado</span>':'<span class="pill p-warn">Pendente</span>'}</td>
         <td class="row" onclick="event.stopPropagation()">${c.status!=='pago'?`<button style="background:var(--bad);font-weight:700;padding:7px 14px" onclick="cobraWhats('${c.id}')">📱 Cobrar</button><button class="mini" style="background:var(--ok)" onclick="formPagamento('${c.id}')">✔ Pago</button>`:`<button class="mini sec" onclick="editPagamento('${c.id}')">✏️ Pgto</button>`}
         <button class="mini gold" onclick="editaCobranca('${c.id}')">📝 Det</button>
         <button class="mini sec" onclick="delCobranca('${c.id}')">✕</button></td></tr>`).join('')}</table></div></details>`).join('');
@@ -4072,15 +4087,15 @@ function tUniRO(){
   ${meusEmp.map(e=>`<div class="alertline al-warn"><div style="flex:1"><strong>${e.qtd}× ${esc(e.item)}</strong><div class="mut">desde ${esc(e.quando)}</div></div></div>`).join('')}
   <p class="mut" style="margin-top:8px">Lembre-se de devolver à diretoria. 🤝</p></div>`:''}
   <div class="card"><h2>📦 Materiais do time</h2>
-  <div class="tblwrap"><table><tr><th></th><th>Item</th><th>Detalhes</th><th>Disponível</th><th>Emprestado</th></tr>
+  <div class="tblwrap"><table class="cardz"><tr><th></th><th>Item</th><th>Detalhes</th><th>Disponível</th><th>Emprestado</th></tr>
   ${db.inventario.length?[...db.inventario].sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>{
     const emp=i.emprestimos||[]; const empQtd=emp.reduce((s,e)=>s+Number(e.qtd||0),0); const disp=Number(i.qtd)-empQtd;
     return `<tr>
   <td>${i.fotoUrl?`<img src="${esc(i.fotoUrl)}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:9px;cursor:pointer" onclick="window.open('${esc(i.fotoUrl)}','_blank')">`:'<span style="font-size:24px">📦</span>'}</td>
   <td><strong>${esc(i.nome)}</strong>${i.obs?`<div class="mut">${esc(i.obs)}</div>`:''}<div class="mut">${esc(i.cat)}</div></td>
   <td><div class="row" style="gap:4px">${i.marca?`<span class="pill p-mut">🏷️ ${esc(i.marca)}</span>`:''}${i.cor?`<span class="pill p-gold">🎨 ${esc(i.cor)}</span>`:''}${i.material?`<span class="pill p-warn">🧵 ${esc(i.material)}</span>`:''}</div></td>
-  <td><strong style="color:${disp<0?'var(--bad)':'inherit'}">${disp}</strong><span class="mut">/${i.qtd}</span></td>
-  <td>${emp.length?emp.map(e=>`<div style="font-size:12.5px;margin-bottom:4px">→ <strong>${e.qtd}×</strong> ${esc(e.nome)} <span class="mut">${esc(e.quando)}</span></div>`).join(''):'<span class="mut">—</span>'}</td></tr>`;}).join(''):'<tr><td colspan="5" class="mut">Nenhum material cadastrado.</td></tr>'}</table></div></div>`;
+  <td data-l="Disponível"><strong style="color:${disp<0?'var(--bad)':'inherit'}">${disp}</strong><span class="mut">/${i.qtd}</span></td>
+  <td data-l="Emprestado">${emp.length?emp.map(e=>`<div style="font-size:12.5px;margin-bottom:4px">→ <strong>${e.qtd}×</strong> ${esc(e.nome)} <span class="mut">${esc(e.quando)}</span></div>`).join(''):'<span class="mut">—</span>'}</td></tr>`;}).join(''):'<tr><td colspan="5" class="mut">Nenhum material cadastrado.</td></tr>'}</table></div></div>`;
 }
 function nomeUni(u){ return u.atletaId?nomeAt(u.atletaId):(u.convidado?'🎟️ '+u.convidado+' (de fora)':'—'); }
 const PECAS_LBL={camisa:'Camisa',short:'Short',meiao:'Meião'};
