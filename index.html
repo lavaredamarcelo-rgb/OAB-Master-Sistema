@@ -1386,14 +1386,28 @@ function lancAoVivo(evId){
   const ats=elenco();
   if(!subState.statsTemp) subState.statsTemp={};
   if(!subState.statsTemp[evId]) subState.statsTemp[evId]={};
+  if(!subState.convidadosDesemp) subState.convidadosDesemp=[];
   const temp=subState.statsTemp[evId];
+  const convidados=subState.convidadosDesemp;
+  const todosAtletas=[...ats,...convidados.map((n,i)=>({id:'conv_'+i,nome:n}))];
   return `<div style="display:grid;gap:12px">
-  ${ats.map(a=>{
+  <div style="background:var(--bg2);padding:12px;border-radius:8px;border:1px solid var(--border)">
+    <div style="font-weight:500;margin-bottom:8px;display:flex;gap:8px;align-items:center">
+      <span>➕ Adicionar convidado</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <input id="nome_conv" placeholder="Ex: João da escolinha" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:4px">
+      <button class="mini gold" onclick="adicionaConvidadoDesemp(event)">Adicionar</button>
+    </div>
+  </div>
+  <div style="display:grid;gap:12px">
+  ${todosAtletas.map(a=>{
     const t=temp[a.id]||{g:0,as:0,due:0,pas:0};
+    const isConv=String(a.id).startsWith('conv_');
     return `<div style="background:var(--bg2);padding:12px;border-radius:8px;border:1px solid var(--border)">
       <div style="font-weight:500;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
-        <span>${esc(a.nome)}</span>
-        <button class="mini sec" onclick="formStat('${evId}','${a.id}')">📝 Detalhe</button>
+        <span>${esc(a.nome)}${isConv?` <span class="pill p-warn" style="font-size:10px">Convidado</span>`:''}</span>
+        ${!isConv?`<button class="mini sec" onclick="formStat('${evId}','${a.id}')">📝 Detalhe</button>`:``}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
         <div style="background:var(--bg3);padding:8px;border-radius:4px;text-align:center">
@@ -1422,13 +1436,28 @@ function lancAoVivo(evId){
   <button style="margin-top:14px;padding:12px;font-weight:700;background:var(--ok);color:white;border:none;border-radius:4px;cursor:pointer" onclick="salvaStatsAoVivo('${evId}')">💾 Salvar Todos</button>
   </div>`;
 }
+function adicionaConvidadoDesemp(){
+  const nome=fval('nome_conv')||'';
+  if(!nome.trim()){toast('Digite o nome do convidado');return;}
+  if(!subState.convidadosDesemp) subState.convidadosDesemp=[];
+  subState.convidadosDesemp.push(nome);
+  $('nome_conv').value='';
+  renderTab();
+}
 function salvaStatsAoVivo(evId){
   const temp=subState.statsTemp?.[evId]||{};
   if(!Object.keys(temp).length){toast('Nenhuma estatística para salvar');return;}
   Object.entries(temp).forEach(async ([atId,stats])=>{
-    await q(sb.from('stats').upsert({evento_id:evId,atleta_id:atId,gols:stats.g||0,assist:stats.as||0,duelos:stats.due||0,passes:stats.pas||0},{onConflict:'evento_id,atleta_id'}));
+    if(String(atId).startsWith('conv_')){
+      const idx=Number(atId.split('_')[1]);
+      const nomeConv=subState.convidadosDesemp?.[idx];
+      await q(sb.from('stats').insert({evento_id:evId,atleta_id:null,convidado:nomeConv,gols:stats.g||0,assist:stats.as||0,duelos:stats.due||0,passes:stats.pas||0}));
+    }else{
+      await q(sb.from('stats').upsert({evento_id:evId,atleta_id:atId,gols:stats.g||0,assist:stats.as||0,duelos:stats.due||0,passes:stats.pas||0},{onConflict:'evento_id,atleta_id'}));
+    }
   });
   delete subState.statsTemp[evId];
+  subState.convidadosDesemp=[];
   recarrega();
   toast('✅ Estatísticas salvas ao vivo!');
 }
