@@ -3590,8 +3590,10 @@ async function qlGo(){
 }
 function gerarRetro(){
   const ano=new Date().getFullYear();
+  const ats=elenco();
   modal(`<h2>🧾 Gerar mensalidades de meses anteriores</h2>
-  <p class="mut">Cria "Mensalidade MM/AAAA" (${brl(db.config.mensValor)}, vencimento dia ${db.config.mensDia}) para todos os jogadores, no período escolhido. Meses que já existem são pulados — pode usar sem medo de duplicar.</p>
+  <p class="mut">Cria "Mensalidade MM/AAAA" (${brl(db.config.mensValor)}, vencimento dia ${db.config.mensDia}) no período escolhido. Meses que já existem são pulados — pode usar sem medo de duplicar.</p>
+  <label>Para quem</label><select id="gr_quem"><option value="__todos__">🌐 Todos os jogadores (isentos ficam de fora)</option>${ats.map(a=>`<option value="${a.id}">${esc(a.nome)}${a.isentoMens?' — 🧤 isento':''}</option>`).join('')}</select>
   <div class="grid g2">
   <div><label>De</label><input id="gr_de" type="month" value="${ano}-01"></div>
   <div><label>Até</label><input id="gr_ate" type="month" value="${hoje().slice(0,7)}"></div>
@@ -3599,18 +3601,21 @@ function gerarRetro(){
   <div class="row" style="margin-top:14px"><button onclick="gerarRetroGo()">Gerar cobranças</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function gerarRetroGo(){
-  const de=fval('gr_de'), ate=fval('gr_ate');
+  const de=fval('gr_de'), ate=fval('gr_ate'), quem=fval('gr_quem');
   if(!de||!ate||de>ate){toast('Período inválido');return;}
+  const alvos=quem==='__todos__'?elenco().filter(a=>!a.isentoMens):elenco().filter(a=>a.id===quem);
+  if(!alvos.length){toast('Jogador não encontrado');return;}
+  if(quem!=='__todos__'&&alvos[0].isentoMens&&!confirm(`${alvos[0].nome} é isento de mensalidade. Gerar mesmo assim?`))return;
   const rows=[]; let [y,m]=de.split('-').map(Number); const [ya,ma]=ate.split('-').map(Number); let seg=0;
   while((y<ya||(y===ya&&m<=ma))&&seg<24){
     const mm=String(m).padStart(2,'0'), descr=`Mensalidade ${mm}/${y}`;
     const venc=`${y}-${mm}-${String(db.config.mensDia).padStart(2,'0')}`;
-    elenco().filter(a=>!a.isentoMens).forEach(a=>{ if(!db.cobrancas.some(c=>c.atletaId===a.id&&c.desc===descr))rows.push({atleta_id:a.id,descricao:descr,valor:db.config.mensValor,venc}); });
+    alvos.forEach(a=>{ if(!db.cobrancas.some(c=>c.atletaId===a.id&&c.desc===descr))rows.push({atleta_id:a.id,descricao:descr,valor:db.config.mensValor,venc}); });
     m++; if(m>12){m=1;y++;} seg++;
   }
   if(!rows.length){fecha();toast('Nada a gerar — essas mensalidades já existem');return;}
   await q(sb.from('cobrancas').insert(rows));
-  log('financeiro',`Mensalidades retroativas geradas: ${rows.length} cobranças (${de} a ${ate})`);
+  log('financeiro',`Mensalidades retroativas geradas: ${rows.length} cobranças (${de} a ${ate})${quem!=='__todos__'?' — só '+alvos[0].nome:''}`);
   fecha(); await recarrega(); toast(rows.length+' cobranças geradas 🧾');
 }
 function formDespesa(id,copiaId){
