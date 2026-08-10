@@ -49,7 +49,7 @@ a{color:var(--blue)}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .spread{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .mut{color:var(--ink2);font-size:13px}
-.stat .n{font-size:26px;font-weight:700;font-family:Georgia,serif}
+.stat .n{font-size:26px;font-weight:700;font-family:Georgia,serif;line-height:1.15;overflow-wrap:anywhere}
 .stat .l{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2)}
 #shell{display:flex;min-height:100vh}
 #side{width:230px;flex-shrink:0;background:var(--card);border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;overflow-y:auto}
@@ -101,7 +101,8 @@ a{color:var(--blue)}
 .tok.bola{background:#F2C11E;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;padding:0}
 .tok.mov{transition:left 2.2s ease-in-out, top 2.2s ease-in-out}
 .setas{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none}
-.doc{display:flex;gap:10px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;font-size:13.5px}
+.doc{display:flex;gap:10px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;font-size:13.5px;flex-wrap:wrap}
+.doc>span{min-width:0;overflow-wrap:anywhere}
 .patrow{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch;justify-content:center}
 .pat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-decoration:none;color:var(--ink);min-width:110px}
 .pat img{max-height:52px;max-width:130px;object-fit:contain}
@@ -131,6 +132,10 @@ summary{cursor:pointer;font-weight:600;font-size:14px}
   #modalbg{padding:0;align-items:flex-end}
   #modal{max-width:100%;border-radius:20px 20px 0 0;max-height:92dvh;overflow-y:auto;padding:20px 16px calc(20px + env(safe-area-inset-bottom));animation:sheetup .22s ease-out}
   @keyframes sheetup{from{transform:translateY(40px);opacity:.6}to{transform:translateY(0);opacity:1}}
+}
+/* Celular na vertical E na horizontal (até 1000px) */
+@media(max-width:1000px){
+  .stat .n{font-size:clamp(15px,2.4vw + 7px,22px)}
   /* Tabelas viram cartões empilhados — sem scroll lateral */
   table.cardz{display:block;border:none}
   table.cardz tr{display:block;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px}
@@ -1162,9 +1167,9 @@ function tDocs(){
   <button class="mini" style="margin-top:12px" onclick="salvaChecklist()">Salvar checklist</button></div>
   <div class="card"><div class="spread"><h2>📋 Visão geral</h2>
   <button class="mini" onclick="baixarZipTodos()">⬇ ZIP de todos os documentos (p/ inscrição)</button></div>
-  <div class="tblwrap"><table><tr><th>Pessoa</th>${CATS_DOC.map(c=>`<th>${c}${db.config.docsObrig.includes(c)?' *':''}</th>`).join('')}</tr>
+  <div class="tblwrap"><table class="cardz"><tr><th>Pessoa</th>${CATS_DOC.map(c=>`<th>${c}${db.config.docsObrig.includes(c)?' *':''}</th>`).join('')}</tr>
   ${pessoas.map(a=>`<tr><td><strong>${esc(a.nome)}</strong></td>${CATS_DOC.map(c=>{const n=db.arquivos.filter(d=>d.atletaId===a.id&&d.categoria===c).length;
-    return `<td>${n?`<span class="pill p-ok">${n}</span>`:(db.config.docsObrig.includes(c)&&(a.role==='atleta'||a.role==='diretoria')?'<span class="pill p-bad">Falta</span>':'<span class="mut">—</span>')}</td>`;}).join('')}</tr>`).join('')}</table></div>
+    return `<td data-l="${c}${db.config.docsObrig.includes(c)?' *':''}">${n?`<span class="pill p-ok">${n}</span>`:(db.config.docsObrig.includes(c)&&(a.role==='atleta'||a.role==='diretoria')?'<span class="pill p-bad">Falta</span>':'<span class="mut">—</span>')}</td>`;}).join('')}</tr>`).join('')}</table></div>
   <p class="mut" style="margin-top:10px">* obrigatório · 💡 Peça a cada atleta que anexe os documentos pelo celular, em <strong>Meu espaço → Meus documentos</strong>.</p></div>`;
 }
 function slotsDocs(aid,podeAnexar){
@@ -1233,7 +1238,7 @@ function cobrarDocs(){
   modal(`<h2>📣 Cobrar documentos pendentes</h2>
   <label>Prazo para entrega (opcional — entra nas mensagens)</label><input id="cd_prazo" type="date">
   <label style="margin-top:14px">Mensagem para o grupo (sem nomes)</label>
-  <textarea id="cd_msg" style="min-height:110px">⚽ *${db.config.time} — Secretaria*\n\nPessoal, para a inscrição nos campeonatos ainda faltam documentos de ${devedores.length} jogador(es).\n\nQuem ainda não anexou: entre no sistema → Meu espaço → Meus documentos → 📎 Anexar. Leva 1 minuto e dá para fotografar na hora.\n🔗 ${location.origin}\n\nContamos com todos! 🤝</textarea>
+  <textarea id="cd_msg" style="min-height:110px">⚽ *${db.config.time} — Secretaria*\n\nPessoal, para a inscrição nos campeonatos ainda faltam documentos de ${devedores.length} jogador(es).\n\n📣 Atenção: ${devedores.map(x=>'@'+pnome(x.a.nome)).join(', ')}\n\nQuem ainda não anexou: entre no sistema → Meu espaço → Meus documentos → 📎 Anexar. Leva 1 minuto e dá para fotografar na hora.\n🔗 ${location.origin}\n\nContamos com todos! 🤝</textarea>
   <div class="row" style="margin-top:10px">
     <button onclick="copiar($('cd_msg').value.replace(/\\\\n/g,String.fromCharCode(10)),'Mensagem copiada — cole no grupo')">📋 Copiar p/ grupo</button>
     ${db.config.grupo?`<button class="gold" onclick="window.open('${esc(db.config.grupo)}','_blank')">👥 Abrir grupo</button>`:''}
@@ -2269,7 +2274,7 @@ function delEvento(id){ const e=byId(db.eventos,id); confirma(`Excluir o comprom
 function convocar(id){
   const e=byId(db.eventos,id);
   const patN=(db.pats||[]).filter(p=>p.ativo).map(p=>p.nome);
-  const msg=`⚽ *CONVOCAÇÃO — ${db.config.time}*\n\n${e.tipo==='jogo'?'🏆 Jogo':'🏃 Treino'}: ${e.titulo}\n📅 ${dbr(e.data)} das ${e.hora}${e.horaFim?' às '+e.horaFim:''}\n📍 ${e.local}${e.local?'\n🗺️ '+mapsLink(e.local):''}${e.obs?'\n📝 '+e.obs:''}\n\nConfirme presença! Baixe o lembrete no sistema. ⭐${patN.length?'\n\n🤝 Apoio: '+patN.join(' · '):''}`;
+  const msg=`⚽ *CONVOCAÇÃO — ${db.config.time}*\n\nAtenção, @todos!\n\n${e.tipo==='jogo'?'🏆 Jogo':'🏃 Treino'}: ${e.titulo}\n📅 ${dbr(e.data)} das ${e.hora}${e.horaFim?' às '+e.horaFim:''}\n📍 ${e.local}${e.local?'\n🗺️ '+mapsLink(e.local):''}${e.obs?'\n📝 '+e.obs:''}\n\nConfirme presença! Baixe o lembrete no sistema. ⭐${patN.length?'\n\n🤝 Apoio: '+patN.join(' · '):''}`;
   modalWhats('Convocação',msg);
 }
 function modalWhats(titulo,msg){
@@ -3578,7 +3583,7 @@ async function salvaCobranca(){
 function msgCobranca(c){
   const a=at(c.atletaId), pix=db.config.pix?`\n💳 Pix: ${db.config.pix}`:'';
   const linhaValor=ehMensal(c)?`💵 ${brl(c.valor)} até o dia ${db.config.mensDia}; a partir do dia ${db.config.mensDia+1}: ${brl(db.config.mensApos)}${c.status==='atrasado'?`\n⚠️ *Prazo vencido — valor atual: ${brl(db.config.mensApos)}*`:''}`:`💵 ${brl(valorDe(c))}${c.status==='atrasado'?'\n⚠️ *Pagamento vencido — pedimos regularização*':''}`;
-  return `Prezado(a) ${pnome(a.nome)},\n\n*${db.config.time} — Tesouraria* 🏦\n\nConsta em nosso controle a seguinte pendência:\n\n📌 ${c.desc}\n${linhaValor}\n📅 Vencimento: ${dbr(c.venc)}${pix}\n\nApós o pagamento, por gentileza envie o comprovante. Qualquer divergência, fale com a diretoria.\n\nObrigado! 🤝⚖️`;
+  return `Prezado(a) @${pnome(a.nome)},\n\n*${db.config.time} — Tesouraria* 🏦\n\nConsta em nosso controle a seguinte pendência:\n\n📌 ${c.desc}\n${linhaValor}\n📅 Vencimento: ${dbr(c.venc)}${pix}\n\nApós o pagamento, por gentileza envie o comprovante. Qualquer divergência, fale com a diretoria.\n\nObrigado! 🤝⚖️`;
 }
 function cobraWhats(id){
   const c=byId(db.cobrancas,id), a=at(c.atletaId);
@@ -3594,7 +3599,7 @@ function cobraTudoWhats(aid){
   const total=abertas.reduce((s,c)=>s+Number(valorDe(c)),0);
   const linhas=abertas.map(c=>`• ${c.desc} — ${brl(valorDe(c))} (venc. ${dbr(c.venc)}${c.status==='atrasado'?', em atraso':''})`).join('\n');
   const pix=db.config.pix?`\n\n💳 Pix: ${db.config.pix}`:'';
-  const msg=`Prezado(a) ${pnome(a.nome)},\n\n*${db.config.time} — Tesouraria* 🏦\n\nConstam em aberto em seu nome:\n\n${linhas}\n\n*Total: ${brl(total)}*\n\n💡 Dica: a diretoria pode fazer a quitação com condições especiais — fale conosco.${pix}\n\nApós o pagamento, por gentileza envie o comprovante. Obrigado! 🤝⚖️`;
+  const msg=`Prezado(a) @${pnome(a.nome)},\n\n*${db.config.time} — Tesouraria* 🏦\n\nConstam em aberto em seu nome:\n\n${linhas}\n\n*Total: ${brl(total)}*\n\n💡 Dica: a diretoria pode fazer a quitação com condições especiais — fale conosco.${pix}\n\nApós o pagamento, por gentileza envie o comprovante. Obrigado! 🤝⚖️`;
   window.open(waLink(a.fone,msg),'_blank');
   log('financeiro',`Cobrança consolidada enviada via WhatsApp: ${a.nome} — ${abertas.length} cobranças (${brl(total)})`);
 }
@@ -3602,8 +3607,9 @@ function cobrarAtrasados(){
   const atr=db.cobrancas.filter(c=>c.status==='atrasado');
   if(!atr.length){toast('Nenhum atraso! 🎉');return;}
   const totv=atr.reduce((s,c)=>s+Number(valorDe(c)),0);
-  const msg=`⚽ *${db.config.time} — Aviso da Tesouraria*\n\nPrezados(as) atletas,\n\nConstam *${atr.length} cobrança(s) em aberto*, totalizando *${brl(totv)}*.\n\nPedimos que cada um verifique a própria situação no sistema e regularize o quanto antes. Quem já pagou, por favor desconsidere e envie o comprovante.${db.config.pix?'\n\n💳 Pix: '+db.config.pix:''}\n\nA pontualidade de todos mantém o clube em campo. Contamos com vocês! 🤝⚖️`;
-  modalWhats('Aviso geral (sem nomes)',msg);
+  const nomes=[...new Set(atr.map(c=>c.atletaId?'@'+pnome(nomeAt(c.atletaId)):(c.convidado||'').trim()).filter(Boolean))].sort();
+  const msg=`⚽ *${db.config.time} — Aviso da Tesouraria*\n\nPrezados(as) atletas,\n\nConstam *${atr.length} cobrança(s) em aberto*, totalizando *${brl(totv)}*.\n\n📣 Atenção: ${nomes.join(', ')}\n\nPedimos que cada um verifique a própria situação no sistema e regularize o quanto antes. Quem já pagou, por favor desconsidere e envie o comprovante.${db.config.pix?'\n\n💳 Pix: '+db.config.pix:''}\n\nA pontualidade de todos mantém o clube em campo. Contamos com vocês! 🤝⚖️`;
+  modalWhats('Aviso geral no grupo',msg);
 }
 async function pagou(id){
   const c=byId(db.cobrancas,id);
