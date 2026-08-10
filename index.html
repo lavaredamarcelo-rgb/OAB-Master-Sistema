@@ -4696,7 +4696,6 @@ function tMeu(){
   ${prox.length?prox.map(e=>`<div class="alertline" style="background:var(--blue-soft)"><div style="flex:1"><strong>${e.tipo==='jogo'?'⚽':'🏃'} ${esc(e.titulo)}</strong><div class="mut">${dbr(e.data)} às ${esc(e.hora)} — ${esc(e.local)}${e.obs?' · '+esc(e.obs):''}</div></div>
     <button class="mini" onclick="modalCal('${e.id}')">📅 Pôr no calendário</button></div>`).join(''):'<p class="mut">Nada agendado por enquanto.</p>'}
   ${prox.length?`<button class="sec mini" onclick="baixarICS(db.eventos.filter(e=>e.data>=hoje()),'agenda-oabmaster.ics')">📅 Agenda completa (.ics)</button>`:''}</div>
-  <div class="sect">${cardDiretoria()}</div>
   <div class="grid g5 sect">
     <div class="card stat clickable" onclick="vai('presencas')"><div class="n">${pct===null?'—':pct+'%'}</div><div class="l">Minha frequência →</div></div>
     <div class="card stat clickable" onclick="vai('desempenho')"><div class="n">${gols}⚽ ${asst}🅰️</div><div class="l">Gols / Assist. →</div></div>
@@ -4725,6 +4724,7 @@ function tMeu(){
   </table></div>
   <p class="mut" style="margin-top:8px"><a href="#" onclick="vai('saude');return false">Minha ficha de saúde →</a> · <a href="#" onclick="vai('taticas');return false">Prancheta do treinador →</a></p></div>
   <div class="sect">${cardPats()}</div>
+  <div class="sect">${cardDiretoria()}</div>
   <div class="card"><div class="spread"><h2>📁 Meus documentos</h2>
   ${db.arquivos.some(d=>d.atletaId===me.id)?`<button class="mini sec" onclick="baixarZipPessoa('${me.id}')">⬇ Baixar todos (ZIP)</button>`:''}</div>
   <p class="mut">Cada documento tem sua gaveta: toque em <strong>📎 Anexar</strong> no tipo certo (PDF ou foto, máx. 10 MB). Visíveis para você e para a diretoria — é daqui que saem os documentos para as inscrições nos campeonatos.</p>
