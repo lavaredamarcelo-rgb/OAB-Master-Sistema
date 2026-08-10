@@ -973,6 +973,22 @@ async function excluiAtleta(id){
 /* ================= DOCUMENTOS ================= */
 const CATS_DOC=['Carteira OAB','Certidão','Atestado','Declaração de saúde','Comprovante','Outro'];
 function docLinha(d,podeDel){
+  const isVideo=d.nome.match(/\.(mp4|mov|m4v|webm)$/i);
+  if(isVideo){
+    return `<div style="margin-bottom:16px;background:var(--bg2);border-radius:8px;overflow:hidden">
+      <div style="aspect-ratio:16/9;background:#000">
+        <video controls style="width:100%;height:100%;display:block">
+          <source src="${d.path}" type="video/mp4">
+          Seu navegador não suporta vídeo.
+        </video>
+      </div>
+      <div style="padding:12px;display:flex;align-items:center;gap:8px">
+        <span class="pill p-ok">🎬 Vídeo</span>
+        <span style="flex:1"><strong>${esc(d.nome)}</strong><div class="mut" style="font-size:11px">${kb(d.tam)} · ${esc(d.quando)}</div></span>
+        <button class="mini sec" onclick="abreArquivo('${esc(d.path)}','${esc(d.nome)}')">⬇</button>
+        ${podeDel?`<button class="mini sec" onclick="removeArquivo('${d.id}')">✕</button>`:''}</div>
+    </div>`;
+  }
   return `<div class="doc"><span class="pill p-mut">${esc(d.categoria)}</span>
   <span style="flex:1"><strong>${esc(d.nome)}</strong><span class="mut"> · ${kb(d.tam)} · ${esc(d.quando)} · por ${esc(d.quem)}</span></span>
   <button class="mini sec" onclick="abreArquivo('${esc(d.path)}','${esc(d.nome)}')">⬇</button>
