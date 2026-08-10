@@ -225,7 +225,7 @@ async function carregaTudo(){
   db.atletas=perfis.map(mapAtleta);
   saude.forEach(s=>{ const a=at(s.atleta_id); if(a)a.saude={sangue:s.sangue,plano:s.plano,alergias:s.alergias,medicamentos:s.medicamentos,condicoes:s.condicoes,emergencia:s.emergencia,lesoes:s.lesoes,obs:s.obs,lesoesLista:s.lesoes_lista||[],obsLista:s.obs_lista||[]}; });
   db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),hora:e.hora,local:e.local,obs:e.obs}));
-  db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,status:p.status}));
+  db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,convidado:p.convidado||null,status:p.status}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,origem:c.origem||'',lote:c.origem_lote||''}));
   db.avaliacoes=avaliacoes.map(v=>({id:v.id,atletaId:v.atleta_id,data:String(v.data),peso:v.peso,altura:v.altura,gordura:v.gordura,vo2:v.vo2,notas:v.notas}));
@@ -479,10 +479,42 @@ async function cadastroGo(){
     return; }
   const {data:{session}}=await sb.auth.getSession();
   if(!session){ b.disabled=false; telaLogin('Conta criada! Confirme o e-mail que enviamos e depois entre.'); return; }
+
+  // Verificar se existe cadastro manual com o mesmo nome
+  const {data:existente}=await sb.from('perfis').select('id,fone,oab,posicao,role,cargo').eq('nome',nome).eq('cadastro_manual',true).single();
+  if(existente){
+    b.disabled=false;
+    modal(`<h2>✨ Encontramos seus dados!</h2>
+    <p>Detectamos um cadastro manual com seu nome. Quer usar as informações que já temos registradas?</p>
+    <div class="alertline al-ok" style="margin:12px 0">
+      <div style="flex:1">
+        <strong>${esc(nome)}</strong>
+        ${existente.fone?'<div class="mut">📱 '+esc(existente.fone)+'</div>':''}
+        ${existente.posicao?'<div class="mut">⚽ '+esc(existente.posicao)+'</div>':''}
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button onclick="vincularCadastro('${existente.id}','${cod}')">✔ Usar esses dados</button>
+      <button class="sec" onclick="usarNovosDeadosCompletar('${cod}','${nome}')">✎ Usar novos dados</button>
+    </div>`);
+    return;
+  }
+
   const {data,error:e2}=await sb.rpc('solicitar_cadastro',{codigo:cod,p_nome:nome,p_fone:fval('r_fone'),p_oab:fval('r_oab'),p_posicao:fval('r_pos')});
   b.disabled=false;
   if(e2){ toast('⚠️ '+e2.message); telaCompletarCadastro(); return; }
   boot();
+}
+async function vincularCadastro(idManual,codigo){
+  const fone=fval('r_fone'),oab=fval('r_oab'),pos=fval('r_pos');
+  const {data,error}=await sb.rpc('solicitar_cadastro',{codigo,p_nome:fval('r_nome'),p_fone:fone,p_oab:oab,p_posicao:pos});
+  if(error){ toast('⚠️ '+error.message); return; }
+  // Marcar cadastro manual como vinculado
+  await q(sb.from('perfis').update({cadastro_manual:false}).eq('id',idManual));
+  fecha(); boot();
+}
+function usarNovosDeadosCompletar(cod,nome){
+  fecha(); telaCompletarCadastro();
 }
 function telaCompletarCadastro(){
   $('app').innerHTML=`<div class="login-wrap"><div class="login-box card" style="padding:28px;max-width:470px">
@@ -854,18 +886,21 @@ function tAtletas(){
     <div class="card stat"><div class="n">${nCom}</div><div class="l">Comissão técnica</div></div>
   </div>
   <div class="card sect" style="background:var(--blue-soft);border-color:var(--blue)">
-  <strong>Como adicionar alguém:</strong> envie o link do sistema + o <strong>código do time</strong> (<code>${esc(db.config.codigo)}</code> — mude em Ajustes). A pessoa cria a própria conta, você aprova aqui e, se for o caso, muda a função dela (treinador, preparador, diretoria) no ✏️ Editar.</div>
+  <strong>Como adicionar alguém:</strong> envie o link do sistema + o <strong>código do time</strong> (<code>${esc(db.config.codigo)}</code> — mude em Ajustes). A pessoa cria a própria conta, você aprova aqui e, se for o caso, muda a função dela (treinador, preparador, diretoria) no ✏️ Editar.
+  <div class="row" style="margin-top:12px"><button onclick="formNovoAtletaManual()">➕ Cadastrar atleta manualmente</button><span class="mut" style="font-size:12px">• Preencha os dados agora, vincule ao perfil dele depois que se registrar</span></div></div>
   ${pendentes.length?`<div class="card sect" style="border-color:var(--warn)"><h2>🆕 Solicitações aguardando aprovação</h2>
   ${pendentes.map(a=>`<div class="alertline al-warn"><div style="flex:1"><strong>${esc(a.nome)}</strong><div class="mut">${a.oab?'OAB '+esc(a.oab)+' · ':''}${a.posicao?esc(a.posicao)+' · ':''}${a.fone?'📱 '+esc(a.fone):''} · ${esc(a.email)}</div></div>
   <button class="mini" onclick="aprovaCadastro('${a.id}')">✔ Aprovar</button>
   <button class="mini bad" onclick="recusaCadastro('${a.id}')">✕ Recusar</button></div>`).join('')}</div>`:''}
-  <div class="card tblwrap"><table><tr><th>Nome</th><th>Posição</th><th>WhatsApp</th><th>Consentimento LGPD</th><th>Pendências</th><th></th></tr>
+  <div class="card tblwrap"><table><tr><th>Nome</th><th>Posição</th><th>WhatsApp</th><th>Status</th><th>Consentimento LGPD</th><th>Pendências</th><th></th></tr>
   ${db.atletas.filter(a=>!a.pendente).map(a=>{
     const cs=a.consent.aceito?`<span class="pill p-ok">Aceito</span>`:a.consent.revogado?'<span class="pill p-bad">Revogado</span>':a.consent.recusado?'<span class="pill p-bad">Recusado</span>':'<span class="pill p-warn">Pendente</span>';
     const P=pendencias(a);
+    const isManual=a.cadastroManual;
     return `<tr style="${a.ativo?'':'opacity:.5'}"><td><a href="#" onclick="perfil('${a.id}');return false" style="text-decoration:none"><strong>${esc(a.nome)}</strong></a><div class="mut">${ROLES[a.role]}${a.oab?' · OAB '+esc(a.oab):''}</div></td>
     <td>${esc(a.posicao||'—')}</td>
     <td>${a.fone?`<a href="${waLink(a.fone,'Olá, '+pnome(a.nome)+'! ')}" target="_blank" rel="noopener">📱 ${esc(a.fone)}</a>`:'—'}</td>
+    <td>${isManual?`<span class="pill p-gold">📋 Manual</span>`:'<span class="pill p-ok">Ativo</span>'}</td>
     <td>${cs}</td>
     <td>${P.length?`<span class="pill p-bad" style="cursor:pointer" onclick="perfil('${a.id}')">${P.length} pendência${P.length>1?'s':''}</span>`:'<span class="pill p-ok">Em dia</span>'}</td>
     <td><button class="mini sec" onclick="formAtleta('${a.id}')">✏️ Editar</button></td></tr>`;
@@ -915,11 +950,46 @@ function perfil(id){
   <button class="sec" onclick="fecha()">Fechar</button></div>`);
 }
 const CARGOS=['Presidente','Vice-Presidente','Diretor Financeiro','Diretor de Futebol','Diretor Jurídico','Diretor Social','Diretor de Comunicação','Diretor de Patrimônio','Suplente'];
+function formNovoAtletaManual(){
+  modal(`<h2>📋 Cadastrar atleta manualmente</h2>
+  <p class="mut">Preencha os dados agora. Quando o atleta se registrar no sistema, você poderá vincular essas informações ao perfil dele.</p>
+  <label>Nome completo *</label><input id="am_nome" placeholder="Ex.: Herson da Silva">
+  <div class="grid g2">
+  <div><label>WhatsApp (com DDD)</label><input id="am_fone" placeholder="Ex.: 91 98765-4321"></div>
+  <div><label>Nº OAB — opcional</label><input id="am_oab" placeholder="Ex.: 12345/PA"></div>
+  <div><label>Posição em campo</label><input id="am_pos" placeholder="Ex.: Zagueiro, Volante"></div>
+  <div><label>Função no sistema</label><select id="am_role"><option value="atleta">Atleta</option><option value="treinador">Treinador</option><option value="auxiliar">Auxiliar</option><option value="preparador">Preparador Físico</option></select></div>
+  </div>
+  <div class="row" style="margin-top:16px"><button onclick="salvaAtletaManual()">💾 Criar cadastro</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+async function salvaAtletaManual(){
+  const nome=fval('am_nome'); if(!nome.trim()){toast('Informe o nome');return;}
+  const fone=fval('am_fone')||'';
+  const oab=fval('am_oab')||'';
+  const pos=fval('am_pos')||'';
+  const role=fval('am_role')||'atleta';
+  await q(sb.from('perfis').insert({
+    nome,
+    fone,
+    oab,
+    posicao:pos,
+    role,
+    email:null,
+    cadastro_manual:true,
+    aprovado:true,
+    ativo:true,
+    quando:new Date().toISOString()
+  }));
+  log('cadastro',`Atleta cadastrado manualmente: ${nome}`);
+  fecha(); await recarrega(); toast('✅ '+nome+' cadastrado manualmente');
+}
 function formAtleta(id){
   const a=at(id);
   const podeDiretoria=me.fundador;
   const travaDir=a.role==='diretoria'&&!me.fundador;
+  const cadastroManual=db.atletas.find(at=>at.cadastroManual&&at.nome===a.nome&&at.id!==id);
   modal(`<h2>Editar cadastro</h2>
+  ${cadastroManual?`<div class="alertline al-gold sect">📋 Existe um <strong>cadastro manual</strong> com este nome. <button class="mini gold" onclick="vincularManualmente('${id}','${cadastroManual.id}')">🔗 Vincular dados</button></div>`:''}
   <label>Nome completo</label><input id="a_nome" value="${esc(a.nome)}">
   <div class="grid g2">
   <div><label>WhatsApp (com DDD)</label><input id="a_fone" value="${esc(a.fone)}"></div>
@@ -932,6 +1002,21 @@ function formAtleta(id){
   <div class="row" style="margin-top:8px"><input type="checkbox" id="a_ativo" ${a.ativo?'checked':''} ${travaDir?'disabled':''} style="width:auto"> <span>Ativo no time</span></div>
   <div class="row" style="margin-top:16px"><button onclick="salvaAtleta('${id}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button>
   ${id!==me.id&&!travaDir?`<span style="flex:1"></span><button class="bad" onclick="confirmaExcluir('${id}')">🗑 Excluir do sistema</button>`:''}</div>`);
+}
+async function vincularManualmente(idAtual,idManual){
+  const manual=at(idManual);
+  confirma(`Vincular <strong>${esc(manual.nome)}</strong> com os dados do cadastro manual? Isso copiará WhatsApp, OAB e Posição para o perfil atual.`,async()=>{
+    const atual=at(idAtual);
+    await q(sb.from('perfis').update({
+      fone:manual.fone||atual.fone,
+      oab:manual.oab||atual.oab,
+      posicao:manual.posicao||atual.posicao,
+      role:manual.role
+    }).eq('id',idAtual));
+    await q(sb.from('perfis').update({cadastro_manual:false}).eq('id',idManual));
+    log('cadastro',`Cadastro manual vinculado: ${manual.nome}`);
+    fecha(); await recarrega(); toast('✅ Dados vinculados com sucesso!');
+  });
 }
 async function salvaAtleta(id){
   const nome=fval('a_nome'); if(!nome){toast('Informe o nome');return;}
@@ -1722,6 +1807,10 @@ function abrirPrancheta(id){
     <button class="mini sec" onclick="if(fval('pr_num')){prAddTok('Nº '+fval('pr_num'),false,'time');$('pr_num').value=''}">+ Só nº</button>
   </div>
   <div class="row" style="margin:6px 0 6px">
+    <input id="pr_conv" placeholder="+ Convidado (nome)" style="max-width:180px">
+    <button class="mini sec" onclick="if(fval('pr_conv')){prAddTok('🎟️ '+fval('pr_conv'),false,'conv');$('pr_conv').value=''}">Adicionar convidado</button>
+  </div>
+  <div class="row" style="margin:6px 0 6px">
     <input id="pr_adv" placeholder="+ Adversário (nome)" style="max-width:180px">
     <button class="mini sec" onclick="if(fval('pr_adv')){prAddTok(fval('pr_adv'),false,'adv');$('pr_adv').value=''}">Adicionar adversário</button>
   </div>
@@ -2034,28 +2123,39 @@ function tAgenda(){
     <td><strong>${e.tipo==='jogo'?'⚽':e.tipo==='treino'?'🏃':'📌'} ${esc(e.titulo)}</strong>${e.obs?`<div class="mut">${esc(e.obs)}</div>`:''}</td>
     <td>${esc(e.local)}</td>
     <td class="row"><button class="mini sec" onclick="modalCal('${e.id}')">📅</button>
-    ${podeEditar?`<button class="mini sec" onclick="convocar('${e.id}')">📣 Convocar</button>
+    ${podeEditar?`<button class="mini sec" onclick="formEvento('${e.id}')">✏️ Editar</button>
+    <button class="mini sec" onclick="convocar('${e.id}')">📣 Convocar</button>
     <button class="mini sec" onclick="delEvento('${e.id}')">✕</button>`:''}</td></tr>`).join(''):'<tr><td colspan="5" class="mut">Nenhum compromisso.</td></tr>'}</table></div>`;
 }
 
-function formEvento(){
-  modal(`<h2>Novo compromisso</h2>
+function formEvento(id){
+  let e={tipo:'treino',titulo:'',data:hoje(),hora:'19:00',local:'',obs:''};
+  if(id){ const ev=byId(db.eventos,id); if(ev) e={...ev,data:ev.data,hora:ev.hora||'19:00'}; }
+  modal(`<h2>${id?'Editar':'Novo'} compromisso</h2>
   <div class="grid g2">
-  <div><label>Tipo</label><select id="e_tipo"><option value="jogo">Jogo</option><option value="treino">Treino</option><option value="reuniao">Reunião</option><option value="viagem">Viagem</option></select></div>
-  <div><label>Título</label><input id="e_tit" placeholder="Ex.: Jogo × OAB Santarém"></div>
-  <div><label>Data</label><input id="e_data" type="date"></div>
-  <div><label>Hora</label><input id="e_hora" type="time"></div>
+  <div><label>Tipo</label><select id="e_tipo"><option value="jogo" ${e.tipo==='jogo'?'selected':''}>Jogo</option><option value="treino" ${e.tipo==='treino'?'selected':''}>Treino</option><option value="reuniao" ${e.tipo==='reuniao'?'selected':''}>Reunião</option><option value="viagem" ${e.tipo==='viagem'?'selected':''}>Viagem</option></select></div>
+  <div><label>Título</label><input id="e_tit" value="${esc(e.titulo)}" placeholder="Ex.: Jogo × OAB Santarém"></div>
+  <div><label>Data</label><input id="e_data" type="date" value="${e.data}"></div>
+  <div><label>Hora</label><input id="e_hora" type="time" value="${e.hora}"></div>
   </div>
-  <label>Local</label><input id="e_local">
-  <label>Observações</label><input id="e_obs" placeholder="Ex.: uniforme principal, chegar 30 min antes">
-  <div class="row" style="margin-top:14px"><button onclick="salvaEvento()">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+  <label>Local</label><input id="e_local" value="${esc(e.local)}">
+  <label>Observações</label><input id="e_obs" value="${esc(e.obs)}" placeholder="Ex.: uniforme principal, chegar 30 min antes">
+  <div class="row" style="margin-top:14px"><button onclick="salvaEvento('${id||''}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
-async function salvaEvento(){
+async function salvaEvento(id){
   const t=fval('e_tit'),d=fval('e_data'); if(!t||!d){toast('Informe título e data');return;}
-  await q(sb.from('eventos').insert({tipo:fval('e_tipo'),titulo:t,data:d,hora:fval('e_hora')||'19:00',local:fval('e_local'),obs:fval('e_obs')}));
-  log('agenda',`Compromisso criado: ${t} (${dbr(d)})`);
-  enviarPush('🗓️ '+db.config.time+' — novo compromisso',`${t} — ${dbr(d)} às ${fval('e_hora')||'19:00'}`);
-  fecha(); await recarrega(); toast('Compromisso criado');
+  const dados={tipo:fval('e_tipo'),titulo:t,data:d,hora:fval('e_hora')||'19:00',local:fval('e_local'),obs:fval('e_obs')};
+  if(id){
+    await q(sb.from('eventos').update(dados).eq('id',id));
+    log('agenda',`Compromisso editado: ${t} (${dbr(d)})`);
+    toast('Compromisso atualizado');
+  }else{
+    await q(sb.from('eventos').insert(dados));
+    log('agenda',`Compromisso criado: ${t} (${dbr(d)})`);
+    enviarPush('🗓️ '+db.config.time+' — novo compromisso',`${t} — ${dbr(d)} às ${fval('e_hora')||'19:00'}`);
+    toast('Compromisso criado');
+  }
+  fecha(); await recarrega();
 }
 function delEvento(id){ const e=byId(db.eventos,id); confirma(`Excluir o compromisso "${esc(e?e.titulo:'')}" (${e?dbr(e.data):''})? As presenças e estatísticas ligadas a ele também serão excluídas.`,async()=>{ await q(sb.from('eventos').delete().eq('id',id)); await recarrega(); toast('Compromisso excluído'); }); }
 function convocar(id){
@@ -2081,6 +2181,9 @@ function modalWhats(titulo,msg){
 function tPres(){
   const evs=[...db.eventos].sort((a,b)=>b.data.localeCompare(a.data)); const sel=subState.presEv||(evs[0]&&evs[0].id)||'';
   const ats=elenco();
+  if(!subState.convidadosPres) subState.convidadosPres=[];
+  const convidados=subState.convidadosPres;
+  const todosAtletas=[...ats,...convidados.map((n,i)=>({id:'conv_'+i,nome:n}))];
   const opts=['presente','atraso','falta','justificada'];
   const lbl={presente:'Presente',atraso:'Atraso',falta:'Falta',justificada:'Justificada'};
   const podeMarcar=gestor();
@@ -2088,9 +2191,19 @@ function tPres(){
   if(podeMarcar){
     quadro=sel?`<div class="card sect"><label style="margin-top:0">Fazer chamada — compromisso</label>
     <select onchange="subState.presEv=this.value;renderTab()">${evs.map(e=>`<option value="${e.id}" ${e.id===sel?'selected':''}>${dbr(e.data)} — ${esc(e.titulo)}</option>`).join('')}</select>
-    <div style="margin-top:14px" class="tblwrap"><table><tr><th>Atleta</th><th>Situação</th></tr>${ats.map(a=>{
-      const p=db.presencas.find(x=>x.eventoId===sel&&x.atletaId===a.id);
-      return `<tr><td>${esc(a.nome)}</td><td><div class="row">${opts.map(o=>`<button class="mini ${p&&p.status===o?(o==='presente'?'':o==='falta'?'bad':'warn'):'sec'}" onclick="marca('${sel}','${a.id}','${o}')">${lbl[o]}</button>`).join('')}</div></td></tr>`;
+    <div style="background:var(--bg2);padding:12px;border-radius:8px;border:1px solid var(--border);margin-top:14px">
+      <div style="font-weight:500;margin-bottom:8px;display:flex;gap:8px;align-items:center">
+        <span>➕ Adicionar convidado</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input id="nome_conv_pres" placeholder="Ex: João da escolinha" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:4px">
+        <button class="mini gold" onclick="adicionaConvidadoPres()">Adicionar</button>
+      </div>
+    </div>
+    <div style="margin-top:14px" class="tblwrap"><table><tr><th>Atleta</th><th>Situação</th></tr>${todosAtletas.map(a=>{
+      const isConv=String(a.id).startsWith('conv_');
+      const p=db.presencas.find(x=>x.eventoId===sel&&(isConv?!x.atletaId&&x.convidado===a.nome:x.atletaId===a.id));
+      return `<tr><td>${esc(a.nome)}${isConv?` <span class="pill p-warn" style="font-size:10px">Convidado</span>`:''}</td><td><div class="row">${opts.map(o=>`<button class="mini ${p&&p.status===o?(o==='presente'?'':o==='falta'?'bad':'warn'):'sec'}" onclick="marca('${sel}','${a.id}','${o}')">${lbl[o]}</button>`).join('')}</div></td></tr>`;
     }).join('')}</table></div></div>`:'<div class="card sect"><p class="mut">Cadastre compromissos na Agenda para fazer a chamada.</p></div>';
   }
   const rank=ats.map(a=>{
@@ -2117,14 +2230,31 @@ function tPres(){
   ${minhas.map(x=>`<tr><td>${dbr(x.e.data)}</td><td>${esc(x.e.titulo)}</td><td>${x.p.status==='presente'?'<span class="pill p-ok">Presente</span>':x.p.status==='falta'?'<span class="pill p-bad">Falta</span>':`<span class="pill p-warn">${lbl[x.p.status]}</span>`}</td></tr>`).join('')}</table></div></div>`:''}`;
 }
 async function marca(ev,aid,st){
-  await q(sb.from('presencas').upsert({evento_id:ev,atleta_id:aid,status:st},{onConflict:'evento_id,atleta_id'}));
-  const i=db.presencas.findIndex(p=>p.eventoId===ev&&p.atletaId===aid);
-  if(i>=0)db.presencas[i].status=st; else db.presencas.push({eventoId:ev,atletaId:aid,status:st});
+  const isConv=String(aid).startsWith('conv_');
+  if(isConv){
+    const idx=Number(aid.split('_')[1]);
+    const nomeConv=subState.convidadosPres?.[idx];
+    await q(sb.from('presencas').upsert({evento_id:ev,atleta_id:null,convidado:nomeConv,status:st},{onConflict:'evento_id,atleta_id,convidado'}));
+    const i=db.presencas.findIndex(p=>p.eventoId===ev&&!p.atletaId&&p.convidado===nomeConv);
+    if(i>=0)db.presencas[i].status=st; else db.presencas.push({eventoId:ev,atletaId:null,convidado:nomeConv,status:st});
+  }else{
+    await q(sb.from('presencas').upsert({evento_id:ev,atleta_id:aid,status:st},{onConflict:'evento_id,atleta_id'}));
+    const i=db.presencas.findIndex(p=>p.eventoId===ev&&p.atletaId===aid);
+    if(i>=0)db.presencas[i].status=st; else db.presencas.push({eventoId:ev,atletaId:aid,status:st});
+  }
+  renderTab();
+}
+function adicionaConvidadoPres(){
+  const nome=fval('nome_conv_pres')||'';
+  if(!nome.trim()){toast('Digite o nome do convidado');return;}
+  if(!subState.convidadosPres) subState.convidadosPres=[];
+  subState.convidadosPres.push(nome);
+  $('nome_conv_pres').value='';
   renderTab();
 }
 function csvFaltas(){
   const linhas=[['Atleta','Compromisso','Tipo','Data','Situação']];
-  db.presencas.forEach(p=>{ const e=byId(db.eventos,p.eventoId); linhas.push([nomeAt(p.atletaId),e?e.titulo:'',e?e.tipo:'',e?dbr(e.data):'',p.status]); });
+  db.presencas.forEach(p=>{ const e=byId(db.eventos,p.eventoId); linhas.push([p.atleta_id?nomeAt(p.atletaId):(p.convidado?'🎟️ '+p.convidado:''),e?e.titulo:'',e?e.tipo:'',e?dbr(e.data):'',p.status]); });
   csv('frequencia-time.csv',linhas);
 }
 
@@ -2148,21 +2278,21 @@ function tFinBalanco(){
   const filtMens=subState.filtMens!==false;
   const filtDesp=subState.filtDesp!==false;
 
-  // Mensais (até hoje)
-  const receitasMes=db.balanco.filter(r=>r.data>=mesAtual+'-01'&&r.data<=hoje());
-  const despesasMes=db.despesas.filter(d=>d.data>=mesAtual+'-01'&&d.data<=hoje());
+  // Mensais (até hoje) - APENAS PAGOS
+  const receitasMes=db.balanco.filter(r=>r.data>=mesAtual+'-01'&&r.data<=hoje()&&r.pago);
+  const despesasMes=db.despesas.filter(d=>d.data>=mesAtual+'-01'&&d.data<=hoje()&&d.pago);
   const totalRecMes=receitasMes.reduce((s,r)=>s+Number(r.valor),0);
   const totalDesMes=despesasMes.reduce((s,d)=>s+Number(d.valor),0);
   const totalMensMes=db.cobrancas.filter(c=>c.venc>=mesAtual+'-01'&&c.venc<=hoje()&&c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
-  const saldoMes=totalRecMes+totalMensMes-totalDesMes;
+  const saldoMes=db.config.saldoIni+totalRecMes+totalMensMes-totalDesMes;
 
-  // Anuais (jan-dez do ano atual)
-  const receitasAno=db.balanco.filter(r=>r.data.startsWith(ano));
-  const despesasAno=db.despesas.filter(d=>d.data.startsWith(ano));
+  // Anuais (jan-dez do ano atual) - APENAS PAGOS
+  const receitasAno=db.balanco.filter(r=>r.data.startsWith(ano)&&r.pago);
+  const despesasAno=db.despesas.filter(d=>d.data.startsWith(ano)&&d.pago);
   const totalRecAno=receitasAno.reduce((s,r)=>s+Number(r.valor),0);
   const totalDesAno=despesasAno.reduce((s,d)=>s+Number(d.valor),0);
   const totalMensAno=db.cobrancas.filter(c=>c.venc.startsWith(ano)&&c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
-  const saldoAno=totalRecAno+totalMensAno-totalDesAno;
+  const saldoAno=db.config.saldoIni+totalRecAno+totalMensAno-totalDesAno;
 
   return `<div class="sect">
   <div class="card" style="padding:12px;background:var(--bg2);margin-bottom:12px;border-radius:4px">
@@ -2771,12 +2901,10 @@ function delSelDesp(){
 function tFinCob(){
   const cs=[...db.cobrancas].sort((a,b)=>(a.status==='pago')-(b.status==='pago')||a.venc.localeCompare(b.venc));
   const tot=s=>cs.filter(c=>c.status===s).reduce((x,c)=>x+Number(valorDe(c)),0);
-  const saldo=db.config.saldoIni+tot('pago')-totDespesas();
   return `<div class="grid g4 sect">
     <div class="card stat"><div class="n" style="color:var(--ok)">${brl(tot('pago'))}</div><div class="l">Recebido${db.config.saldoIni?` <span style="text-transform:none">(+ ${brl(db.config.saldoIni)} ${esc(db.config.saldoIniObs||'saldo inicial')})</span>`:''}</div></div>
     <div class="card stat"><div class="n" style="color:var(--warn)">${brl(tot('pendente'))}</div><div class="l">A vencer</div></div>
     <div class="card stat"><div class="n" style="color:var(--bad)">${brl(tot('atrasado'))}</div><div class="l">Em atraso</div></div>
-    <div class="card stat clickable" onclick="subState.finTab='d';renderTab()"><div class="n" style="color:${saldo>=0?'var(--ok)':'var(--bad)'}">${brl(saldo)}</div><div class="l">Saldo em caixa →</div></div>
   </div>
   <div class="row sect">
     <button onclick="formCobranca()">+ Nova cobrança</button>
@@ -2880,21 +3008,21 @@ function tFinBalancoConsolidado(filtReceb,filtMens,filtDesp){
 
   const filtroAtivo=anoFilter!==anoAtual || (mesFilter && mesFilter.slice(0,7)!==mesAtual) || apenasAno;
 
-  // Receitas
-  const receitas=filtReceb?db.balanco.filter(r=>apenasAno?r.data.startsWith(anoFilter):r.data.startsWith(mesFilter)).sort((a,b)=>b.data.localeCompare(a.data)):[];
+  // Receitas - APENAS PAGAS
+  const receitas=filtReceb?db.balanco.filter(r=>(apenasAno?r.data.startsWith(anoFilter):r.data.startsWith(mesFilter))&&r.pago).sort((a,b)=>b.data.localeCompare(a.data)):[];
   const totalRec=receitas.reduce((s,r)=>s+Number(r.valor),0);
-  const pagoRec=receitas.filter(r=>r.pago).reduce((s,r)=>s+Number(r.valor),0);
+  const pagoRec=totalRec;
 
-  // Cobranças como Mensalidades
-  const mensalidades=filtMens?db.cobrancas.filter(c=>apenasAno?c.venc.startsWith(anoFilter):c.venc.startsWith(mesFilter)).sort((a,b)=>b.venc.localeCompare(a.venc)):[];
+  // Cobranças como Mensalidades - APENAS PAGAS
+  const mensalidades=filtMens?db.cobrancas.filter(c=>(apenasAno?c.venc.startsWith(anoFilter):c.venc.startsWith(mesFilter))&&c.status==='pago').sort((a,b)=>b.venc.localeCompare(a.venc)):[];
   const totalMen=mensalidades.reduce((s,c)=>s+Number(valorDe(c)),0);
-  const pagoMen=mensalidades.filter(c=>c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
+  const pagoMen=totalMen;
 
-  // Despesas
-  const despesas=filtDesp?db.despesas.filter(d=>apenasAno?d.data.startsWith(anoFilter):d.data.startsWith(mesFilter)).sort((a,b)=>b.data.localeCompare(a.data)):[];
+  // Despesas - APENAS PAGAS
+  const despesas=filtDesp?db.despesas.filter(d=>(apenasAno?d.data.startsWith(anoFilter):d.data.startsWith(mesFilter))&&d.pago).sort((a,b)=>b.data.localeCompare(a.data)):[];
   const totalDes=despesas.reduce((s,d)=>s+Number(d.valor),0);
 
-  const saldo=(totalRec+totalMen)-totalDes;
+  const saldo=db.config.saldoIni+(totalRec+totalMen)-totalDes;
 
   return `<div class="card sect">
   <div class="row" style="margin-bottom:12px;gap:8px;align-items:center;flex-wrap:wrap">
@@ -2991,21 +3119,21 @@ function tFinConsolidado(){
     return true;
   };
 
-  // Receitas
-  const receitas=db.balanco.filter(filtro).sort((a,b)=>b.data.localeCompare(a.data));
+  // Receitas - APENAS PAGAS
+  const receitas=db.balanco.filter(r=>filtro(r)&&r.pago).sort((a,b)=>b.data.localeCompare(a.data));
   const totalRec=receitas.reduce((s,r)=>s+Number(r.valor),0);
-  const pagoRec=receitas.filter(r=>r.pago).reduce((s,r)=>s+Number(r.valor),0);
+  const pagoRec=totalRec;
 
-  // Cobranças como Mensalidades
-  const mensalidades=db.cobrancas.filter(filtro).sort((a,b)=>b.venc.localeCompare(a.venc));
+  // Cobranças como Mensalidades - APENAS PAGAS
+  const mensalidades=db.cobrancas.filter(c=>filtro(c)&&c.status==='pago').sort((a,b)=>b.venc.localeCompare(a.venc));
   const totalMen=mensalidades.reduce((s,c)=>s+Number(valorDe(c)),0);
-  const pagoMen=mensalidades.filter(c=>c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
+  const pagoMen=totalMen;
 
-  // Despesas
-  const despesas=db.despesas.filter(filtro).sort((a,b)=>b.data.localeCompare(a.data));
+  // Despesas - APENAS PAGAS
+  const despesas=db.despesas.filter(d=>filtro(d)&&d.pago).sort((a,b)=>b.data.localeCompare(a.data));
   const totalDes=despesas.reduce((s,d)=>s+Number(d.valor),0);
 
-  const saldo=(totalRec+totalMen)-totalDes;
+  const saldo=db.config.saldoIni+(totalRec+totalMen)-totalDes;
 
   return `<div class="card sect">
   <div class="row" style="margin-bottom:12px;gap:8px;align-items:center;flex-wrap:wrap">
@@ -4568,13 +4696,13 @@ function tMeu(){
   ${prox.length?prox.map(e=>`<div class="alertline" style="background:var(--blue-soft)"><div style="flex:1"><strong>${e.tipo==='jogo'?'⚽':'🏃'} ${esc(e.titulo)}</strong><div class="mut">${dbr(e.data)} às ${esc(e.hora)} — ${esc(e.local)}${e.obs?' · '+esc(e.obs):''}</div></div>
     <button class="mini" onclick="modalCal('${e.id}')">📅 Pôr no calendário</button></div>`).join(''):'<p class="mut">Nada agendado por enquanto.</p>'}
   ${prox.length?`<button class="sec mini" onclick="baixarICS(db.eventos.filter(e=>e.data>=hoje()),'agenda-oabmaster.ics')">📅 Agenda completa (.ics)</button>`:''}</div>
-  <div class="sect">${cardPats()}</div>
   <div class="sect">${cardDiretoria()}</div>
-  <div class="grid g4 sect">
+  <div class="grid g5 sect">
     <div class="card stat clickable" onclick="vai('presencas')"><div class="n">${pct===null?'—':pct+'%'}</div><div class="l">Minha frequência →</div></div>
     <div class="card stat clickable" onclick="vai('desempenho')"><div class="n">${gols}⚽ ${asst}🅰️</div><div class="l">Gols / Assist. →</div></div>
     <div class="card stat"><div class="n" style="color:${minhasCob.length?'var(--warn)':'var(--ok)'}">${brl(minhasCob.reduce((s,c)=>s+Number(valorDe(c)),0))}</div><div class="l">Em aberto comigo</div></div>
     <div class="card stat"><div class="n" style="color:${db.config.limiteFaltas>0&&minhasFaltas>=db.config.limiteFaltas?'var(--bad)':'var(--ink)'}">${minhasFaltas}</div><div class="l">${db.config.limiteFaltas>0?`Faltas (limite ${db.config.limiteFaltas})`:'Faltas'}</div></div>
+    <div class="card stat clickable" onclick="vai('taticas')"><div class="n">🎬</div><div class="l">Táticas →</div></div>
   </div>
   <div class="grid g2">
   <div class="card"><h2>💰 Minhas pendências</h2>
@@ -4596,6 +4724,7 @@ function tMeu(){
   <tr><td>⭐ Nota média</td><td><strong>${notas.length?(notas.reduce((x,y)=>x+y,0)/notas.length).toFixed(1):'—'}</strong></td></tr>
   </table></div>
   <p class="mut" style="margin-top:8px"><a href="#" onclick="vai('saude');return false">Minha ficha de saúde →</a> · <a href="#" onclick="vai('taticas');return false">Prancheta do treinador →</a></p></div>
+  <div class="sect">${cardPats()}</div>
   <div class="card"><div class="spread"><h2>📁 Meus documentos</h2>
   ${db.arquivos.some(d=>d.atletaId===me.id)?`<button class="mini sec" onclick="baixarZipPessoa('${me.id}')">⬇ Baixar todos (ZIP)</button>`:''}</div>
   <p class="mut">Cada documento tem sua gaveta: toque em <strong>📎 Anexar</strong> no tipo certo (PDF ou foto, máx. 10 MB). Visíveis para você e para a diretoria — é daqui que saem os documentos para as inscrições nos campeonatos.</p>
