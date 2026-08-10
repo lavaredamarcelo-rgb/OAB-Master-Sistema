@@ -197,7 +197,7 @@ function baixar(nome,conteudo,mime){ const b=conteudo instanceof Blob?conteudo:n
 function log(tipo,texto){ sb.from('logs').insert({tipo,texto,quem:me?me.nome:'sistema'}).then(()=>{}); }
 
 /* ================= CARREGAMENTO ================= */
-function mapAtleta(r){ return {id:r.id,nome:r.nome,fone:r.fone,email:r.email,oab:r.oab,posicao:r.posicao,role:r.role,ativo:r.ativo,pendente:!r.aprovado,fundador:!!r.fundador,cargo:r.cargo||'',
+function mapAtleta(r){ return {id:r.id,nome:r.nome,fone:r.fone,email:r.email,oab:r.oab,posicao:r.posicao,role:r.role,ativo:r.ativo,pendente:!r.aprovado,fundador:!!r.fundador,cargo:r.cargo||'',cadastroManual:!!r.cadastro_manual,isentoMens:!!r.isento_mensalidade,
   consent:{aceito:r.consent_status==='aceito',recusado:r.consent_status==='recusado',revogado:r.consent_status==='revogado',quando:fdt(r.consent_quando),versao:r.consent_versao||TERMO_LGPD_V},saude:{}}; }
 async function carregaTudo(){
   const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist]=await Promise.all([
@@ -900,7 +900,7 @@ function tAtletas(){
     return `<tr style="${a.ativo?'':'opacity:.5'}"><td><a href="#" onclick="perfil('${a.id}');return false" style="text-decoration:none"><strong>${esc(a.nome)}</strong></a><div class="mut">${ROLES[a.role]}${a.oab?' · OAB '+esc(a.oab):''}</div></td>
     <td>${esc(a.posicao||'—')}</td>
     <td>${a.fone?`<a href="${waLink(a.fone,'Olá, '+pnome(a.nome)+'! ')}" target="_blank" rel="noopener">📱 ${esc(a.fone)}</a>`:'—'}</td>
-    <td>${isManual?`<span class="pill p-gold">📋 Manual</span>`:'<span class="pill p-ok">Ativo</span>'}</td>
+    <td>${isManual?`<span class="pill p-gold">📋 Manual</span>`:'<span class="pill p-ok">Ativo</span>'}${a.isentoMens?' <span class="pill p-mut">🧤 Isento</span>':''}</td>
     <td>${cs}</td>
     <td>${P.length?`<span class="pill p-bad" style="cursor:pointer" onclick="perfil('${a.id}')">${P.length} pendência${P.length>1?'s':''}</span>`:'<span class="pill p-ok">Em dia</span>'}</td>
     <td><button class="mini sec" onclick="formAtleta('${a.id}')">✏️ Editar</button></td></tr>`;
@@ -952,34 +952,28 @@ function perfil(id){
 const CARGOS=['Presidente','Vice-Presidente','Diretor Financeiro','Diretor de Futebol','Diretor Jurídico','Diretor Social','Diretor de Comunicação','Diretor de Patrimônio','Suplente'];
 function formNovoAtletaManual(){
   modal(`<h2>📋 Cadastrar atleta manualmente</h2>
-  <p class="mut">Preencha os dados agora. Quando o atleta se registrar no sistema, você poderá vincular essas informações ao perfil dele.</p>
+  <p class="mut">Preencha os dados agora. Quando o atleta se registrar no sistema, você poderá vincular essas informações ao perfil dele (botão 🔗 no ✏️ Editar).</p>
   <label>Nome completo *</label><input id="am_nome" placeholder="Ex.: Herson da Silva">
   <div class="grid g2">
   <div><label>WhatsApp (com DDD)</label><input id="am_fone" placeholder="Ex.: 91 98765-4321"></div>
   <div><label>Nº OAB — opcional</label><input id="am_oab" placeholder="Ex.: 12345/PA"></div>
   <div><label>Posição em campo</label><input id="am_pos" placeholder="Ex.: Zagueiro, Volante"></div>
-  <div><label>Função no sistema</label><select id="am_role"><option value="atleta">Atleta</option><option value="treinador">Treinador</option><option value="auxiliar">Auxiliar</option><option value="preparador">Preparador Físico</option></select></div>
+  <div><label>Função no sistema</label><select id="am_role"><option value="atleta">Atleta</option><option value="treinador">Treinador</option><option value="preparador">Preparador Físico</option></select></div>
   </div>
+  <div class="row" style="margin-top:8px"><input type="checkbox" id="am_isento" style="width:auto"> <span>🧤 Isento de mensalidade (ex.: goleiro)</span></div>
   <div class="row" style="margin-top:16px"><button onclick="salvaAtletaManual()">💾 Criar cadastro</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function salvaAtletaManual(){
   const nome=fval('am_nome'); if(!nome.trim()){toast('Informe o nome');return;}
-  const fone=fval('am_fone')||'';
-  const oab=fval('am_oab')||'';
-  const pos=fval('am_pos')||'';
-  const role=fval('am_role')||'atleta';
-  await q(sb.from('perfis').insert({
-    nome,
-    fone,
-    oab,
-    posicao:pos,
-    role,
-    email:null,
-    cadastro_manual:true,
-    aprovado:true,
-    ativo:true,
-    quando:new Date().toISOString()
-  }));
+  const {error}=await sb.rpc('cadastrar_atleta_manual',{
+    p_nome:nome,
+    p_fone:fval('am_fone')||'',
+    p_oab:fval('am_oab')||'',
+    p_posicao:fval('am_pos')||'',
+    p_role:fval('am_role')||'atleta',
+    p_isento:$('am_isento').checked
+  });
+  if(error){toast('⚠️ '+(error.message.includes('function')?'Rode o SQL de atualização no Supabase primeiro':error.message));return;}
   log('cadastro',`Atleta cadastrado manualmente: ${nome}`);
   fecha(); await recarrega(); toast('✅ '+nome+' cadastrado manualmente');
 }
@@ -1000,20 +994,15 @@ function formAtleta(id){
   <div><label>Cargo na diretoria</label><input id="a_cargo" value="${esc(a.cargo)}" list="lst_cargos" placeholder="Ex.: Diretor Financeiro"><datalist id="lst_cargos">${CARGOS.map(c=>`<option>${c}</option>`).join('')}</datalist></div>
   </div>
   <div class="row" style="margin-top:8px"><input type="checkbox" id="a_ativo" ${a.ativo?'checked':''} ${travaDir?'disabled':''} style="width:auto"> <span>Ativo no time</span></div>
+  <div class="row" style="margin-top:8px"><input type="checkbox" id="a_isento" ${a.isentoMens?'checked':''} style="width:auto"> <span>🧤 Isento de mensalidade (ex.: goleiro)</span></div>
   <div class="row" style="margin-top:16px"><button onclick="salvaAtleta('${id}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button>
   ${id!==me.id&&!travaDir?`<span style="flex:1"></span><button class="bad" onclick="confirmaExcluir('${id}')">🗑 Excluir do sistema</button>`:''}</div>`);
 }
 async function vincularManualmente(idAtual,idManual){
   const manual=at(idManual);
-  confirma(`Vincular <strong>${esc(manual.nome)}</strong> com os dados do cadastro manual? Isso copiará WhatsApp, OAB e Posição para o perfil atual.`,async()=>{
-    const atual=at(idAtual);
-    await q(sb.from('perfis').update({
-      fone:manual.fone||atual.fone,
-      oab:manual.oab||atual.oab,
-      posicao:manual.posicao||atual.posicao,
-      role:manual.role
-    }).eq('id',idAtual));
-    await q(sb.from('perfis').update({cadastro_manual:false}).eq('id',idManual));
+  confirma(`Vincular o cadastro manual de <strong>${esc(manual.nome)}</strong> a este perfil? Todas as informações já lançadas (presenças, estatísticas, cobranças, uniformes, avaliações) passam para o perfil real, e o cadastro manual é removido.`,async()=>{
+    const {error}=await sb.rpc('vincular_cadastro_manual',{p_manual:idManual,p_real:idAtual});
+    if(error){toast('⚠️ '+(error.message.includes('function')?'Rode o SQL de atualização no Supabase primeiro':error.message));return;}
     log('cadastro',`Cadastro manual vinculado: ${manual.nome}`);
     fecha(); await recarrega(); toast('✅ Dados vinculados com sucesso!');
   });
@@ -1021,7 +1010,7 @@ async function vincularManualmente(idAtual,idManual){
 async function salvaAtleta(id){
   const nome=fval('a_nome'); if(!nome){toast('Informe o nome');return;}
   const a=at(id);
-  const patch={nome,fone:fval('a_fone'),oab:fval('a_oab'),posicao:fval('a_pos'),cargo:fval('a_cargo')};
+  const patch={nome,fone:fval('a_fone'),oab:fval('a_oab'),posicao:fval('a_pos'),cargo:fval('a_cargo'),isento_mensalidade:$('a_isento')?$('a_isento').checked:false};
   const travaDir=a.role==='diretoria'&&!me.fundador;
   if(!travaDir){ patch.role=fval('a_role')||a.role; patch.ativo=$('a_ativo').checked; }
   await q(sb.from('perfis').update(patch).eq('id',id));
@@ -2234,7 +2223,8 @@ async function marca(ev,aid,st){
   if(isConv){
     const idx=Number(aid.split('_')[1]);
     const nomeConv=subState.convidadosPres?.[idx];
-    await q(sb.from('presencas').upsert({evento_id:ev,atleta_id:null,convidado:nomeConv,status:st},{onConflict:'evento_id,atleta_id,convidado'}));
+    const {data:upd}=await sb.from('presencas').update({status:st}).eq('evento_id',ev).eq('convidado',nomeConv).select();
+    if(!upd||!upd.length) await q(sb.from('presencas').insert({evento_id:ev,atleta_id:null,convidado:nomeConv,status:st}));
     const i=db.presencas.findIndex(p=>p.eventoId===ev&&!p.atletaId&&p.convidado===nomeConv);
     if(i>=0)db.presencas[i].status=st; else db.presencas.push({eventoId:ev,atletaId:null,convidado:nomeConv,status:st});
   }else{
@@ -3398,7 +3388,11 @@ function formCobranca(){
 async function salvaCobranca(){
   const quem=fval('c_quem'),desc=fval('c_desc'),v=fval('c_valor'),venc=fval('c_venc');
   if(!desc||!v||!venc){toast('Preencha descrição, valor e vencimento');return;}
-  const alvos=quem==='__todos__'?elenco().map(a=>a.id):[quem];
+  const ehMens=/mensalidade/i.test(desc);
+  const base=quem==='__todos__'?elenco().filter(a=>!(ehMens&&a.isentoMens)):[];
+  const alvos=quem==='__todos__'?base.map(a=>a.id):[quem];
+  const pulados=quem==='__todos__'?elenco().length-base.length:0;
+  if(pulados>0)toast(`🧤 ${pulados} isento(s) de mensalidade não incluído(s)`);
   await q(sb.from('cobrancas').insert(alvos.map(aid=>({atleta_id:aid,descricao:desc,valor:Number(v),venc}))));
   log('financeiro',`Cobrança gerada: ${desc} (${brl(v)}) para ${alvos.length} atleta(s)`);
   enviarPush('💰 '+db.config.time+' — tesouraria',`${desc}: ${brl(v)}, vencimento ${dbr(venc)}. Confira no sistema.`);
@@ -3599,7 +3593,7 @@ async function gerarRetroGo(){
   while((y<ya||(y===ya&&m<=ma))&&seg<24){
     const mm=String(m).padStart(2,'0'), descr=`Mensalidade ${mm}/${y}`;
     const venc=`${y}-${mm}-${String(db.config.mensDia).padStart(2,'0')}`;
-    elenco().forEach(a=>{ if(!db.cobrancas.some(c=>c.atletaId===a.id&&c.desc===descr))rows.push({atleta_id:a.id,descricao:descr,valor:db.config.mensValor,venc}); });
+    elenco().filter(a=>!a.isentoMens).forEach(a=>{ if(!db.cobrancas.some(c=>c.atletaId===a.id&&c.desc===descr))rows.push({atleta_id:a.id,descricao:descr,valor:db.config.mensValor,venc}); });
     m++; if(m>12){m=1;y++;} seg++;
   }
   if(!rows.length){fecha();toast('Nada a gerar — essas mensalidades já existem');return;}
