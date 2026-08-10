@@ -1010,11 +1010,23 @@ async function vincularManualmente(idAtual,idManual){
 async function salvaAtleta(id){
   const nome=fval('a_nome'); if(!nome){toast('Informe o nome');return;}
   const a=at(id);
-  const patch={nome,fone:fval('a_fone'),oab:fval('a_oab'),posicao:fval('a_pos'),cargo:fval('a_cargo'),isento_mensalidade:$('a_isento')?$('a_isento').checked:false};
+  const isento=$('a_isento')?$('a_isento').checked:false;
+  const patch={nome,fone:fval('a_fone'),oab:fval('a_oab'),posicao:fval('a_pos'),cargo:fval('a_cargo'),isento_mensalidade:isento};
   const travaDir=a.role==='diretoria'&&!me.fundador;
   if(!travaDir){ patch.role=fval('a_role')||a.role; patch.ativo=$('a_ativo').checked; }
   await q(sb.from('perfis').update(patch).eq('id',id));
   log('cadastro',`Cadastro atualizado: ${nome}`);
+  // Se acabou de ficar isento, oferece limpar as mensalidades em aberto
+  const abertas=isento?db.cobrancas.filter(c=>c.atletaId===id&&ehMensal(c)&&c.status!=='pago'):[];
+  if(abertas.length){
+    const tot=abertas.reduce((s,c)=>s+Number(valorDe(c)),0);
+    confirma(`${esc(pnome(nome))} agora é <strong>isento de mensalidade</strong>, mas ainda tem <strong>${abertas.length} mensalidade(s) em aberto</strong> somando <strong>${brl(tot)}</strong>:<br><span class="mut">${abertas.slice(0,8).map(c=>esc(c.desc)+' — '+brl(valorDe(c))).join('<br>')}${abertas.length>8?'<br>…':''}</span><br><br>Excluir essas cobranças? (as já pagas ficam no histórico)`,async()=>{
+      await q(sb.from('cobrancas').delete().in('id',abertas.map(c=>c.id)));
+      log('financeiro',`Mensalidades em aberto excluídas por isenção: ${nome} (${abertas.length} cobranças, ${brl(tot)})`);
+      await recarrega(); toast('🧤 '+abertas.length+' mensalidade(s) removida(s) — isenção aplicada');
+    });
+    await recarrega(); return;
+  }
   fecha(); await recarrega(); toast('Salvo!');
 }
 function confirmaExcluir(id){
