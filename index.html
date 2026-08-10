@@ -2193,13 +2193,23 @@ async function salvaEvento(id){
   const t=fval('e_tit'),d=fval('e_data'); if(!t||!d){toast('Informe título e data');return;}
   const hIni=fval('e_hora')||'19:00', hFim=fval('e_horafim')||'';
   if(hFim&&hFim<=hIni){toast('A hora de fim deve ser depois da hora de início');return;}
-  const dados={tipo:fval('e_tipo'),titulo:t,data:d,hora:hIni,hora_fim:hFim||null,local:fval('e_local'),obs:fval('e_obs')};
+  let dados={tipo:fval('e_tipo'),titulo:t,data:d,hora:hIni,hora_fim:hFim||null,local:fval('e_local'),obs:fval('e_obs')};
+  // Se o banco ainda não tem a coluna hora_fim, salva sem ela e avisa
+  const semColuna=async op=>{
+    let {error}=await op(dados);
+    if(error&&/hora_fim/.test(error.message||'')){
+      delete dados.hora_fim;
+      const {error:e2}=await op(dados);
+      if(e2){toast('⚠️ '+e2.message);throw e2;}
+      toast('⚠️ Salvo sem hora de fim — rode o SQL v6 no Supabase para ativá-la');
+    } else if(error){toast('⚠️ '+error.message);throw error;}
+  };
   if(id){
-    await q(sb.from('eventos').update(dados).eq('id',id));
+    await semColuna(dd=>sb.from('eventos').update(dd).eq('id',id));
     log('agenda',`Compromisso editado: ${t} (${dbr(d)})`);
     toast('Compromisso atualizado');
   }else{
-    await q(sb.from('eventos').insert(dados));
+    await semColuna(dd=>sb.from('eventos').insert(dd));
     log('agenda',`Compromisso criado: ${t} (${dbr(d)})`);
     enviarPush('🗓️ '+db.config.time+' — novo compromisso',`${t} — ${dbr(d)} às ${fval('e_hora')||'19:00'}`);
     toast('Compromisso criado');
