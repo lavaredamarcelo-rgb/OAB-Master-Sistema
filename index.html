@@ -2225,7 +2225,7 @@ function tPres(){
   <div class="card"><h2>📊 Faltas e atrasos</h2>
   ${comDados.length?`<div class="tblwrap"><table><tr><th>Atleta</th><th>Faltas</th><th>Atrasos</th><th>Justificadas</th><th>Situação</th></tr>
   ${rank.filter(r=>r.f||r.at_||r.j).map(r=>`<tr><td>${esc(r.a.nome)}</td><td>${r.f}</td><td>${r.at_}</td><td>${r.j}</td><td>${db.config.limiteFaltas>0?(r.f>=db.config.limiteFaltas?'<span class="pill p-bad">Limite excedido</span>':'<span class="pill p-ok">Regular</span>'):'<span class="mut">—</span>'}</td></tr>`).join('')||'<tr><td colspan="5" class="mut">Nenhuma falta ou atraso. 👏</td></tr>'}</table></div>
-  <button class="sec mini" style="margin-top:12px" onclick="csvFaltas()">⬇ Baixar planilha de frequência (CSV)</button>`:'<p class="mut">Nenhum registro ainda.</p>'}</div>
+  <div class="row" style="margin-top:12px"><button class="mini" onclick="pdfFrequencia()">📄 Relatório de frequência (PDF)</button><button class="sec mini" onclick="csvFaltas()">⬇ Planilha (CSV)</button></div>`:'<p class="mut">Nenhum registro ainda.</p>'}</div>
   ${minhas.length?`<div class="card" style="margin-top:14px"><h2>🗂️ Meu histórico</h2>
   <div class="tblwrap"><table><tr><th>Data</th><th>Compromisso</th><th>Situação</th></tr>
   ${minhas.map(x=>`<tr><td>${dbr(x.e.data)}</td><td>${esc(x.e.titulo)}</td><td>${x.p.status==='presente'?'<span class="pill p-ok">Presente</span>':x.p.status==='falta'?'<span class="pill p-bad">Falta</span>':`<span class="pill p-warn">${lbl[x.p.status]}</span>`}</td></tr>`).join('')}</table></div></div>`:''}`;
@@ -2258,6 +2258,61 @@ function csvFaltas(){
   const linhas=[['Atleta','Compromisso','Tipo','Data','Situação']];
   db.presencas.forEach(p=>{ const e=byId(db.eventos,p.eventoId); linhas.push([p.atleta_id?nomeAt(p.atletaId):(p.convidado?'🎟️ '+p.convidado:''),e?e.titulo:'',e?e.tipo:'',e?dbr(e.data):'',p.status]); });
   csv('frequencia-time.csv',linhas);
+}
+function pdfFrequencia(){
+  const ats=elenco();
+  const rank=ats.map(a=>{
+    const ps=db.presencas.filter(p=>p.atletaId===a.id);
+    const cmp=ps.filter(p=>['presente','atraso'].includes(p.status));
+    const jg=cmp.filter(p=>{const e=byId(db.eventos,p.eventoId);return e&&e.tipo==='jogo';}).length;
+    const tr=cmp.filter(p=>{const e=byId(db.eventos,p.eventoId);return e&&e.tipo==='treino';}).length;
+    const f=ps.filter(p=>p.status==='falta').length, at_=ps.filter(p=>p.status==='atraso').length, j=ps.filter(p=>p.status==='justificada').length;
+    return {a,jg,tr,f,at_,j,tot:ps.length,pct:ps.length?Math.round(cmp.length/ps.length*100):null};
+  }).filter(r=>r.tot>0).sort((x,y)=>(y.pct-x.pct)||(y.jg+y.tr)-(x.jg+x.tr));
+  if(!rank.length){toast('Nenhuma chamada registrada ainda');return;}
+  const evsComChamada=[...new Set(db.presencas.map(p=>p.eventoId))].map(id=>byId(db.eventos,id)).filter(Boolean);
+  const nJogos=evsComChamada.filter(e=>e.tipo==='jogo').length, nTreinos=evsComChamada.filter(e=>e.tipo==='treino').length;
+  const totF=rank.reduce((s,r)=>s+r.f,0), totAt=rank.reduce((s,r)=>s+r.at_,0), totJ=rank.reduce((s,r)=>s+r.j,0);
+  const pctMedia=Math.round(rank.reduce((s,r)=>s+r.pct,0)/rank.length);
+  const corPct=p=>p>=75?'#28a745':p>=50?'#e0a800':'#c41e3a';
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Frequência — ${esc(db.config.time)}</title>
+  <style>
+  body{font-family:Arial,sans-serif;margin:24px;color:#333}
+  h1{text-align:center;color:#c41e3a;margin-bottom:2px}
+  .sub{text-align:center;color:#777;margin:0 0 18px;font-size:13px}
+  .cards{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
+  .card{border:1px solid #ddd;border-radius:8px;padding:10px 18px;text-align:center;min-width:100px}
+  .card .n{font-size:22px;font-weight:bold}.card .l{font-size:11px;color:#777;text-transform:uppercase}
+  table{width:100%;border-collapse:collapse;margin:10px 0}
+  th,td{border:1px solid #ddd;padding:7px 9px;text-align:center;font-size:13px}
+  td:first-child,th:first-child{text-align:left}
+  th{background:#c41e3a;color:#fff}
+  tr:nth-child(even){background:#f8f8f8}
+  .pct{font-weight:bold}
+  .rod{margin-top:14px;font-size:11px;color:#999;text-align:center}
+  @media print{body{margin:10mm}}
+  </style></head><body>
+  <h1>📊 Relatório de Frequência</h1>
+  <p class="sub">${esc(db.config.time)} — gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
+  <div class="cards">
+    <div class="card"><div class="n">${nJogos+nTreinos}</div><div class="l">Chamadas</div></div>
+    <div class="card"><div class="n">${nJogos}</div><div class="l">Jogos</div></div>
+    <div class="card"><div class="n">${nTreinos}</div><div class="l">Treinos</div></div>
+    <div class="card"><div class="n" style="color:${corPct(pctMedia)}">${pctMedia}%</div><div class="l">Freq. média</div></div>
+    <div class="card"><div class="n" style="color:#c41e3a">${totF}</div><div class="l">Faltas</div></div>
+    <div class="card"><div class="n" style="color:#e0a800">${totAt}</div><div class="l">Atrasos</div></div>
+    <div class="card"><div class="n">${totJ}</div><div class="l">Justificadas</div></div>
+  </div>
+  <table><tr><th>#</th><th>Atleta</th><th>Jogos</th><th>Treinos</th><th>Presenças</th><th>Atrasos</th><th>Faltas</th><th>Justificadas</th><th>Frequência</th></tr>
+  ${rank.map((r,i)=>`<tr><td style="text-align:center">${i+1}º</td><td>${esc(r.a.nome)}</td><td>${r.jg}</td><td>${r.tr}</td><td>${r.jg+r.tr}</td><td>${r.at_}</td><td>${r.f}${db.config.limiteFaltas>0&&r.f>=db.config.limiteFaltas?' ⚠️':''}</td><td>${r.j}</td><td class="pct" style="color:${corPct(r.pct)}">${r.pct}%</td></tr>`).join('')}
+  </table>
+  ${db.config.limiteFaltas>0?`<p class="rod">⚠️ = atingiu o limite de ${db.config.limiteFaltas} faltas · Presenças e atrasos contam como comparecimento</p>`:'<p class="rod">Presenças e atrasos contam como comparecimento</p>'}
+  <script>window.onload=()=>window.print()<\/script>
+  </body></html>`;
+  const w=window.open('','_blank');
+  if(!w){toast('Libere pop-ups para gerar o PDF');return;}
+  w.document.write(html); w.document.close();
+  toast('📄 Na janela que abriu, escolha "Salvar como PDF"');
 }
 
 /* ================= FINANCEIRO ================= */
