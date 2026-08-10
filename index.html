@@ -167,6 +167,7 @@ const uid=()=>crypto.randomUUID();
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const brl=v=>(Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const ehMensal=c=>/Mensalidade/i.test(c.desc||'');
+const mapsLink=l=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(l);
 const nomeCob=c=>c.atletaId?nomeAt(c.atletaId):('🎟️ '+(c.convidado||'Convidado'));
 const valorDe=c=>(ehMensal(c)&&c.status==='atrasado')?(db.config.mensApos||c.valor):c.valor;
 const dbr=d=>{ if(!d)return '—'; const[a,m,dd]=String(d).slice(0,10).split('-'); return `${dd}/${m}/${a}`; };
@@ -224,7 +225,7 @@ async function carregaTudo(){
   db={};
   db.atletas=perfis.map(mapAtleta);
   saude.forEach(s=>{ const a=at(s.atleta_id); if(a)a.saude={sangue:s.sangue,plano:s.plano,alergias:s.alergias,medicamentos:s.medicamentos,condicoes:s.condicoes,emergencia:s.emergencia,lesoes:s.lesoes,obs:s.obs,lesoesLista:s.lesoes_lista||[],obsLista:s.obs_lista||[]}; });
-  db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),hora:e.hora,local:e.local,obs:e.obs}));
+  db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),hora:e.hora,horaFim:e.hora_fim||'',local:e.local,obs:e.obs}));
   db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,convidado:p.convidado||null,status:p.status}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,origem:c.origem||'',lote:c.origem_lote||''}));
@@ -289,7 +290,7 @@ function waLink(fone,msg){ return `https://wa.me/${waFone(fone)}?text=${encodeUR
 function icsData(d,h){ return d.replace(/-/g,'')+'T'+((h||'00:00').replace(':','')+'00'); }
 function icsEvento(ev){
   const dt=icsData(ev.data,ev.hora);
-  return ['BEGIN:VEVENT','UID:'+ev.id+'@oabmaster','DTSTART:'+dt,
+  return ['BEGIN:VEVENT','UID:'+ev.id+'@oabmaster','DTSTART:'+dt,...(ev.horaFim?['DTEND:'+icsData(ev.data,ev.horaFim)]:[]),
     'SUMMARY:'+(ev.tipo==='jogo'?'⚽ ':'')+ev.titulo,
     'LOCATION:'+(ev.local||''),'DESCRIPTION:'+db.config.time+' — '+(ev.obs||ev.tipo),
     'BEGIN:VALARM','TRIGGER:-PT3H','ACTION:DISPLAY','DESCRIPTION:Lembrete: '+ev.titulo,'END:VALARM',
@@ -301,15 +302,17 @@ function baixarICS(evs,nome){
 }
 function gcalLink(e){
   const ini=icsData(e.data,e.hora);
-  const dt=new Date(e.data+'T'+(e.hora||'19:00')+':00'); dt.setHours(dt.getHours()+2);
-  const fim=dt.getFullYear()+String(dt.getMonth()+1).padStart(2,'0')+String(dt.getDate()).padStart(2,'0')+'T'+String(dt.getHours()).padStart(2,'0')+String(dt.getMinutes()).padStart(2,'0')+'00';
+  let fim;
+  if(e.horaFim){ fim=icsData(e.data,e.horaFim); }
+  else{ const dt=new Date(e.data+'T'+(e.hora||'19:00')+':00'); dt.setHours(dt.getHours()+2);
+    fim=dt.getFullYear()+String(dt.getMonth()+1).padStart(2,'0')+String(dt.getDate()).padStart(2,'0')+'T'+String(dt.getHours()).padStart(2,'0')+String(dt.getMinutes()).padStart(2,'0')+'00'; }
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent((e.tipo==='jogo'?'⚽ ':'')+e.titulo)
     +'&dates='+ini+'/'+fim+'&location='+encodeURIComponent(e.local||'')+'&details='+encodeURIComponent(db.config.time+(e.obs?' — '+e.obs:''));
 }
 function modalCal(id){
   const e=byId(db.eventos,id);
   modal(`<h2>📅 Adicionar ao calendário</h2>
-  <p><strong>${e.tipo==='jogo'?'⚽':'🏃'} ${esc(e.titulo)}</strong><br><span class="mut">${dbr(e.data)} às ${esc(e.hora)} — ${esc(e.local)}</span></p>
+  <p><strong>${e.tipo==='jogo'?'⚽':'🏃'} ${esc(e.titulo)}</strong><br><span class="mut">${dbr(e.data)} às ${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''} — ${esc(e.local)}</span></p>
   <div class="row" style="margin-top:14px">
     <button onclick="window.open(gcalLink(byId(db.eventos,'${id}')),'_blank')">📅 Google Agenda (1 clique)</button>
     <button class="sec" onclick="baixarICS([byId(db.eventos,'${id}')],'evento.ics')">🍎 iPhone / Outlook (.ics)</button>
@@ -2120,9 +2123,9 @@ function tAgenda(){
     ${evs.length?`<button class="sec" onclick="baixarICS(db.eventos,'agenda-time.ics')">📅 Baixar agenda (.ics)</button>`:''}</div></div>
   <div class="card tblwrap"><table><tr><th>Data</th><th>Hora</th><th>Compromisso</th><th>Local</th><th></th></tr>
   ${evs.length?evs.map(e=>`<tr style="${e.data<hoje()?'opacity:.55':''}">
-    <td>${dbr(e.data)}</td><td>${esc(e.hora)}</td>
+    <td>${dbr(e.data)}</td><td>${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''}</td>
     <td><strong>${e.tipo==='jogo'?'⚽':e.tipo==='treino'?'🏃':'📌'} ${esc(e.titulo)}</strong>${e.obs?`<div class="mut">${esc(e.obs)}</div>`:''}</td>
-    <td>${esc(e.local)}</td>
+    <td>${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener" title="Abrir no Google Maps">📍 ${esc(e.local)}</a>`:'—'}</td>
     <td class="row"><button class="mini sec" onclick="modalCal('${e.id}')">📅</button>
     ${podeEditar?`<button class="mini sec" onclick="formEvento('${e.id}')">✏️ Editar</button>
     <button class="mini sec" onclick="convocar('${e.id}')">📣 Convocar</button>
@@ -2130,22 +2133,27 @@ function tAgenda(){
 }
 
 function formEvento(id){
-  let e={tipo:'treino',titulo:'',data:hoje(),hora:'19:00',local:'',obs:''};
+  let e={tipo:'treino',titulo:'',data:hoje(),hora:'19:00',horaFim:'',local:'',obs:''};
   if(id){ const ev=byId(db.eventos,id); if(ev) e={...ev,data:ev.data,hora:ev.hora||'19:00'}; }
   modal(`<h2>${id?'Editar':'Novo'} compromisso</h2>
   <div class="grid g2">
   <div><label>Tipo</label><select id="e_tipo"><option value="jogo" ${e.tipo==='jogo'?'selected':''}>Jogo</option><option value="treino" ${e.tipo==='treino'?'selected':''}>Treino</option><option value="reuniao" ${e.tipo==='reuniao'?'selected':''}>Reunião</option><option value="viagem" ${e.tipo==='viagem'?'selected':''}>Viagem</option></select></div>
   <div><label>Título</label><input id="e_tit" value="${esc(e.titulo)}" placeholder="Ex.: Jogo × OAB Santarém"></div>
   <div><label>Data</label><input id="e_data" type="date" value="${e.data}"></div>
-  <div><label>Hora</label><input id="e_hora" type="time" value="${e.hora}"></div>
+  <div><label>Hora de início</label><input id="e_hora" type="time" value="${e.hora}"></div>
+  <div><label>Hora de fim (opcional)</label><input id="e_horafim" type="time" value="${e.horaFim||''}"></div>
   </div>
-  <label>Local</label><input id="e_local" value="${esc(e.local)}">
+  <label>Local</label>
+  <div class="row" style="gap:8px"><input id="e_local" value="${esc(e.local)}" placeholder="Ex.: Arena Mangueirinho, Belém" style="flex:1"><button class="mini sec" type="button" onclick="const v=fval('e_local');if(v)window.open(mapsLink(v),'_blank');else toast('Digite o local primeiro')">📍 Ver no mapa</button></div>
+  <p class="mut" style="margin:4px 0 0;font-size:12px">💡 Quanto mais completo o endereço, mais certeiro fica o mapa para o elenco.</p>
   <label>Observações</label><input id="e_obs" value="${esc(e.obs)}" placeholder="Ex.: uniforme principal, chegar 30 min antes">
   <div class="row" style="margin-top:14px"><button onclick="salvaEvento('${id||''}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function salvaEvento(id){
   const t=fval('e_tit'),d=fval('e_data'); if(!t||!d){toast('Informe título e data');return;}
-  const dados={tipo:fval('e_tipo'),titulo:t,data:d,hora:fval('e_hora')||'19:00',local:fval('e_local'),obs:fval('e_obs')};
+  const hIni=fval('e_hora')||'19:00', hFim=fval('e_horafim')||'';
+  if(hFim&&hFim<=hIni){toast('A hora de fim deve ser depois da hora de início');return;}
+  const dados={tipo:fval('e_tipo'),titulo:t,data:d,hora:hIni,hora_fim:hFim||null,local:fval('e_local'),obs:fval('e_obs')};
   if(id){
     await q(sb.from('eventos').update(dados).eq('id',id));
     log('agenda',`Compromisso editado: ${t} (${dbr(d)})`);
@@ -2162,7 +2170,7 @@ function delEvento(id){ const e=byId(db.eventos,id); confirma(`Excluir o comprom
 function convocar(id){
   const e=byId(db.eventos,id);
   const patN=(db.pats||[]).filter(p=>p.ativo).map(p=>p.nome);
-  const msg=`⚽ *CONVOCAÇÃO — ${db.config.time}*\n\n${e.tipo==='jogo'?'🏆 Jogo':'🏃 Treino'}: ${e.titulo}\n📅 ${dbr(e.data)} às ${e.hora}\n📍 ${e.local}${e.obs?'\n📝 '+e.obs:''}\n\nConfirme presença! Baixe o lembrete no sistema. ⭐${patN.length?'\n\n🤝 Apoio: '+patN.join(' · '):''}`;
+  const msg=`⚽ *CONVOCAÇÃO — ${db.config.time}*\n\n${e.tipo==='jogo'?'🏆 Jogo':'🏃 Treino'}: ${e.titulo}\n📅 ${dbr(e.data)} das ${e.hora}${e.horaFim?' às '+e.horaFim:''}\n📍 ${e.local}${e.local?'\n🗺️ '+mapsLink(e.local):''}${e.obs?'\n📝 '+e.obs:''}\n\nConfirme presença! Baixe o lembrete no sistema. ⭐${patN.length?'\n\n🤝 Apoio: '+patN.join(' · '):''}`;
   modalWhats('Convocação',msg);
 }
 function modalWhats(titulo,msg){
@@ -4759,7 +4767,7 @@ function tMeu(){
   ${pend.length?pend.map(u=>`<div class="alertline al-warn sect">👕 Você recebeu o uniforme <strong>${esc(u.descricao)} nº ${esc(u.numero)}</strong> — <button class="mini gold" onclick="aceitarUniforme('${u.id}')">Ler e aceitar o termo de responsabilidade</button></div>`).join(''):''}
   ${docsFaltando.length?`<div class="alertline al-warn sect">📁 <strong>Documentos pendentes com a diretoria:</strong> ${docsFaltando.map(esc).join(', ')} — anexe abaixo em "Meus documentos".</div>`:''}
   <div class="card sect" style="border-color:var(--blue)"><h2>🗓️ Próximos compromissos</h2>
-  ${prox.length?prox.map(e=>`<div class="alertline" style="background:var(--blue-soft)"><div style="flex:1"><strong>${e.tipo==='jogo'?'⚽':'🏃'} ${esc(e.titulo)}</strong><div class="mut">${dbr(e.data)} às ${esc(e.hora)} — ${esc(e.local)}${e.obs?' · '+esc(e.obs):''}</div></div>
+  ${prox.length?prox.map(e=>`<div class="alertline" style="background:var(--blue-soft)"><div style="flex:1"><strong>${e.tipo==='jogo'?'⚽':'🏃'} ${esc(e.titulo)}</strong><div class="mut">${dbr(e.data)} às ${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''} — ${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener">📍 ${esc(e.local)}</a>`:''}${e.obs?' · '+esc(e.obs):''}</div></div>
     <button class="mini" onclick="modalCal('${e.id}')">📅 Pôr no calendário</button></div>`).join(''):'<p class="mut">Nada agendado por enquanto.</p>'}
   ${prox.length?`<button class="sec mini" onclick="baixarICS(db.eventos.filter(e=>e.data>=hoje()),'agenda-oabmaster.ics')">📅 Agenda completa (.ics)</button>`:''}</div>
   <div class="grid g5 sect">
