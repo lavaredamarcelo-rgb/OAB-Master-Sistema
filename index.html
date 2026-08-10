@@ -103,6 +103,21 @@ a{color:var(--blue)}
 .setas{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none}
 .doc{display:flex;gap:10px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;font-size:13.5px;flex-wrap:wrap}
 .doc>span{min-width:0;overflow-wrap:anywhere}
+/* Card do jogador */
+.pcard{width:235px;border-radius:20px;padding:20px 14px 14px;position:relative;text-align:center;box-shadow:0 12px 34px rgba(0,0,0,.28);flex-shrink:0}
+.pcard.ouro{background:linear-gradient(160deg,#f7dd8d,#e9bc2a 45%,#c3921a);color:#3a2c05}
+.pcard.clube{background:linear-gradient(160deg,#8a1f2f,#511219 58%,#27090d);color:#f7e8c8;border:1px solid #F2C11E}
+.pcard .pfoto{width:112px;height:112px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.6);margin:8px auto 4px;display:block;background:#fff}
+.pcard.clube .pfoto{border-color:#F2C11E}
+.pcard .pnum{position:absolute;top:14px;left:16px;font-size:28px;font-weight:800;font-family:Georgia,serif;line-height:1}
+.pcard .ppos{position:absolute;top:46px;left:16px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;max-width:80px;text-align:left}
+.pcard .pescudo{position:absolute;top:12px;right:12px}
+.pcard .pnome{font-size:17px;font-weight:800;margin-top:6px;text-transform:uppercase;letter-spacing:.03em}
+.pcard .ptime{font-size:10px;text-transform:uppercase;letter-spacing:.12em;opacity:.75;margin-top:2px}
+.pcard .pstats{display:flex;justify-content:space-around;margin-top:12px;padding-top:10px;border-top:1px solid rgba(0,0,0,.18)}
+.pcard.clube .pstats{border-top-color:rgba(247,232,200,.3)}
+.pcard .pstats .v{font-size:17px;font-weight:800;font-family:Georgia,serif}
+.pcard .pstats .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;opacity:.75}
 .patrow{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch;justify-content:center}
 .pat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-decoration:none;color:var(--ink);min-width:110px}
 .pat img{max-height:52px;max-width:130px;object-fit:contain}
@@ -215,7 +230,7 @@ function baixar(nome,conteudo,mime){ const b=conteudo instanceof Blob?conteudo:n
 function log(tipo,texto){ sb.from('logs').insert({tipo,texto,quem:me?me.nome:'sistema'}).then(()=>{}); }
 
 /* ================= CARREGAMENTO ================= */
-function mapAtleta(r){ return {id:r.id,nome:r.nome,fone:r.fone,email:r.email,oab:r.oab,posicao:r.posicao,role:r.role,ativo:r.ativo,pendente:!r.aprovado,fundador:!!r.fundador,cargo:r.cargo||'',cadastroManual:!!r.cadastro_manual,isentoMens:!!r.isento_mensalidade,
+function mapAtleta(r){ return {id:r.id,nome:r.nome,fone:r.fone,email:r.email,oab:r.oab,posicao:r.posicao,role:r.role,ativo:r.ativo,pendente:!r.aprovado,fundador:!!r.fundador,cargo:r.cargo||'',cadastroManual:!!r.cadastro_manual,isentoMens:!!r.isento_mensalidade,fotoUrl:r.foto_url||'',
   consent:{aceito:r.consent_status==='aceito',recusado:r.consent_status==='recusado',revogado:r.consent_status==='revogado',quando:fdt(r.consent_quando),versao:r.consent_versao||TERMO_LGPD_V},saude:{}}; }
 async function carregaTudo(){
   const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist]=await Promise.all([
@@ -963,7 +978,7 @@ function tAtletas(){
     <td data-l="Status">${isManual?`<span class="pill p-gold">📋 Manual</span>`:'<span class="pill p-ok">Ativo</span>'}${a.isentoMens?' <span class="pill p-mut">🧤 Isento</span>':''}</td>
     <td data-l="LGPD">${cs}</td>
     <td data-l="Pendências">${P.length?`<span class="pill p-bad" style="cursor:pointer" onclick="perfil('${a.id}')">${P.length} pendência${P.length>1?'s':''}</span>`:'<span class="pill p-ok">Em dia</span>'}</td>
-    <td><button class="mini sec" onclick="formAtleta('${a.id}')">✏️ Editar</button></td></tr>`;
+    <td class="row"><button class="mini gold" onclick="verCardJogador('${a.id}')">🪪</button><button class="mini sec" onclick="formAtleta('${a.id}')">✏️ Editar</button></td></tr>`;
   }).join('')}</table></div>
   <div style="margin-top:14px">${cardPosicoes()}</div>`;
 }
@@ -1005,10 +1020,70 @@ function perfil(id){
   ${uni.length?`<h3 style="margin-top:16px">Uniforme</h3>${uni.map(u=>`<p style="margin:0" class="mut">👕 ${esc(u.descricao)} nº ${esc(u.numero)} — ${u.status==='com_atleta'?'sob responsabilidade dele(a)':'aguardando aceite do termo'}</p>`).join('')}`:''}
   ${me.role==='diretoria'?`<h3 style="margin-top:16px">Documentos no arquivo</h3><p class="mut" style="margin:0">${db.arquivos.filter(d=>d.atletaId===id).length} documento(s) — <a href="#" onclick="fecha();vai('docs');subState.docAt='${id}';renderTab();return false">abrir arquivo →</a></p>`:''}
   <div class="row" style="margin-top:18px">
+  <button class="gold" onclick="fecha();verCardJogador('${id}')">🪪 Card</button>
   ${me.role==='diretoria'?`<button class="sec" onclick="fecha();formAtleta('${id}')">✏️ Editar cadastro</button>`:''}
   ${me.role==='diretoria'&&id!==me.id?`<button class="bad mini" onclick="confirmaExcluir('${id}')">🗑 Excluir</button>`:''}
   <button class="sec" onclick="fecha()">Fechar</button></div>`);
 }
+/* ---- Card do jogador ---- */
+async function comprimeFoto(f){
+  const img=await createImageBitmap(f);
+  const max=500, sc=Math.min(1,max/Math.max(img.width,img.height));
+  const c=document.createElement('canvas'); c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
+  c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  return await new Promise(r=>c.toBlob(r,'image/jpeg',.85));
+}
+async function enviaFotoAtleta(aid,inp){
+  const f=inp.files[0]; if(!f)return false;
+  if(!/^image\//.test(f.type)){toast('Escolha uma imagem (foto)');return false;}
+  toast('Enviando foto…');
+  let blob=f; try{ blob=await comprimeFoto(f); }catch(_){}
+  const path='atletas/'+uid()+'.jpg';
+  const {error}=await sb.storage.from('publico').upload(path,blob,{contentType:'image/jpeg'});
+  if(error){toast('⚠️ Envio falhou: '+error.message);return false;}
+  const url=SB_URL+'/storage/v1/object/public/publico/'+path;
+  const {error:e2}=await sb.from('perfis').update({foto_url:url}).eq('id',aid);
+  if(e2){toast('⚠️ '+(/foto_url/.test(e2.message||'')?'Rode o SQL v8 no Supabase para ativar as fotos':e2.message));return false;}
+  await recarrega(); toast('📸 Foto salva!'); return true;
+}
+function cardJogador(a,estilo){
+  estilo=estilo||subState.cardEstilo||'ouro';
+  const st=db.stats.filter(s=>s.atletaId===a.id);
+  const gols=st.reduce((s,x)=>s+(+x.gols||0),0), asst=st.reduce((s,x)=>s+(+x.assist||0),0);
+  const ps=db.presencas.filter(p=>p.atletaId===a.id);
+  const cmp=ps.filter(p=>['presente','atraso'].includes(p.status)).length;
+  const pct=ps.length?Math.round(cmp/ps.length*100):null;
+  const uni=db.uniformes.find(u=>u.atletaId===a.id);
+  const pos=(a.posicao||'').split(',')[0].trim();
+  return `<div class="pcard ${estilo}">
+    ${uni?`<div class="pnum">${esc(uni.numero)}</div>`:''}
+    ${pos?`<div class="ppos">${esc(pos)}</div>`:''}
+    <div class="pescudo">${CREST(36)}</div>
+    ${a.fotoUrl?`<img class="pfoto" src="${esc(a.fotoUrl)}" alt="${esc(pnome(a.nome))}">`:`<div class="pfoto" style="display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:800;color:#a08c4a">${ini(a.nome)}</div>`}
+    <div class="pnome">${esc(pnome(a.nome))}</div>
+    <div class="ptime">${esc(db.config.time)}</div>
+    <div class="pstats">
+      <div><div class="v">${pct===null?'—':pct+'%'}</div><div class="k">Freq.</div></div>
+      <div><div class="v">${gols}</div><div class="k">Gols</div></div>
+      <div><div class="v">${asst}</div><div class="k">Assist.</div></div>
+    </div>
+  </div>`;
+}
+function verCardJogador(id){
+  const a=at(id); if(!a)return;
+  const est=subState.cardEstilo||'ouro';
+  const podeFoto=me.role==='diretoria'||id===me.id;
+  modal(`<h2>🪪 Card do jogador</h2>
+  <div class="row" style="justify-content:center;margin:6px 0 14px">
+    <button class="mini ${est==='ouro'?'':'sec'}" onclick="subState.cardEstilo='ouro';verCardJogador('${id}')">🏆 Dourado</button>
+    <button class="mini ${est==='clube'?'':'sec'}" onclick="subState.cardEstilo='clube';verCardJogador('${id}')">🛡️ Cores do clube</button>
+  </div>
+  <div style="display:flex;justify-content:center">${cardJogador(a,est)}</div>
+  <div class="row" style="justify-content:center;margin-top:14px">
+  ${podeFoto?`<label class="mini sec" style="cursor:pointer;padding:9px 14px;border:1px solid var(--line);border-radius:10px;display:inline-flex;align-items:center;gap:6px">📸 ${a.fotoUrl?'Trocar foto':'Enviar foto'}<input type="file" accept="image/*" style="display:none" onchange="enviaFotoCard('${id}',this)"></label>`:''}
+  <button class="sec" onclick="fecha()">Fechar</button></div>`);
+}
+async function enviaFotoCard(id,inp){ if(await enviaFotoAtleta(id,inp)) verCardJogador(id); }
 const CARGOS=['Presidente','Vice-Presidente','Diretor Financeiro','Diretor de Futebol','Diretor Jurídico','Diretor Social','Diretor de Comunicação','Diretor de Patrimônio','Suplente'];
 function formNovoAtletaManual(){
   modal(`<h2>📋 Cadastrar atleta manualmente</h2>
@@ -4903,6 +4978,15 @@ function tMeu(){
     <div class="card stat"><div class="n" style="color:${minhasCob.length?'var(--warn)':'var(--ok)'}">${brl(minhasCob.reduce((s,c)=>s+Number(valorDe(c)),0))}</div><div class="l">Em aberto comigo</div></div>
     <div class="card stat"><div class="n" style="color:${db.config.limiteFaltas>0&&minhasFaltas>=db.config.limiteFaltas?'var(--bad)':'var(--ink)'}">${minhasFaltas}</div><div class="l">${db.config.limiteFaltas>0?`Faltas (limite ${db.config.limiteFaltas})`:'Faltas'}</div></div>
     <div class="card stat clickable" onclick="vai('taticas')"><div class="n">🎬</div><div class="l">Táticas →</div></div>
+  </div>
+  <div class="card sect">
+    <div class="spread"><h2>🪪 Meu card de jogador</h2>
+      <div class="row"><button class="mini ${(subState.cardEstilo||'ouro')==='ouro'?'':'sec'}" onclick="subState.cardEstilo='ouro';renderTab()">🏆 Dourado</button>
+      <button class="mini ${subState.cardEstilo==='clube'?'':'sec'}" onclick="subState.cardEstilo='clube';renderTab()">🛡️ Clube</button></div></div>
+    <div style="display:flex;justify-content:center;margin-top:10px">${cardJogador(me)}</div>
+    <div class="row" style="justify-content:center;margin-top:12px">
+      <label class="mini sec" style="cursor:pointer;padding:9px 14px;border:1px solid var(--line);border-radius:10px;display:inline-flex;align-items:center;gap:6px">📸 ${me.fotoUrl?'Trocar minha foto':'Enviar minha foto'}<input type="file" accept="image/*" style="display:none" onchange="enviaFotoAtleta('${me.id}',this)"></label>
+    </div>
   </div>
   <div class="grid g2">
   <div class="card"><h2>💰 Minhas pendências</h2>
