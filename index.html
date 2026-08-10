@@ -1721,12 +1721,29 @@ const FORMS={
  'Fut7 2-4-1':[['GOLEIRO'],['FIXO','ZAGUEIRO'],['ALA ESQ','VOLANTE','MEIA','ALA DIR'],['ATACANTE']],
  'Fut7 2-2-3':[['GOLEIRO'],['FIXO','ZAGUEIRO'],['VOLANTE','MEIA'],['ALA ESQ','ATACANTE','ALA DIR']],
  'Fut7 3-1-2-1':[['GOLEIRO'],['ALA ESQ','FIXO','ALA DIR'],['VOLANTE'],['MEIA','MEIA 2'],['ATACANTE']],
+ 'Fut7 2-3-1 (6 linha)':[['GOLEIRO'],['FIXO','ZAGUEIRO'],['ALA ESQ','MEIA','ALA DIR'],['ATACANTE']],
+ 'Fut7 3-2-1 (6 linha)':[['GOLEIRO'],['ALA ESQ','FIXO','ALA DIR'],['VOLANTE','MEIA'],['ATACANTE']],
+ 'Fut7 2-2-2 (6 linha)':[['GOLEIRO'],['FIXO','ZAGUEIRO'],['VOLANTE','MEIA'],['ATACANTE','ATACANTE 2']],
+ 'Fut7 3-1-2 (6 linha)':[['GOLEIRO'],['ALA ESQ','FIXO','ALA DIR'],['VOLANTE'],['ATACANTE','ATACANTE 2']],
  'Futsal 1-2-1':[['GOLEIRO'],['FIXO'],['ALA ESQ','ALA DIR'],['PIVÔ']],
  'Campo 4-4-2':[['GOLEIRO'],['LAT ESQ','ZAG 1','ZAG 2','LAT DIR'],['MEIA 1','VOL 1','VOL 2','MEIA 2'],['ATA 1','ATA 2']],
  'Campo 4-3-3':[['GOLEIRO'],['LAT ESQ','ZAG 1','ZAG 2','LAT DIR'],['VOL','MEIA 1','MEIA 2'],['PONTA ESQ','CENTROAVANTE','PONTA DIR']]
 };
+function formRows(f){
+  if(FORMS[f])return FORMS[f];
+  const m=/^Personalizado\s+([0-9]+(?:-[0-9]+)*)$/.exec(f||'');
+  if(!m)return null;
+  const nomes=['DEFESA','MEIO','ATAQUE'];
+  const partes=m[1].split('-');
+  const rows=[['GOLEIRO']];
+  partes.forEach((qt,ri)=>{
+    const base=partes.length<=3?(nomes[ri]||'LINHA'):'LINHA '+(ri+1);
+    rows.push(Array.from({length:Math.min(Number(qt),8)},(_,i)=>base+' '+(i+1)));
+  });
+  return rows;
+}
 function esqCoords(e){
-  let rows=FORMS[e.formacao];
+  let rows=formRows(e.formacao);
   if(!rows){ rows=[]; for(let i=0;i<e.posicoes.length;i+=3)rows.push(e.posicoes.slice(i,i+3).map(p=>p.lbl)); }
   const n=rows.length; let k=0; const out=[];
   rows.forEach((labels,ri)=>{ const y=n>1?88-ri*(74/(n-1)):50;
@@ -1948,12 +1965,18 @@ async function salvaNota(){ const t=fval('n_tit'); if(!t){toast('Dê um título'
 function delNota(id){ const n=byId(db.taticas.notas,id); confirma(`Excluir a anotação "${esc(n?n.titulo:'')}"?`,async()=>{ await q(sb.from('taticas_notas').delete().eq('id',id)); await recarrega(); toast('Anotação excluída'); }); }
 function formEsquema(id){
   const e=id?byId(db.taticas.esquemas,id):null;
-  const f0=e&&FORMS[e.formacao]?e.formacao:Object.keys(FORMS)[0];
+  const f0=e&&formRows(e.formacao)?e.formacao:Object.keys(FORMS)[0];
+  const opcoes=[...Object.keys(FORMS),...(formRows(f0)&&!FORMS[f0]?[f0]:[])];
   const temAdv=e&&e.adversario;
   const temPlacar=e&&e.placar;
   modal(`<h2>${e?'Editar':'Novo'} esquema / escalação</h2>
   <label>Nome</label><input id="e_nome" value="${e?esc(e.nome):''}" placeholder="Ex.: Titular × OAB Santarém">
-  <label>Formação (fut7, futsal ou campo)</label><select id="e_form" onchange="$('esq_slots').innerHTML=esqSlotsHTML(this.value)">${Object.keys(FORMS).map(f=>`<option ${f===f0?'selected':''}>${f}</option>`).join('')}</select>
+  <label>Formação (fut7, futsal ou campo)</label><select id="e_form" onchange="trocaForm(this.value)">${opcoes.map(f=>`<option ${f===f0?'selected':''}>${f}</option>`).join('')}</select>
+  <div class="row" style="gap:8px;margin-top:6px">
+    <input id="e_form_custom" placeholder="Ou monte a sua — ex.: 2-3-1 (goleiro entra sozinho)" style="flex:1">
+    <button class="mini sec" type="button" onclick="aplicaFormCustom()">✏️ Aplicar</button>
+  </div>
+  <p class="mut" style="margin:4px 0 0;font-size:12px">💡 Digite os jogadores de linha por setor, da defesa ao ataque. Ex.: <strong>2-3-1</strong> = 6 de linha; <strong>3-3</strong> = 6 de linha em 2 setores.</p>
   <div id="esq_slots">${esqSlotsHTML(f0,e?e.posicoes:null)}</div>
   <div style="margin-top:14px;padding:12px;background:var(--bg);border-radius:9px;border:1px solid var(--line)">
     <label style="margin-top:0;display:flex;align-items:center;gap:6px;text-transform:none;font-weight:400;color:var(--ink)">
@@ -1982,15 +2005,29 @@ function formEsquema(id){
   <div class="row" style="margin-top:14px"><button onclick="salvaEsquema('${id||''}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
   if(!temAdv) $('e_adv_form').style.display='none';
 }
+function trocaForm(f){
+  $('esq_slots').innerHTML=esqSlotsHTML(f);
+  if($('e_adv_check')&&$('e_adv_check').checked)$('esq_adv_slots').innerHTML=esqSlotsHTMLAdv(f);
+}
+function aplicaFormCustom(){
+  const v=fval('e_form_custom').replace(/\s/g,'');
+  if(!/^[1-9](-[1-9]){0,4}$/.test(v)){toast('Formato inválido — use números separados por traço, ex.: 2-3-1');return;}
+  const totLinha=v.split('-').reduce((s,n)=>s+Number(n),0);
+  const nome='Personalizado '+v;
+  const sel=$('e_form');
+  if(![...sel.options].some(o=>o.value===nome)){const o=document.createElement('option');o.value=o.textContent=nome;sel.appendChild(o);}
+  sel.value=nome; trocaForm(nome);
+  toast(`✏️ Formação ${v} aplicada — goleiro + ${totLinha} de linha`);
+}
 function esqSlotsHTML(f,pos){
-  const rows=FORMS[f]; const ats=elenco(); let html='',k=0;
+  const rows=formRows(f)||FORMS[Object.keys(FORMS)[0]]; const ats=elenco(); let html='',k=0;
   rows.forEach(labels=>{ labels.forEach(lbl=>{ const atual=pos&&pos[k]?pos[k].atletaId:''; const numAtual=pos&&pos[k]?(pos[k].num||''):''; k++;
     html+=`<div><label>${lbl}</label><select class="esq_sel" data-lbl="${lbl}"><option value="">—</option>${ats.map(a=>`<option value="${a.id}" ${a.id===atual?'selected':''}>${esc(a.nome)}</option>`).join('')}</select>
     <input class="esq_num" value="${esc(numAtual)}" placeholder="ou só o nº da camisa" style="margin-top:4px;font-size:13px"></div>`; }); });
   return `<div class="grid g3">${html}</div>`;
 }
 function esqSlotsHTMLAdv(f,pos){
-  const rows=FORMS[f]; let html='',k=0;
+  const rows=formRows(f)||FORMS[Object.keys(FORMS)[0]]; let html='',k=0;
   rows.forEach(labels=>{ labels.forEach(lbl=>{ const numAtual=pos&&pos[k]?(pos[k].num||''):''; k++;
     html+=`<div><label>${lbl}</label><input class="esq_adv_nome" placeholder="Nome do jogador" value="${pos&&pos[k]&&pos[k].lbl?esc(pos[k].lbl):''}">
     <input class="esq_adv_num" value="${esc(numAtual)}" placeholder="nº da camisa" style="margin-top:4px;font-size:13px"></div>`; }); });
