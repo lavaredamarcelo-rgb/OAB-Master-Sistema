@@ -107,11 +107,12 @@ a{color:var(--blue)}
 .pcard{width:235px;border-radius:20px;padding:20px 14px 14px;position:relative;text-align:center;box-shadow:0 12px 34px rgba(0,0,0,.28);flex-shrink:0}
 .pcard.ouro{background:linear-gradient(160deg,#f7dd8d,#e9bc2a 45%,#c3921a);color:#3a2c05}
 .pcard.clube{background:linear-gradient(160deg,#8a1f2f,#511219 58%,#27090d);color:#f7e8c8;border:1px solid #F2C11E}
-.pcard .pfoto{width:112px;height:112px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.6);margin:8px auto 4px;display:block;background:#fff}
+.pcard .pfoto{width:138px;height:138px;border-radius:50%;object-fit:cover;border:4px solid rgba(255,255,255,.65);margin:10px auto 4px;display:block;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .pcard.clube .pfoto{border-color:#F2C11E}
 .pcard .pnum{position:absolute;top:14px;left:16px;font-size:28px;font-weight:800;font-family:Georgia,serif;line-height:1}
 .pcard .ppos{position:absolute;top:46px;left:16px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;max-width:80px;text-align:left}
-.pcard .pescudo{position:absolute;top:12px;right:12px}
+.pcard .pescudo{position:absolute;top:10px;right:10px;background:#fff;border-radius:50%;width:48px;height:48px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.3);border:2px solid rgba(0,0,0,.12)}
+.pcard.clube .pescudo{border-color:#F2C11E}
 .pcard .pnome{font-size:17px;font-weight:800;margin-top:6px;text-transform:uppercase;letter-spacing:.03em}
 .pcard .ptime{font-size:10px;text-transform:uppercase;letter-spacing:.12em;opacity:.75;margin-top:2px}
 .pcard .pstats{display:flex;justify-content:space-around;margin-top:12px;padding-top:10px;border-top:1px solid rgba(0,0,0,.18)}
@@ -151,6 +152,11 @@ summary{cursor:pointer;font-weight:600;font-size:14px}
 /* Celular na vertical E na horizontal (até 1000px) */
 @media(max-width:1000px){
   .stat .n{font-size:clamp(15px,2.4vw + 7px,22px)}
+  /* Linha de documento: categoria e botões na primeira linha, nome completo embaixo */
+  .doc .dinfo{order:9;flex:1 1 100%}
+  .doc button:first-of-type{margin-left:auto}
+  /* Grades que devem empilhar no celular (vertical e horizontal) */
+  .stack-mobile{grid-template-columns:1fr!important}
   /* Tabelas viram cartões empilhados — sem scroll lateral */
   table.cardz{display:block;border:none}
   table.cardz tr{display:block;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px}
@@ -1048,24 +1054,26 @@ async function enviaFotoAtleta(aid,inp){
 }
 function cardJogador(a,estilo){
   estilo=estilo||subState.cardEstilo||'ouro';
-  const st=db.stats.filter(s=>s.atletaId===a.id);
-  const gols=st.reduce((s,x)=>s+(+x.gols||0),0), asst=st.reduce((s,x)=>s+(+x.assist||0),0);
+  const avs=db.avaliacoes.filter(v=>v.atletaId===a.id).sort((x,y)=>String(y.data).localeCompare(String(x.data)));
+  const av=avs[0]||{};
   const ps=db.presencas.filter(p=>p.atletaId===a.id);
   const cmp=ps.filter(p=>['presente','atraso'].includes(p.status)).length;
   const pct=ps.length?Math.round(cmp/ps.length*100):null;
   const uni=db.uniformes.find(u=>u.atletaId===a.id);
   const pos=(a.posicao||'').split(',')[0].trim();
+  const fv=v=>v!==undefined&&v!==null&&String(v).trim()!==''?esc(String(v)):'—';
   return `<div class="pcard ${estilo}">
     ${uni?`<div class="pnum">${esc(uni.numero)}</div>`:''}
     ${pos?`<div class="ppos">${esc(pos)}</div>`:''}
-    <div class="pescudo">${CREST(36)}</div>
-    ${a.fotoUrl?`<img class="pfoto" src="${esc(a.fotoUrl)}" alt="${esc(pnome(a.nome))}">`:`<div class="pfoto" style="display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:800;color:#a08c4a">${ini(a.nome)}</div>`}
+    <div class="pescudo">${CREST(38)}</div>
+    ${a.fotoUrl?`<img class="pfoto" src="${esc(a.fotoUrl)}" alt="${esc(pnome(a.nome))}">`:`<div class="pfoto" style="display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:#a08c4a">${ini(a.nome)}</div>`}
     <div class="pnome">${esc(pnome(a.nome))}</div>
     <div class="ptime">${esc(db.config.time)}</div>
     <div class="pstats">
+      <div><div class="v">${fv(av.altura)}</div><div class="k">Altura</div></div>
+      <div><div class="v">${fv(av.peso)}</div><div class="k">Peso</div></div>
+      <div><div class="v">${fv(av.vo2)}</div><div class="k">VO₂</div></div>
       <div><div class="v">${pct===null?'—':pct+'%'}</div><div class="k">Freq.</div></div>
-      <div><div class="v">${gols}</div><div class="k">Gols</div></div>
-      <div><div class="v">${asst}</div><div class="k">Assist.</div></div>
     </div>
   </div>`;
 }
@@ -1211,7 +1219,7 @@ function docLinha(d,podeDel){
     </div>`;
   }
   return `<div class="doc"><span class="pill p-mut">${esc(d.categoria)}</span>
-  <span style="flex:1"><strong>${esc(d.nome)}</strong><span class="mut"> · ${kb(d.tam)} · ${esc(d.quando)} · por ${esc(d.quem)}</span></span>
+  <span class="dinfo" style="flex:1"><strong>${esc(d.nome)}</strong><span class="mut"> · ${kb(d.tam)} · ${esc(d.quando)} · por ${esc(d.quem)}</span></span>
   <button class="mini sec" onclick="abreArquivo('${esc(d.path)}','${esc(d.nome)}')">⬇</button>
   ${podeDel?`<button class="mini sec" onclick="removeArquivo('${d.id}')">✕</button>`:''}</div>`;
 }
@@ -1488,9 +1496,9 @@ function tAval(){
     const avs=db.avaliacoes.filter(v=>v.atletaId===sel).sort((a,b)=>b.data.localeCompare(a.data));
     const mts=db.metas.filter(m=>m.atletaId===sel);
     corpo=`<div class="card sect"><div class="spread"><h2>📈 Avaliações${souAtleta?' — minhas':''}</h2>${podeEditar?`<button class="mini" onclick="formAval('${sel}')">+ Nova avaliação</button>`:''}</div>
-    <div class="tblwrap"><table><tr><th>Data</th><th>Peso (kg)</th><th>Altura (m)</th><th>IMC</th><th>% Gordura</th><th>VO₂ máx</th><th>Notas</th></tr>
+    <div class="tblwrap"><table class="cardz"><tr><th>Data</th><th>Peso (kg)</th><th>Altura (m)</th><th>IMC</th><th>% Gordura</th><th>VO₂ máx</th><th>Notas</th></tr>
     ${avs.length?avs.map(v=>{const imc=v.peso&&v.altura?(v.peso/(v.altura*v.altura)).toFixed(1):'—';
-      return `<tr><td>${dbr(v.data)}</td><td>${esc(v.peso)}</td><td>${esc(v.altura)}</td><td>${imc}</td><td>${esc(v.gordura||'—')}</td><td>${esc(v.vo2||'—')}</td><td>${esc(v.notas||'')}</td></tr>`;}).join(''):'<tr><td colspan="7" class="mut">Sem avaliações.</td></tr>'}</table></div></div>
+      return `<tr><td data-l="Data"><strong>${dbr(v.data)}</strong></td><td data-l="Peso (kg)">${esc(v.peso)}</td><td data-l="Altura (m)">${esc(v.altura)}</td><td data-l="IMC">${imc}</td><td data-l="% Gordura">${esc(v.gordura||'—')}</td><td data-l="VO₂ máx">${esc(v.vo2||'—')}</td><td data-l="Notas">${esc(v.notas||'')}</td></tr>`;}).join(''):'<tr><td colspan="7" class="mut">Sem avaliações.</td></tr>'}</table></div></div>
     <div class="card"><div class="spread"><h2>🎯 Metas</h2>${podeEditar?`<button class="mini" onclick="formMeta('${sel}')">+ Nova meta</button>`:''}</div>
     ${mts.length?mts.map(m=>`<div class="alertline" style="background:var(--bg)"><div style="flex:1"><strong>${esc(m.desc)}</strong><div class="mut">Prazo: ${dbr(m.prazo)}</div></div>${statusMeta(m)}
     ${podeEditar&&m.status!=='atingida'?`<button class="mini sec" onclick="metaOk('${m.id}')">Marcar atingida</button>`:''}
@@ -1728,8 +1736,8 @@ function tDesemp(){
     <div class="card"><h2>⚔️ Duelos vencidos</h2>${rank(a=>a.due)}</div>
   </div>
   <div class="card"><h2>📊 Totais da temporada</h2>
-  <div class="tblwrap"><table><tr><th>Atleta</th><th>Jogos</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>Passes</th><th>Nota média</th></tr>
-  ${Object.keys(agg).length?Object.entries(agg).map(([id,a])=>`<tr><td>${esc(nomeAt(id))}</td><td>${a.j}</td><td>${a.g}</td><td>${a.as}</td><td>${a.ca}</td><td>${a.cv}</td><td>${a.des}</td><td>${a.due}</td><td>${a.pas}</td><td>${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join(''):'<tr><td colspan="10" class="mut">Nenhuma estatística lançada ainda.</td></tr>'}</table></div>
+  <div class="tblwrap"><table class="cardz"><tr><th>Atleta</th><th>Jogos</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>Passes</th><th>Nota média</th></tr>
+  ${Object.keys(agg).length?Object.entries(agg).map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td data-l="Jogos">${a.j}</td><td data-l="Gols">${a.g}</td><td data-l="Assist.">${a.as}</td><td data-l="🟨 Amarelos">${a.ca}</td><td data-l="🟥 Vermelhos">${a.cv}</td><td data-l="Desarmes">${a.des}</td><td data-l="Duelos">${a.due}</td><td data-l="Passes">${a.pas}</td><td data-l="Nota média">${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join(''):'<tr><td colspan="10" class="mut">Nenhuma estatística lançada ainda.</td></tr>'}</table></div>
   ${Object.keys(agg).length?`<button class="sec mini" style="margin-top:12px" onclick="csvStats()">⬇ Baixar estatísticas (CSV)</button>`:''}</div>`;
 }
 function formStat(evId,atId){
@@ -4202,10 +4210,10 @@ function tUniformes(){
       ${estoque.length?`<span class="pill p-ok">${estoque.length} em estoque</span>`:''}</span>
       <div class="row" style="gap:4px;pointer-events:auto"><button class="mini sec" onclick="event.stopPropagation();editaUniforme('${firstItem.id}')">✏️</button><button class="mini sec" onclick="event.stopPropagation();adicionaNumerosUniforme('${firstItem.id}')">➕</button></div></summary>
       ${corP||forn?`<p class="mut" style="margin:6px 0 0">${corP?'🎨 '+esc(corP):''}${corP&&forn?' · ':''}${forn?'🏭 '+esc(forn):''}</p>`:''}
-      ${fora.length?`<div class="tblwrap" style="margin-top:8px"><table><tr><th>Nº</th><th>Com quem</th><th>Peças</th><th></th></tr>
+      ${fora.length?`<div class="tblwrap" style="margin-top:8px"><table class="cardz"><tr><th>Nº</th><th>Com quem</th><th>Peças</th><th></th></tr>
         ${fora.sort(porNum).map(u=>`<tr>
-        <td><strong>${esc(u.numero)}</strong>${u.goleiro?`<div><span class="pill p-gold">🧤 goleiro${u.cor?' · '+esc(u.cor):''}</span></div>`:''}</td>
-        <td>${esc(nomeUni(u))}${u.convFone?` <a href="${waLink(u.convFone,'Olá, '+pnome(u.convidado)+'! Sobre o uniforme nº '+u.numero+' do '+db.config.time+': ')}" target="_blank" rel="noopener">📱</a>`:''}${u.aceitoEm?`<div class="mut">${esc(u.aceitoEm)}</div>`:u.status==='pendente'?'<div class="mut">termo pendente</div>':''}</td>
+        <td data-l="Nº"><strong>${esc(u.numero)}</strong>${u.goleiro?`<div><span class="pill p-gold">🧤 goleiro${u.cor?' · '+esc(u.cor):''}</span></div>`:''}</td>
+        <td data-l="Com quem">${esc(nomeUni(u))}${u.convFone?` <a href="${waLink(u.convFone,'Olá, '+pnome(u.convidado)+'! Sobre o uniforme nº '+u.numero+' do '+db.config.time+': ')}" target="_blank" rel="noopener">📱</a>`:''}${u.aceitoEm?`<div class="mut">${esc(u.aceitoEm)}</div>`:u.status==='pendente'?'<div class="mut">termo pendente</div>':''}</td>
         <td><div class="row" style="gap:4px">${Object.entries(u.pecas||{}).map(([k,v])=>pecaChip(k,v)).join('')}</div></td>
         <td class="row">${Object.values(u.pecas||{}).some(v=>v==='estoque')?`<button class="mini" onclick="entregarUni('${u.id}')">▶</button>`:''}
         <button class="mini sec" onclick="devolveUni('${u.id}')">↩</button>
@@ -4351,15 +4359,15 @@ async function aceitaUniGo(id){
 }
 function tInventario(){
   return `<div class="card"><h2>📦 Materiais</h2>
-  <div class="tblwrap"><table><tr><th></th><th>Item</th><th>Detalhes</th><th>Disponível</th><th>Emprestado</th><th></th></tr>
+  <div class="tblwrap"><table class="cardz"><tr><th></th><th>Item</th><th>Detalhes</th><th>Disponível</th><th>Emprestado</th><th></th></tr>
   ${db.inventario.length?[...db.inventario].sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>{
     const emp=i.emprestimos||[]; const empQtd=emp.reduce((s,e)=>s+Number(e.qtd||0),0); const disp=Number(i.qtd)-empQtd;
     return `<tr>
   <td>${i.fotoUrl?`<img src="${esc(i.fotoUrl)}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:9px;cursor:pointer" onclick="window.open('${esc(i.fotoUrl)}','_blank')">`:'<span style="font-size:24px">📦</span>'}</td>
   <td><strong>${esc(i.nome)}</strong>${i.obs?`<div class="mut">${esc(i.obs)}</div>`:''}<div class="mut">${esc(i.cat)}</div></td>
   <td><div class="row" style="gap:4px">${i.marca?`<span class="pill p-mut">🏷️ ${esc(i.marca)}</span>`:''}${i.cor?`<span class="pill p-gold">🎨 ${esc(i.cor)}</span>`:''}${i.material?`<span class="pill p-warn">🧵 ${esc(i.material)}</span>`:''}</div></td>
-  <td><div class="row"><button class="mini sec" onclick="qtdItem('${i.id}',-1)">−</button><strong style="color:${disp<0?'var(--bad)':'inherit'}">${disp}</strong><span class="mut">/${i.qtd}</span><button class="mini sec" onclick="qtdItem('${i.id}',1)">+</button></div></td>
-  <td>${emp.length?emp.map((e,ix)=>`<div class="row" style="gap:4px;font-size:12.5px;margin-bottom:4px">→ <strong>${e.qtd}×</strong> ${esc(e.nome)}${e.fone?` <a href="${waLink(e.fone,'Olá, '+e.nome+'! Sobre o empréstimo de '+e.qtd+'× '+i.nome+' do '+db.config.time+' ('+e.quando+'): ')}" target="_blank" rel="noopener">📱</a>`:''} <span class="mut">${esc(e.quando)}</span><button class="mini sec" title="Devolvido" onclick="devolveEmp('${i.id}',${ix})">↩</button></div>`).join(''):'<span class="mut">—</span>'}</td>
+  <td data-l="Disponível"><div class="row"><button class="mini sec" onclick="qtdItem('${i.id}',-1)">−</button><strong style="color:${disp<0?'var(--bad)':'inherit'}">${disp}</strong><span class="mut">/${i.qtd}</span><button class="mini sec" onclick="qtdItem('${i.id}',1)">+</button></div></td>
+  <td data-l="Emprestado">${emp.length?emp.map((e,ix)=>`<div class="row" style="gap:4px;font-size:12.5px;margin-bottom:4px">→ <strong>${e.qtd}×</strong> ${esc(e.nome)}${e.fone?` <a href="${waLink(e.fone,'Olá, '+e.nome+'! Sobre o empréstimo de '+e.qtd+'× '+i.nome+' do '+db.config.time+' ('+e.quando+'): ')}" target="_blank" rel="noopener">📱</a>`:''} <span class="mut">${esc(e.quando)}</span><button class="mini sec" title="Devolvido" onclick="devolveEmp('${i.id}',${ix})">↩</button></div>`).join(''):'<span class="mut">—</span>'}</td>
   <td class="row"><button class="mini" onclick="emprestaItem('${i.id}')">→ Emprestar</button><button class="mini sec" onclick="formItem('${i.id}')">✏️</button><button class="mini sec" onclick="delItem('${i.id}')">✕</button></td></tr>`;}).join(''):'<tr><td colspan="6" class="mut">Nenhum material cadastrado.</td></tr>'}</table></div></div>`;
 }
 function relacaoMateriais(){
@@ -4465,13 +4473,13 @@ function delItem(id){ const i=byId(db.inventario,id); confirma(`Excluir o item "
 /* ================= TERMOS & LGPD ================= */
 function tLGPD(){
   const ats=db.atletas.filter(a=>!a.pendente);
-  return `<div class="grid g2 sect">
+  return `<div class="grid g2 sect stack-mobile">
   <div class="card"><h2>⚖️ Consentimentos LGPD</h2>
   <p class="mut">Todos os membros — atletas, comissão e diretoria — devem aceitar o termo.</p>
-  <div class="tblwrap"><table><tr><th>Membro</th><th>Situação</th><th></th></tr>
+  <div class="tblwrap"><table class="cardz"><tr><th>Membro</th><th>Situação</th><th></th></tr>
   ${ats.map(a=>{const c=a.consent;
-    return `<tr><td>${esc(a.nome)}</td>
-    <td>${c.aceito?`<span class="pill p-ok">Aceito v${esc(c.versao)}</span><div class="mut">${esc(c.quando)}</div>`:c.revogado?'<span class="pill p-bad">Revogado</span>':c.recusado?'<span class="pill p-bad">Recusado</span>':'<span class="pill p-warn">Pendente</span>'}</td>
+    return `<tr><td><strong>${esc(a.nome)}</strong></td>
+    <td data-l="Situação">${c.aceito?`<span class="pill p-ok">Aceito v${esc(c.versao)}</span><div class="mut">${esc(c.quando)}</div>`:c.revogado?'<span class="pill p-bad">Revogado</span>':c.recusado?'<span class="pill p-bad">Recusado</span>':'<span class="pill p-warn">Pendente</span>'}</td>
     <td class="row">${c.aceito?`<button class="mini sec" onclick="pdfComprovante('${a.id}')">📄 PDF</button><button class="mini sec" onclick="revogarConsent('${a.id}')">Revogar</button>`:''}
     ${(c.recusado||c.revogado)?`<button class="mini sec" onclick="reapresentaTermo('${a.id}')">↻ Reapresentar termo</button>`:''}</td></tr>`;}).join('')}</table></div>
   <div class="row" style="margin-top:12px">
@@ -4491,8 +4499,8 @@ function tLGPD(){
     <div class="alertline ${db.config.encarregado?'al-ok':'al-warn'}">${db.config.encarregado?'✔ Encarregado (DPO): '+esc(db.config.encarregado):'⚠ Defina um Encarregado de Dados (DPO) em Ajustes — art. 41, LGPD'}</div></div>
   </div>
   ${me.fundador?`<div class="card"><div class="spread"><h2>🧾 Trilha de auditoria <span class="pill p-gold">⭐ exclusiva do fundador</span></h2><button class="sec mini" onclick="csvLogs()">⬇ Exportar (CSV)</button></div>
-  <div class="tblwrap" style="max-height:320px;overflow-y:auto"><table><tr><th>Quando</th><th>Tipo</th><th>Registro</th></tr>
-  ${db.logs.slice(0,100).map(l=>`<tr><td style="white-space:nowrap">${esc(l.quando)}</td><td><span class="pill ${l.tipo==='acesso_saude'?'p-gold':l.tipo==='lgpd'?'p-mut':'p-warn'}" style="background:var(--bg)">${esc(l.tipo)}</span></td><td>${esc(l.texto)}</td></tr>`).join('')||'<tr><td colspan="3" class="mut">Sem registros.</td></tr>'}</table></div></div>`:'<p class="mut">🔒 A trilha de auditoria completa é visível apenas ao fundador do sistema.</p>'}`;
+  <div class="tblwrap" style="max-height:320px;overflow-y:auto"><table class="cardz"><tr><th>Quando</th><th>Tipo</th><th>Registro</th></tr>
+  ${db.logs.slice(0,100).map(l=>`<tr><td data-l="Quando" style="white-space:nowrap">${esc(l.quando)}</td><td><span class="pill ${l.tipo==='acesso_saude'?'p-gold':l.tipo==='lgpd'?'p-mut':'p-warn'}" style="background:var(--bg)">${esc(l.tipo)}</span></td><td style="overflow-wrap:anywhere">${esc(l.texto)}</td></tr>`).join('')||'<tr><td colspan="3" class="mut">Sem registros.</td></tr>'}</table></div></div>`:'<p class="mut">🔒 A trilha de auditoria completa é visível apenas ao fundador do sistema.</p>'}`;
 }
 function verTermoModelo(){ modal(`<h2>Modelo — Termo LGPD</h2>${termoLGPDTexto({nome:'[NOME DO ATLETA]',oab:''})}<div class="row" style="margin-top:14px"><button class="sec" onclick="pdfTermoLGPD()">⬇ Baixar PDF</button><button class="sec" onclick="fecha()">Fechar</button></div>`); }
 function verTermoUniModelo(){ modal(`<h2>Modelo — Termo de uniforme</h2>${termoUniTexto({nome:'[NOME DO ATLETA]'},{descricao:'[ITEM]',numero:'[Nº]',tamanho:'[TAM]'})}<div class="row" style="margin-top:14px"><button class="sec" onclick="pdfTermoUni()">⬇ Baixar PDF</button><button class="sec" onclick="fecha()">Fechar</button></div>`); }
