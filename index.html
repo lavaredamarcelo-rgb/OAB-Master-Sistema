@@ -124,13 +124,17 @@ a{color:var(--blue)}
 .pcard .pstats .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;opacity:.75}
 .patrow{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch;justify-content:center}
 .pat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-decoration:none;color:var(--ink);min-width:110px}
-.pat img{max-height:52px;max-width:130px;object-fit:contain}
+.pat img{max-height:44px;max-width:112px;object-fit:contain}
+.pat.diamante{border-color:#7dd3fc;box-shadow:0 0 0 2px rgba(125,211,252,.35)}
+.pat.diamante img{max-height:96px;max-width:245px}
 .pat.master{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold-soft)}
 .pat.master img{max-height:82px;max-width:210px}
-.pat.diamante{border-color:#7dd3fc;box-shadow:0 0 0 2px rgba(125,211,252,.35)}
-.pat.diamante img{max-height:94px;max-width:240px}
+.pat.ouro{border-color:var(--gold)}
+.pat.ouro img{max-height:68px;max-width:175px}
 .pat.prata{border-color:#c0c7d1}
+.pat.prata img{max-height:56px;max-width:145px}
 .pat.bronze{border-color:#c9925a}
+.pat.bronze img{max-height:50px;max-width:128px}
 .pat .pn{font-size:12px;font-weight:700;text-align:center}
 .pat .pb{font-size:11px;color:var(--gold);font-weight:600;text-align:center}
 .medal{font-size:16px}
@@ -482,8 +486,11 @@ async function loadPatsLogin(){
   try{
     const {data}=await sb.from('patrocinadores').select('nome,logo_url,tier').eq('ativo',true).order('ordem');
     const el=$('pats_login'); if(!el||!data||!data.length)return;
+    const rk={diamante:0,master:1,ouro:2,prata:3,bronze:4,apoio:5};
+    data.sort((a,b)=>(rk[a.tier]??9)-(rk[b.tier]??9));
     el.innerHTML=`<p class="mut" style="text-align:center;margin:16px 0 8px;text-transform:uppercase;letter-spacing:.08em;font-size:11px">— Apoio —</p>
-    <div class="patrow">${data.map(p=>p.logo_url?`<img src="${esc(p.logo_url)}" alt="${esc(p.nome)}" title="${esc(p.nome)}" style="max-height:${p.tier==='diamante'?64:p.tier==='master'?56:38}px;max-width:${p.tier==='diamante'?170:p.tier==='master'?150:96}px;object-fit:contain">`:`<span class="pill p-mut">${esc(p.nome)}</span>`).join('')}</div>`;
+    <div class="patrow">${data.map(p=>{const th={diamante:66,master:57,ouro:49,prata:42,bronze:37,apoio:33}[p.tier]||33;
+      return p.logo_url?`<img src="${esc(p.logo_url)}" alt="${esc(p.nome)}" title="${esc(p.nome)}" style="max-height:${th}px;max-width:${Math.round(th*2.6)}px;object-fit:contain">`:`<span class="pill p-mut">${esc(p.nome)}</span>`;}).join('')}</div>`;
   }catch(_){}
 }
 async function loginGo(){
@@ -4760,15 +4767,12 @@ async function arteRodapePats(){
   const comLogo=pats.filter(p=>p.logo_url);
   const [escImg,...logos]=await Promise.all([carrImg('escudo.png'),...comLogo.map(p=>carrImg(p.logo_url,true))]);
   const itens=comLogo.map((p,i)=>({p,img:logos[i]})).filter(x=>x.img);
-  const topoTiers=['diamante','master','ouro'];
-  const destaque=itens.filter(x=>topoTiers.includes(x.p.tier));
-  const demais=itens.filter(x=>!topoTiers.includes(x.p.tier));
   const semLogo=pats.filter(p=>!p.logo_url).map(p=>p.nome);
-  const W=1080, topo=130, lhA=190, lhB=125;
-  const rowsA=destaque.length?Math.ceil(destaque.length/3):0;
-  const colsB=Math.min(5,Math.max(3,demais.length));
-  const rowsB=demais.length?Math.ceil(demais.length/colsB):0;
-  const H=topo+rowsA*lhA+rowsB*lhB+(semLogo.length?46:0)+34;
+  // Tamanho proporcional à categoria: cada nível um degrau menor
+  const escala={diamante:{h:205,cols:2},master:{h:175,cols:3},ouro:{h:145,cols:4},prata:{h:122,cols:5},bronze:{h:105,cols:5},apoio:{h:92,cols:6}};
+  const grupos=Object.keys(escala).map(t=>({t,cfg:escala[t],lista:itens.filter(x=>x.p.tier===t)})).filter(g=>g.lista.length);
+  const W=1080, topo=130;
+  const H=topo+grupos.reduce((s,g)=>s+Math.ceil(g.lista.length/Math.min(g.cfg.cols,g.lista.length))*g.cfg.h,0)+(semLogo.length?46:0)+34;
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
   const g=x.createLinearGradient(0,0,W,0); g.addColorStop(0,'#B8272D'); g.addColorStop(1,'#6E1013'); x.fillStyle=g; x.fillRect(0,0,W,topo);
   x.fillStyle='rgba(255,255,255,.06)'; for(let i=-100;i<W+100;i+=170){x.save();x.translate(i,0);x.rotate(.2);x.fillRect(0,-50,60,topo+120);x.restore();}
@@ -4781,13 +4785,12 @@ async function arteRodapePats(){
     lista.forEach((it,i)=>{ const row=Math.floor(i/porLinha), col=i%porLinha;
       const nRow=Math.min(porLinha,lista.length-row*porLinha);
       const x0=(W-nRow*lw)/2+col*lw;
-      const im=it.img, r=Math.min((lw-34)/im.width,(lh-40)/im.height);
+      const im=it.img, r=Math.min((lw-34)/im.width,(lh-36)/im.height);
       const w2=im.width*r, h2=im.height*r;
-      x.drawImage(im,x0+(lw-w2)/2,y0+row*lh+(lh-40-h2)/2+14,w2,h2); });
+      x.drawImage(im,x0+(lw-w2)/2,y0+row*lh+(lh-36-h2)/2+12,w2,h2); });
     return y0+Math.ceil(lista.length/porLinha)*lh; };
   let y=topo;
-  if(destaque.length) y=desenhaBanda(destaque,Math.min(3,destaque.length),lhA,y);
-  if(demais.length) y=desenhaBanda(demais,colsB,lhB,y);
+  grupos.forEach(g=>{ y=desenhaBanda(g.lista,Math.min(g.cfg.cols,g.lista.length),g.cfg.h,y); });
   if(semLogo.length){ x.fillStyle='#5C616E'; x.font='600 24px Helvetica'; x.textAlign='center'; x.fillText(semLogo.join(' · '),W/2,y+30); }
   cv.toBlob(bl=>{ baixar('rodape-patrocinadores-'+hoje()+'.png',bl,'image/png'); toast('🎨 Arte do rodapé gerada — está nos downloads!'); },'image/png');
 }
