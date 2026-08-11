@@ -90,6 +90,7 @@ a{color:var(--blue)}
 .campo .a-top,.prancheta .a-top{top:-2px;border-top:none;border-radius:0 0 10px 10px}
 .campo .a-bot,.prancheta .a-bot{bottom:-2px;border-bottom:none;border-radius:10px 10px 0 0}
 .tok .pos{display:block;font-size:9px;font-weight:600;color:#5C616E;text-transform:uppercase;letter-spacing:.03em;text-align:center}
+.tok.time .pos,.tok.adv .pos{color:#fff;opacity:.9}
 .campo .linha{display:flex;justify-content:space-evenly;gap:6px;flex-wrap:wrap;position:relative;z-index:2}
 .jog{background:#fff;color:#1E2228;border-radius:99px;padding:4px 11px;font-size:12.5px;font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.3);white-space:nowrap;text-align:center}
 .jog .pos{display:block;font-size:9px;font-weight:600;color:#5C616E;text-transform:uppercase;letter-spacing:.04em}
@@ -2015,7 +2016,7 @@ function abrirPrancheta(id){
     <button class="mini sec" id="prc_r" onclick="prCurva(0.35)">⤻ Curva p/ baixo</button>
   </div>
   <div class="prancheta" id="pr_campo"><div class="plin"></div><div class="pcirc"></div><svg class="setas" id="pr_svg"></svg></div>
-  <p class="mut" style="margin-top:6px">Arraste os nomes no campo. Em <strong>🎯 Destino</strong>, arraste cada um até onde deve chegar — na reprodução eles se movem até lá (seta dourada mostra o trajeto). Em <strong>↗ Setas</strong>, desenhe arrastando sobre o campo (ex.: trajetória da bola).</p>
+  <p class="mut" style="margin-top:6px">Arraste os nomes no campo. Em <strong>🎯 Destino</strong>, arraste cada um até onde deve chegar — na reprodução eles se movem até lá (seta dourada mostra o trajeto). Em <strong>↗ Setas</strong>, desenhe arrastando sobre o campo (ex.: trajetória da bola). O <strong>traço escolhido</strong> (reta/curva) vale para as setas <em>e</em> para o deslocamento dos jogadores — com curva, eles correm fazendo a curva na reprodução. 🌀</p>
   <label>Observações</label><input id="pr_obs" value="${esc(prSt.obs)}">
   <div class="row" style="margin-top:12px"><button onclick="salvaPrancheta()">Salvar jogada</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
   prLiga(); prDesenha();
@@ -2037,7 +2038,7 @@ function prDesenha(){
   const W=c.clientWidth||300, H=c.clientHeight||300;
   let s=PR_DEFS;
   prSt.setas.forEach(a=>{ s+=prSetaEl(a[0],a[1],a[2],a[3],'#fff','ah',a[4]||0,W,H); });
-  prSt.tokens.filter(t=>t.x1!=null).forEach(t=>{ s+=prSetaEl(t.x0,t.y0,t.x1,t.y1,'#F2C11E','ah2',0,W,H); });
+  prSt.tokens.filter(t=>t.x1!=null).forEach(t=>{ s+=prSetaEl(t.x0,t.y0,t.x1,t.y1,'#F2C11E','ah2',t.curva||0,W,H); });
   svg.innerHTML=s;
 }
 function prLiga(){
@@ -2050,7 +2051,7 @@ function prLiga(){
   };
   c.onpointermove=ev=>{
     if(dragI!=null){ const [x,y]=pct(ev); const t=prSt.tokens[dragI];
-      if(prSt.modo==='destino'){ t.x1=x; t.y1=y; } else { t.x0=x; t.y0=y; }
+      if(prSt.modo==='destino'){ t.x1=x; t.y1=y; t.curva=prSt.curva||0; } else { t.x0=x; t.y0=y; }
       prDesenha(); }
   };
   c.onpointerup=ev=>{
@@ -2077,11 +2078,22 @@ function verPrancheta(id){
   const cv=$('vw_campo'), W=cv.clientWidth||300, H=cv.clientHeight||300;
   let s=PR_DEFS;
   (d.setas||[]).forEach(a=>{ s+=prSetaEl(a[0],a[1],a[2],a[3],'#fff','ah',a[4]||0,W,H); });
-  (d.tokens||[]).filter(t=>t.x1!=null).forEach(t=>{ s+=prSetaEl(t.x0,t.y0,t.x1,t.y1,'#F2C11E','ah2',0,W,H); });
+  (d.tokens||[]).filter(t=>t.x1!=null).forEach(t=>{ s+=prSetaEl(t.x0,t.y0,t.x1,t.y1,'#F2C11E','ah2',t.curva||0,W,H); });
   $('vw_svg').innerHTML=s;
 }
 function prPlay(id){ const d=byId(db.taticas.esquemas,id).posicoes;
-  (d.tokens||[]).forEach((t,i)=>{ const el=$('vw_t'+i); if(el&&t.x1!=null){ el.classList.add('mov'); el.style.left=t.x1+'%'; el.style.top=t.y1+'%'; } }); }
+  (d.tokens||[]).forEach((t,i)=>{ const el=$('vw_t'+i); if(!el||t.x1==null)return;
+    el.classList.remove('mov');
+    const cv=t.curva||0, dx=t.x1-t.x0, dy=t.y1-t.y0;
+    const mx=(t.x0+t.x1)/2-dy*cv, my=(t.y0+t.y1)/2+dx*cv;
+    const t0=performance.now(), dur=1600;
+    const passo=n=>{ const u=Math.min(1,(n-t0)/dur);
+      const e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+      const X=(1-e)*(1-e)*t.x0+2*(1-e)*e*mx+e*e*t.x1;
+      const Y=(1-e)*(1-e)*t.y0+2*(1-e)*e*my+e*e*t.y1;
+      el.style.left=X+'%'; el.style.top=Y+'%';
+      if(u<1)requestAnimationFrame(passo); };
+    requestAnimationFrame(passo); }); }
 function prReset(id){ const d=byId(db.taticas.esquemas,id).posicoes;
   (d.tokens||[]).forEach((t,i)=>{ const el=$('vw_t'+i); if(el){ el.classList.remove('mov'); el.style.left=t.x0+'%'; el.style.top=t.y0+'%'; } }); }
 function formNota(){
@@ -4741,31 +4753,42 @@ function pdfContratoPat(id){
   genPDF('contrato-patrocinio-'+p.nome.toLowerCase().replace(/\s+/g,'-')+'.pdf',c.time+' — CONTRATO DE PATROCÍNIO ESPORTIVO',linhas);
 }
 async function arteRodapePats(){
-  const pats=(db.pats||[]).filter(p=>p.ativo);
+  const ordemTier={diamante:0,master:1,ouro:2,prata:3,bronze:4,apoio:5};
+  const pats=(db.pats||[]).filter(p=>p.ativo).sort((a,b)=>(ordemTier[a.tier]??9)-(ordemTier[b.tier]??9)||(a.ordem||0)-(b.ordem||0)||a.nome.localeCompare(b.nome));
   if(!pats.length){toast('Cadastre patrocinadores primeiro');return;}
   toast('Gerando arte…');
-  const [escImg,...logos]=await Promise.all([carrImg('escudo.png'),...pats.filter(p=>p.logo_url).map(p=>carrImg(p.logo_url,true))]);
-  const ls=logos.filter(Boolean);
-  const porLinha=Math.min(6,Math.max(3,Math.ceil(ls.length/2)));
-  const nLinhas=Math.max(1,Math.ceil(ls.length/porLinha));
-  const W=1080, topo=130, lh=150, H=topo+nLinhas*lh+46;
+  const comLogo=pats.filter(p=>p.logo_url);
+  const [escImg,...logos]=await Promise.all([carrImg('escudo.png'),...comLogo.map(p=>carrImg(p.logo_url,true))]);
+  const itens=comLogo.map((p,i)=>({p,img:logos[i]})).filter(x=>x.img);
+  const topoTiers=['diamante','master','ouro'];
+  const destaque=itens.filter(x=>topoTiers.includes(x.p.tier));
+  const demais=itens.filter(x=>!topoTiers.includes(x.p.tier));
+  const semLogo=pats.filter(p=>!p.logo_url).map(p=>p.nome);
+  const W=1080, topo=130, lhA=190, lhB=125;
+  const rowsA=destaque.length?Math.ceil(destaque.length/3):0;
+  const colsB=Math.min(5,Math.max(3,demais.length));
+  const rowsB=demais.length?Math.ceil(demais.length/colsB):0;
+  const H=topo+rowsA*lhA+rowsB*lhB+(semLogo.length?46:0)+34;
   const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
   const g=x.createLinearGradient(0,0,W,0); g.addColorStop(0,'#B8272D'); g.addColorStop(1,'#6E1013'); x.fillStyle=g; x.fillRect(0,0,W,topo);
   x.fillStyle='rgba(255,255,255,.06)'; for(let i=-100;i<W+100;i+=170){x.save();x.translate(i,0);x.rotate(.2);x.fillRect(0,-50,60,topo+120);x.restore();}
   if(escImg){const h2=92,w2=h2*escImg.width/escImg.height;x.drawImage(escImg,26,(topo-h2)/2,w2,h2);}
   x.fillStyle='#F2C11E'; x.font='bold 40px Georgia'; x.textAlign='left'; x.fillText(db.config.time.toUpperCase(),146,56);
-  x.fillStyle='#fff'; x.font='600 27px Helvetica'; x.fillText('🤝 NOSSOS PATROCINADORES',146,98);
+  x.fillStyle='#fff'; x.font='bold 31px Helvetica'; x.fillText('QUEM TORNA TUDO POSSÍVEL! 🤝',146,99);
   x.fillStyle='#fff'; x.fillRect(0,topo,W,H-topo);
-  const lw=(W-80)/porLinha;
-  ls.forEach((im,i)=>{ const row=Math.floor(i/porLinha), col=i%porLinha;
-    const nRow=Math.min(porLinha,ls.length-row*porLinha);
-    const x0=(W-nRow*lw)/2+col*lw;
-    const r=Math.min((lw-30)/im.width,(lh-44)/im.height);
-    const w2=im.width*r, h2=im.height*r;
-    x.drawImage(im,x0+(lw-w2)/2,topo+18+row*lh+(lh-44-h2)/2,w2,h2); });
-  if(!ls.length){ x.fillStyle='#5C616E'; x.font='600 32px Helvetica'; x.textAlign='center'; x.fillText(pats.map(p=>p.nome).join(' · '),W/2,topo+(H-topo)/2); }
-  x.fillStyle='#9aa0ab'; x.font='22px Helvetica'; x.textAlign='center';
-  x.fillText('Apoie quem apoia o nosso futebol ⚽',W/2,H-16);
+  const desenhaBanda=(lista,porLinha,lh,y0)=>{
+    const lw=(W-80)/porLinha;
+    lista.forEach((it,i)=>{ const row=Math.floor(i/porLinha), col=i%porLinha;
+      const nRow=Math.min(porLinha,lista.length-row*porLinha);
+      const x0=(W-nRow*lw)/2+col*lw;
+      const im=it.img, r=Math.min((lw-34)/im.width,(lh-40)/im.height);
+      const w2=im.width*r, h2=im.height*r;
+      x.drawImage(im,x0+(lw-w2)/2,y0+row*lh+(lh-40-h2)/2+14,w2,h2); });
+    return y0+Math.ceil(lista.length/porLinha)*lh; };
+  let y=topo;
+  if(destaque.length) y=desenhaBanda(destaque,Math.min(3,destaque.length),lhA,y);
+  if(demais.length) y=desenhaBanda(demais,colsB,lhB,y);
+  if(semLogo.length){ x.fillStyle='#5C616E'; x.font='600 24px Helvetica'; x.textAlign='center'; x.fillText(semLogo.join(' · '),W/2,y+30); }
   cv.toBlob(bl=>{ baixar('rodape-patrocinadores-'+hoje()+'.png',bl,'image/png'); toast('🎨 Arte do rodapé gerada — está nos downloads!'); },'image/png');
 }
 function pdfRelatorioPats(){
