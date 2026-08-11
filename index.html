@@ -206,6 +206,8 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const brl=v=>(Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const ehMensal=c=>/Mensalidade/i.test(c.desc||'');
 const mapsLink=l=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(l);
+const tipoEvIco=t=>t==='jogo'?'⚽':t==='amistoso'?'🤝':t==='treino'?'🏃':'📌';
+const tipoEvLbl=t=>t==='jogo'?'🏆 Jogo':t==='amistoso'?'🤝 Amistoso':t==='treino'?'🏃 Treino':'📌 Compromisso';
 const nomeCob=c=>c.atletaId?nomeAt(c.atletaId):('🎟️ '+(c.convidado||'Convidado'));
 const valorDe=c=>(ehMensal(c)&&c.status==='atrasado')?(db.config.mensApos||c.valor):c.valor;
 const dbr=d=>{ if(!d)return '—'; const[a,m,dd]=String(d).slice(0,10).split('-'); return `${dd}/${m}/${a}`; };
@@ -329,7 +331,7 @@ function icsData(d,h){ return d.replace(/-/g,'')+'T'+((h||'00:00').replace(':','
 function icsEvento(ev){
   const dt=icsData(ev.data,ev.hora);
   return ['BEGIN:VEVENT','UID:'+ev.id+'@oabmaster','DTSTART:'+dt,...(ev.horaFim?['DTEND:'+icsData(ev.data,ev.horaFim)]:[]),
-    'SUMMARY:'+(ev.tipo==='jogo'?'⚽ ':'')+ev.titulo,
+    'SUMMARY:'+(ev.tipo==='jogo'?'⚽ ':ev.tipo==='amistoso'?'🤝 ':'')+ev.titulo,
     'LOCATION:'+(ev.local||''),'DESCRIPTION:'+db.config.time+' — '+(ev.obs||ev.tipo),
     'BEGIN:VALARM','TRIGGER:-PT3H','ACTION:DISPLAY','DESCRIPTION:Lembrete: '+ev.titulo,'END:VALARM',
     'BEGIN:VALARM','TRIGGER:-P1D','ACTION:DISPLAY','DESCRIPTION:Amanhã: '+ev.titulo,'END:VALARM','END:VEVENT'].join('\r\n');
@@ -344,13 +346,13 @@ function gcalLink(e){
   if(e.horaFim){ fim=icsData(e.data,e.horaFim); }
   else{ const dt=new Date(e.data+'T'+(e.hora||'19:00')+':00'); dt.setHours(dt.getHours()+2);
     fim=dt.getFullYear()+String(dt.getMonth()+1).padStart(2,'0')+String(dt.getDate()).padStart(2,'0')+'T'+String(dt.getHours()).padStart(2,'0')+String(dt.getMinutes()).padStart(2,'0')+'00'; }
-  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent((e.tipo==='jogo'?'⚽ ':'')+e.titulo)
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent((e.tipo==='jogo'?'⚽ ':e.tipo==='amistoso'?'🤝 ':'')+e.titulo)
     +'&dates='+ini+'/'+fim+'&location='+encodeURIComponent(e.local||'')+'&details='+encodeURIComponent(db.config.time+(e.obs?' — '+e.obs:''));
 }
 function modalCal(id){
   const e=byId(db.eventos,id);
   modal(`<h2>📅 Adicionar ao calendário</h2>
-  <p><strong>${e.tipo==='jogo'?'⚽':'🏃'} ${esc(e.titulo)}</strong><br><span class="mut">${dbr(e.data)} às ${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''} — ${esc(e.local)}</span></p>
+  <p><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong><br><span class="mut">${dbr(e.data)} às ${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''} — ${esc(e.local)}</span></p>
   <div class="row" style="margin-top:14px">
     <button onclick="window.open(gcalLink(byId(db.eventos,'${id}')),'_blank')">📅 Google Agenda (1 clique)</button>
     <button class="sec" onclick="baixarICS([byId(db.eventos,'${id}')],'evento.ics')">🍎 iPhone / Outlook (.ics)</button>
@@ -1707,14 +1709,19 @@ function salvaStatsAoVivo(evId){
   toast('✅ Estatísticas salvas ao vivo!');
 }
 function tDesemp(){
-  const jogos=db.eventos.filter(e=>e.tipo==='jogo').sort((a,b)=>b.data.localeCompare(a.data));
+  const jogos=db.eventos.filter(e=>['jogo','amistoso','treino'].includes(e.tipo)).sort((a,b)=>b.data.localeCompare(a.data));
   const podeEditar=gestor();
   const sel=subState.despEv||(jogos[0]&&jogos[0].id)||'';
   const ats=elenco();
   const modeLancAV=subState.modeLancAV||false;
+  const cat=subState.despCat||'todos';
+  const catDe=evId=>{const e=byId(db.eventos,evId);return e?e.tipo:'';};
   const agg={};
-  db.stats.forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,pas:0,j:0,notas:[]};
+  db.stats.filter(s=>cat==='todos'||catDe(s.eventoId)===cat).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,pas:0,j:0,notas:[]};
     a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.pas+=+s.passes||0; a.j++; if(s.nota)a.notas.push(+s.nota); });
+  const catBtn=(v,lbl)=>`<button class="mini ${cat===v?'':'sec'}" onclick="subState.despCat='${v}';renderTab()">${lbl}</button>`;
+  const filtroCat=`<div class="row sect" style="gap:6px;flex-wrap:wrap"><span class="mut" style="font-size:12px;align-self:center">Estatísticas de:</span>
+    ${catBtn('todos','🌐 Tudo')}${catBtn('jogo','🏆 Oficiais')}${catBtn('amistoso','🤝 Amistosos')}${catBtn('treino','🏃 Treinos')}</div>`;
   const rank=(campo,fmt)=>Object.entries(agg).map(([id,a])=>({id,v:campo(a)})).filter(r=>r.v>0).sort((x,y)=>y.v-x.v).slice(0,5)
     .map((r,i)=>`<div class="alertline" style="background:var(--bg)"><span class="medal">${['🥇','🥈','🥉','4º','5º'][i]}</span><span style="flex:1">${esc(nomeAt(r.id))}</span><strong>${fmt?fmt(r.v):r.v}</strong></div>`).join('')||'<p class="mut">Sem registros.</p>';
   let lanc='<p class="mut">Cadastre um jogo na Agenda para lançar estatísticas.</p>';
@@ -1724,9 +1731,10 @@ function tDesemp(){
       return `<tr><td>${esc(a.nome)}</td><td>${s.gols??'—'}</td><td>${s.assist??'—'}</td><td>${s.amarelos??'—'}</td><td>${s.vermelho?'1':'—'}</td><td>${s.desarmes??'—'}</td><td>${s.duelos??'—'}</td><td>${s.passes??'—'}</td><td>${s.nota?`<strong>${s.nota}</strong>`:'—'}</td>
       ${podeEditar?`<td><button class="mini sec" onclick="formStat('${sel}','${a.id}')">✏️ Lançar</button></td>`:''}</tr>`; }).join('')}</table></div>`;
   }
-  return `<div class="card sect"><div class="spread"><label style="margin-top:0">Jogo</label><div style="gap:8px;display:flex">${podeEditar?`<button class="mini ${modeLancAV?'on':'gold'}" onclick="subState.modeLancAV=!subState.modeLancAV;renderTab()">⚡ Rápido</button>`:''}<button class="mini gold" onclick="artePosJogo()">🎨 Arte pós-jogo</button></div></div>
-  <select onchange="subState.despEv=this.value;renderTab()">${jogos.length?jogos.map(j=>`<option value="${j.id}" ${j.id===sel?'selected':''}>${dbr(j.data)} — ${esc(j.titulo)}</option>`).join(''):'<option value="">— nenhum jogo cadastrado —</option>'}</select>
+  return `<div class="card sect"><div class="spread"><label style="margin-top:0">Jogo / amistoso / treino</label><div style="gap:8px;display:flex">${podeEditar?`<button class="mini ${modeLancAV?'on':'gold'}" onclick="subState.modeLancAV=!subState.modeLancAV;renderTab()">⚡ Rápido</button>`:''}<button class="mini gold" onclick="artePosJogo()">🎨 Arte pós-jogo</button></div></div>
+  <select onchange="subState.despEv=this.value;renderTab()">${jogos.length?jogos.map(j=>`<option value="${j.id}" ${j.id===sel?'selected':''}>${tipoEvIco(j.tipo)} ${dbr(j.data)} — ${esc(j.titulo)}</option>`).join(''):'<option value="">— nenhum jogo cadastrado —</option>'}</select>
   <div style="margin-top:14px">${modeLancAV&&sel?lancAoVivo(sel):lanc}</div></div>
+  ${filtroCat}
   <div class="grid g2 sect">
     <div class="card"><h2>⚽ Artilharia</h2>${rank(a=>a.g)}</div>
     <div class="card"><h2>🅰️ Assistências</h2>${rank(a=>a.as)}</div>
@@ -1735,9 +1743,9 @@ function tDesemp(){
     <div class="card"><h2>🛡️ Desarmes</h2>${rank(a=>a.des)}</div>
     <div class="card"><h2>⚔️ Duelos vencidos</h2>${rank(a=>a.due)}</div>
   </div>
-  <div class="card"><h2>📊 Totais da temporada</h2>
-  <div class="tblwrap"><table class="cardz"><tr><th>Atleta</th><th>Jogos</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>Passes</th><th>Nota média</th></tr>
-  ${Object.keys(agg).length?Object.entries(agg).map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td data-l="Jogos">${a.j}</td><td data-l="Gols">${a.g}</td><td data-l="Assist.">${a.as}</td><td data-l="🟨 Amarelos">${a.ca}</td><td data-l="🟥 Vermelhos">${a.cv}</td><td data-l="Desarmes">${a.des}</td><td data-l="Duelos">${a.due}</td><td data-l="Passes">${a.pas}</td><td data-l="Nota média">${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join(''):'<tr><td colspan="10" class="mut">Nenhuma estatística lançada ainda.</td></tr>'}</table></div>
+  <div class="card"><h2>📊 Totais da temporada ${cat==='jogo'?'<span class="pill p-gold">🏆 oficiais</span>':cat==='amistoso'?'<span class="pill p-warn">🤝 amistosos</span>':cat==='treino'?'<span class="pill p-mut">🏃 treinos</span>':''}</h2>
+  <div class="tblwrap"><table class="cardz"><tr><th>Atleta</th><th>Partidas</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>Passes</th><th>Nota média</th></tr>
+  ${Object.keys(agg).length?Object.entries(agg).map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td data-l="Partidas">${a.j}</td><td data-l="Gols">${a.g}</td><td data-l="Assist.">${a.as}</td><td data-l="🟨 Amarelos">${a.ca}</td><td data-l="🟥 Vermelhos">${a.cv}</td><td data-l="Desarmes">${a.des}</td><td data-l="Duelos">${a.due}</td><td data-l="Passes">${a.pas}</td><td data-l="Nota média">${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join(''):'<tr><td colspan="10" class="mut">Nenhuma estatística lançada ainda.</td></tr>'}</table></div>
   ${Object.keys(agg).length?`<button class="sec mini" style="margin-top:12px" onclick="csvStats()">⬇ Baixar estatísticas (CSV)</button>`:''}</div>`;
 }
 function formStat(evId,atId){
@@ -2301,7 +2309,7 @@ function tAgenda(){
   <div class="card tblwrap"><table class="cardz"><tr><th>Data</th><th>Hora</th><th>Compromisso</th><th>Local</th><th></th></tr>
   ${evs.length?evs.map(e=>`<tr style="${e.data<hoje()?'opacity:.55':''}">
     <td data-l="Data"><strong>${dbr(e.data)}</strong></td><td data-l="Hora">${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''}</td>
-    <td><strong>${e.tipo==='jogo'?'⚽':e.tipo==='treino'?'🏃':'📌'} ${esc(e.titulo)}</strong>${e.obs?`<div class="mut">${esc(e.obs)}</div>`:''}</td>
+    <td><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong>${e.obs?`<div class="mut">${esc(e.obs)}</div>`:''}</td>
     <td data-l="Local">${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener" title="Abrir no Google Maps">📍 ${esc(e.local)}</a>`:'—'}</td>
     <td class="row"><button class="mini sec" onclick="modalCal('${e.id}')">📅</button>
     ${podeEditar?`<button class="mini sec" onclick="formEvento('${e.id}')">✏️ Editar</button>
@@ -2314,7 +2322,7 @@ function formEvento(id){
   if(id){ const ev=byId(db.eventos,id); if(ev) e={...ev,data:ev.data,hora:ev.hora||'19:00'}; }
   modal(`<h2>${id?'Editar':'Novo'} compromisso</h2>
   <div class="grid g2">
-  <div><label>Tipo</label><select id="e_tipo"><option value="jogo" ${e.tipo==='jogo'?'selected':''}>Jogo</option><option value="treino" ${e.tipo==='treino'?'selected':''}>Treino</option><option value="reuniao" ${e.tipo==='reuniao'?'selected':''}>Reunião</option><option value="viagem" ${e.tipo==='viagem'?'selected':''}>Viagem</option></select></div>
+  <div><label>Tipo</label><select id="e_tipo"><option value="jogo" ${e.tipo==='jogo'?'selected':''}>⚽ Jogo oficial</option><option value="amistoso" ${e.tipo==='amistoso'?'selected':''}>🤝 Jogo amistoso</option><option value="treino" ${e.tipo==='treino'?'selected':''}>🏃 Treino</option><option value="reuniao" ${e.tipo==='reuniao'?'selected':''}>Reunião</option><option value="viagem" ${e.tipo==='viagem'?'selected':''}>Viagem</option></select></div>
   <div><label>Título</label><input id="e_tit" value="${esc(e.titulo)}" placeholder="Ex.: Jogo × OAB Santarém"></div>
   <div><label>Data</label><input id="e_data" type="date" value="${e.data}"></div>
   <div><label>Hora de início</label><input id="e_hora" type="time" value="${e.hora}"></div>
@@ -2357,7 +2365,7 @@ function delEvento(id){ const e=byId(db.eventos,id); confirma(`Excluir o comprom
 function convocar(id){
   const e=byId(db.eventos,id);
   const patN=(db.pats||[]).filter(p=>p.ativo).map(p=>p.nome);
-  const msg=`⚽ *CONVOCAÇÃO — ${db.config.time}*\n\nAtenção, @todos!\n\n${e.tipo==='jogo'?'🏆 Jogo':'🏃 Treino'}: ${e.titulo}\n📅 ${dbr(e.data)} das ${e.hora}${e.horaFim?' às '+e.horaFim:''}\n📍 ${e.local}${e.local?'\n🗺️ '+mapsLink(e.local):''}${e.obs?'\n📝 '+e.obs:''}\n\nConfirme presença! Baixe o lembrete no sistema. ⭐${patN.length?'\n\n🤝 Apoio: '+patN.join(' · '):''}`;
+  const msg=`⚽ *CONVOCAÇÃO — ${db.config.time}*\n\nAtenção, @todos!\n\n${tipoEvLbl(e.tipo)}: ${e.titulo}\n📅 ${dbr(e.data)} das ${e.hora}${e.horaFim?' às '+e.horaFim:''}\n📍 ${e.local}${e.local?'\n🗺️ '+mapsLink(e.local):''}${e.obs?'\n📝 '+e.obs:''}\n\nConfirme presença! Baixe o lembrete no sistema. ⭐${patN.length?'\n\n🤝 Apoio: '+patN.join(' · '):''}`;
   modalWhats('Convocação',msg);
 }
 function modalWhats(titulo,msg){
@@ -2405,7 +2413,7 @@ function tPres(){
   const rank=ats.map(a=>{
     const ps=db.presencas.filter(p=>p.atletaId===a.id);
     const cmp=ps.filter(p=>['presente','atraso'].includes(p.status));
-    const jg=cmp.filter(p=>{const e=byId(db.eventos,p.eventoId);return e&&e.tipo==='jogo';}).length;
+    const jg=cmp.filter(p=>{const e=byId(db.eventos,p.eventoId);return e&&(e.tipo==='jogo'||e.tipo==='amistoso');}).length;
     const tr=cmp.filter(p=>{const e=byId(db.eventos,p.eventoId);return e&&e.tipo==='treino';}).length;
     const f=ps.filter(p=>p.status==='falta').length, at_=ps.filter(p=>p.status==='atraso').length, j=ps.filter(p=>p.status==='justificada').length;
     return {a,jg,tr,f,at_,j,tot:ps.length,pct:ps.length?Math.round(cmp.length/ps.length*100):null};
@@ -2459,14 +2467,14 @@ function pdfFrequencia(){
   const rank=ats.map(a=>{
     const ps=db.presencas.filter(p=>p.atletaId===a.id);
     const cmp=ps.filter(p=>['presente','atraso'].includes(p.status));
-    const jg=cmp.filter(p=>{const e=byId(db.eventos,p.eventoId);return e&&e.tipo==='jogo';}).length;
+    const jg=cmp.filter(p=>{const e=byId(db.eventos,p.eventoId);return e&&(e.tipo==='jogo'||e.tipo==='amistoso');}).length;
     const tr=cmp.filter(p=>{const e=byId(db.eventos,p.eventoId);return e&&e.tipo==='treino';}).length;
     const f=ps.filter(p=>p.status==='falta').length, at_=ps.filter(p=>p.status==='atraso').length, j=ps.filter(p=>p.status==='justificada').length;
     return {a,jg,tr,f,at_,j,tot:ps.length,pct:ps.length?Math.round(cmp.length/ps.length*100):null};
   }).filter(r=>r.tot>0).sort((x,y)=>(y.pct-x.pct)||(y.jg+y.tr)-(x.jg+x.tr));
   if(!rank.length){toast('Nenhuma chamada registrada ainda');return;}
   const evsComChamada=[...new Set(db.presencas.map(p=>p.eventoId))].map(id=>byId(db.eventos,id)).filter(Boolean);
-  const nJogos=evsComChamada.filter(e=>e.tipo==='jogo').length, nTreinos=evsComChamada.filter(e=>e.tipo==='treino').length;
+  const nJogos=evsComChamada.filter(e=>e.tipo==='jogo'||e.tipo==='amistoso').length, nTreinos=evsComChamada.filter(e=>e.tipo==='treino').length;
   const totF=rank.reduce((s,r)=>s+r.f,0), totAt=rank.reduce((s,r)=>s+r.at_,0), totJ=rank.reduce((s,r)=>s+r.j,0);
   const pctMedia=Math.round(rank.reduce((s,r)=>s+r.pct,0)/rank.length);
   const corPct=p=>p>=75?'#28a745':p>=50?'#e0a800':'#c41e3a';
@@ -4977,7 +4985,7 @@ function tMeu(){
   ${pend.length?pend.map(u=>`<div class="alertline al-warn sect">👕 Você recebeu o uniforme <strong>${esc(u.descricao)} nº ${esc(u.numero)}</strong> — <button class="mini gold" onclick="aceitarUniforme('${u.id}')">Ler e aceitar o termo de responsabilidade</button></div>`).join(''):''}
   ${docsFaltando.length?`<div class="alertline al-warn sect">📁 <strong>Documentos pendentes com a diretoria:</strong> ${docsFaltando.map(esc).join(', ')} — anexe abaixo em "Meus documentos".</div>`:''}
   <div class="card sect" style="border-color:var(--blue)"><h2>🗓️ Próximos compromissos</h2>
-  ${prox.length?prox.map(e=>`<div class="alertline" style="background:var(--blue-soft)"><div style="flex:1"><strong>${e.tipo==='jogo'?'⚽':'🏃'} ${esc(e.titulo)}</strong><div class="mut">${dbr(e.data)} às ${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''} — ${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener">📍 ${esc(e.local)}</a>`:''}${e.obs?' · '+esc(e.obs):''}</div></div>
+  ${prox.length?prox.map(e=>`<div class="alertline" style="background:var(--blue-soft)"><div style="flex:1"><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong><div class="mut">${dbr(e.data)} às ${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''} — ${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener">📍 ${esc(e.local)}</a>`:''}${e.obs?' · '+esc(e.obs):''}</div></div>
     <button class="mini" onclick="modalCal('${e.id}')">📅 Pôr no calendário</button></div>`).join(''):'<p class="mut">Nada agendado por enquanto.</p>'}
   ${prox.length?`<button class="sec mini" onclick="baixarICS(db.eventos.filter(e=>e.data>=hoje()),'agenda-oabmaster.ics')">📅 Agenda completa (.ics)</button>`:''}</div>
   <div class="grid g5 sect">
