@@ -99,6 +99,8 @@ a{color:var(--blue)}
 .prancheta .pcirc{position:absolute;left:50%;top:50%;width:18%;aspect-ratio:1;border:2px solid rgba(255,255,255,.55);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none}
 .tok{position:absolute;transform:translate(-50%,-50%);background:#fff;color:#1E2228;border-radius:99px;padding:3px 9px;font-size:12px;font-weight:700;box-shadow:0 2px 5px rgba(0,0,0,.35);cursor:grab;user-select:none;white-space:nowrap;z-index:5}
 .tok.bola{background:#F2C11E;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;padding:0}
+.tok.time{background:#c41e3a;color:#fff}
+.tok.adv{background:#1d4ed8;color:#fff}
 .tok.mov{transition:left 2.2s ease-in-out, top 2.2s ease-in-out}
 .setas{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none}
 .doc{display:flex;gap:10px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;font-size:13.5px;flex-wrap:wrap}
@@ -124,6 +126,10 @@ a{color:var(--blue)}
 .pat img{max-height:52px;max-width:130px;object-fit:contain}
 .pat.master{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold-soft)}
 .pat.master img{max-height:82px;max-width:210px}
+.pat.diamante{border-color:#7dd3fc;box-shadow:0 0 0 2px rgba(125,211,252,.35)}
+.pat.diamante img{max-height:94px;max-width:240px}
+.pat.prata{border-color:#c0c7d1}
+.pat.bronze{border-color:#c9925a}
 .pat .pn{font-size:12px;font-weight:700;text-align:center}
 .pat .pb{font-size:11px;color:var(--gold);font-weight:600;text-align:center}
 .medal{font-size:16px}
@@ -206,8 +212,8 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const brl=v=>(Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const ehMensal=c=>/Mensalidade/i.test(c.desc||'');
 const mapsLink=l=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(l);
-const tipoEvIco=t=>t==='jogo'?'⚽':t==='amistoso'?'🤝':t==='treino'?'🏃':'📌';
-const tipoEvLbl=t=>t==='jogo'?'🏆 Jogo':t==='amistoso'?'🤝 Amistoso':t==='treino'?'🏃 Treino':'📌 Compromisso';
+const tipoEvIco=t=>t==='jogo'?'⚽':t==='amistoso'?'🤝':t==='treino'?'🏃':t==='campeonato'?'🏆':'📌';
+const tipoEvLbl=t=>t==='jogo'?'⚽ Jogo':t==='amistoso'?'🤝 Amistoso':t==='treino'?'🏃 Treino':t==='campeonato'?'🏆 Campeonato':'📌 Compromisso';
 const nomeCob=c=>c.atletaId?nomeAt(c.atletaId):('🎟️ '+(c.convidado||'Convidado'));
 const valorDe=c=>(ehMensal(c)&&c.status==='atrasado')?(db.config.mensApos||c.valor):c.valor;
 const dbr=d=>{ if(!d)return '—'; const[a,m,dd]=String(d).slice(0,10).split('-'); return `${dd}/${m}/${a}`; };
@@ -265,7 +271,7 @@ async function carregaTudo(){
   db={};
   db.atletas=perfis.map(mapAtleta);
   saude.forEach(s=>{ const a=at(s.atleta_id); if(a)a.saude={sangue:s.sangue,plano:s.plano,alergias:s.alergias,medicamentos:s.medicamentos,condicoes:s.condicoes,emergencia:s.emergencia,lesoes:s.lesoes,obs:s.obs,lesoesLista:s.lesoes_lista||[],obsLista:s.obs_lista||[]}; });
-  db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),hora:e.hora,horaFim:e.hora_fim||'',local:e.local,obs:e.obs}));
+  db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),dataFim:e.data_fim?String(e.data_fim):'',hora:e.hora,horaFim:e.hora_fim||'',local:e.local,obs:e.obs}));
   db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,convidado:p.convidado||null,status:p.status}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,origem:c.origem||'',lote:c.origem_lote||''}));
@@ -330,7 +336,7 @@ function waLink(fone,msg){ return `https://wa.me/${waFone(fone)}?text=${encodeUR
 function icsData(d,h){ return d.replace(/-/g,'')+'T'+((h||'00:00').replace(':','')+'00'); }
 function icsEvento(ev){
   const dt=icsData(ev.data,ev.hora);
-  return ['BEGIN:VEVENT','UID:'+ev.id+'@oabmaster','DTSTART:'+dt,...(ev.horaFim?['DTEND:'+icsData(ev.data,ev.horaFim)]:[]),
+  return ['BEGIN:VEVENT','UID:'+ev.id+'@oabmaster','DTSTART:'+dt,...(ev.dataFim?['DTEND:'+icsData(ev.dataFim,ev.horaFim||'22:00')]:ev.horaFim?['DTEND:'+icsData(ev.data,ev.horaFim)]:[]),
     'SUMMARY:'+(ev.tipo==='jogo'?'⚽ ':ev.tipo==='amistoso'?'🤝 ':'')+ev.titulo,
     'LOCATION:'+(ev.local||''),'DESCRIPTION:'+db.config.time+' — '+(ev.obs||ev.tipo),
     'BEGIN:VALARM','TRIGGER:-PT3H','ACTION:DISPLAY','DESCRIPTION:Lembrete: '+ev.titulo,'END:VALARM',
@@ -343,7 +349,8 @@ function baixarICS(evs,nome){
 function gcalLink(e){
   const ini=icsData(e.data,e.hora);
   let fim;
-  if(e.horaFim){ fim=icsData(e.data,e.horaFim); }
+  if(e.dataFim){ fim=icsData(e.dataFim,e.horaFim||'22:00'); }
+  else if(e.horaFim){ fim=icsData(e.data,e.horaFim); }
   else{ const dt=new Date(e.data+'T'+(e.hora||'19:00')+':00'); dt.setHours(dt.getHours()+2);
     fim=dt.getFullYear()+String(dt.getMonth()+1).padStart(2,'0')+String(dt.getDate()).padStart(2,'0')+'T'+String(dt.getHours()).padStart(2,'0')+String(dt.getMinutes()).padStart(2,'0')+'00'; }
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent((e.tipo==='jogo'?'⚽ ':e.tipo==='amistoso'?'🤝 ':'')+e.titulo)
@@ -475,7 +482,7 @@ async function loadPatsLogin(){
     const {data}=await sb.from('patrocinadores').select('nome,logo_url,tier').eq('ativo',true).order('ordem');
     const el=$('pats_login'); if(!el||!data||!data.length)return;
     el.innerHTML=`<p class="mut" style="text-align:center;margin:16px 0 8px;text-transform:uppercase;letter-spacing:.08em;font-size:11px">— Apoio —</p>
-    <div class="patrow">${data.map(p=>p.logo_url?`<img src="${esc(p.logo_url)}" alt="${esc(p.nome)}" title="${esc(p.nome)}" style="max-height:${p.tier==='master'?56:38}px;max-width:${p.tier==='master'?150:96}px;object-fit:contain">`:`<span class="pill p-mut">${esc(p.nome)}</span>`).join('')}</div>`;
+    <div class="patrow">${data.map(p=>p.logo_url?`<img src="${esc(p.logo_url)}" alt="${esc(p.nome)}" title="${esc(p.nome)}" style="max-height:${p.tier==='diamante'?64:p.tier==='master'?56:38}px;max-width:${p.tier==='diamante'?170:p.tier==='master'?150:96}px;object-fit:contain">`:`<span class="pill p-mut">${esc(p.nome)}</span>`).join('')}</div>`;
   }catch(_){}
 }
 async function loginGo(){
@@ -882,8 +889,10 @@ function pdfPosicoes(){
   .qtd{text-align:center;font-weight:bold}
   .pouco{color:#c41e3a}.bem{color:#28a745}
   .rod{margin-top:14px;font-size:11px;color:#999;text-align:center}
-  @media print{body{margin:10mm}}
+  .fechar{position:fixed;top:12px;right:12px;padding:10px 18px;background:#c41e3a;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;z-index:9;font-size:14px}
+  @media print{body{margin:10mm}.fechar{display:none}}
   </style></head><body>
+  <button class="fechar" onclick="window.close()">✕ Fechar</button>
   <h1>⚽ Elenco por Posição</h1>
   <p class="sub">${esc(db.config.time)} — gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
   <div class="cards">
@@ -919,7 +928,7 @@ function cardPats(){
       ${p.logo_url?`<img src="${esc(p.logo_url)}" alt="${esc(p.nome)}">`:''}<span class="pn">${esc(p.nome)}</span>
       ${p.beneficio?`<span class="pb">🎁 ${esc(p.beneficio)}</span>`:''}</a>`).join('')}</div>`; };
   return `<div class="card sect"><div class="spread"><h2>🤝 Nossos patrocinadores</h2>${me.role==='diretoria'?`<button class="mini sec" onclick="vai('ajustes')">Gerenciar</button>`:''}</div>
-  ${ps.length?bloco('master')+bloco('ouro')+bloco('apoio'):'<p class="mut">Cadastre os patrocinadores em Ajustes → Patrocinadores.</p>'}</div>`;
+  ${ps.length?bloco('diamante')+bloco('master')+bloco('ouro')+bloco('prata')+bloco('bronze')+bloco('apoio'):'<p class="mut">Cadastre os patrocinadores em Ajustes → Patrocinadores.</p>'}</div>`;
 }
 function cardDiretoria(){
   const dirs=db.atletas.filter(a=>a.role==='diretoria'&&!a.pendente&&a.ativo);
@@ -1772,7 +1781,7 @@ async function salvaStat(evId,atId){
   fecha(); await recarrega(); toast('Estatísticas salvas');
 }
 function artePosJogo(){
-  const jogos=db.eventos.filter(e=>e.tipo==='jogo').sort((a,b)=>b.data.localeCompare(a.data));
+  const jogos=db.eventos.filter(e=>e.tipo==='jogo'||e.tipo==='amistoso').sort((a,b)=>b.data.localeCompare(a.data));
   if(!jogos.length){toast('Cadastre um jogo na Agenda primeiro');return;}
   modal(`<h2>🎨 Arte pós-jogo</h2>
   <p class="mut">Gera uma imagem pronta para o grupo e o Instagram, com o escudo, o placar e as logos dos patrocinadores.</p>
@@ -1864,13 +1873,13 @@ function campoHTML(e){
   const temAdv=e.adversario;
   const html=`<div class="prancheta" style="aspect-ratio:3/3.1"><div class="area a-top"></div><div class="area a-bot"></div><div class="plin"></div><div class="pcirc"></div>
   ${pos.map(p=>{ const nome=p.atletaId?pnome(nomeAt(p.atletaId)):(p.num?'Nº '+p.num:'—');
-    return `<div class="tok ${/GOL/.test(p.lbl)?'bola':''}" style="left:${p.x}%;top:${p.y}%;${/GOL/.test(p.lbl)?'background:#F2C11E;border-radius:99px;width:auto;height:auto;padding:3px 9px':''}">${esc(nome)}<span class="pos">${esc(p.lbl)}</span></div>`; }).join('')}</div>`;
+    return `<div class="tok ${/GOL/.test(p.lbl)?'bola':'time'}" style="left:${p.x}%;top:${p.y}%;${/GOL/.test(p.lbl)?'background:#F2C11E;border-radius:99px;width:auto;height:auto;padding:3px 9px;color:#1E2228':''}">${esc(nome)}<span class="pos">${esc(p.lbl)}</span></div>`; }).join('')}</div>`;
 
   if(!temAdv) return html;
 
-  const htmlAdv=`<div class="prancheta" style="aspect-ratio:3/3.1;opacity:.7"><div class="area a-top"></div><div class="area a-bot"></div><div class="plin"></div><div class="pcirc"></div>
+  const htmlAdv=`<div class="prancheta" style="aspect-ratio:3/3.1"><div class="area a-top"></div><div class="area a-bot"></div><div class="plin"></div><div class="pcirc"></div>
   ${(e.adversario.posicoes||[]).map((p,i)=>{ const nome=p.lbl||p.num?'Nº '+p.num:'—';
-    return `<div class="tok" style="left:${40+Math.random()*20}%;top:${30+Math.random()*40}%;opacity:.6">${esc(nome)}<span class="pos">${esc(p.lbl||'')}</span></div>`; }).join('')}</div>`;
+    return `<div class="tok adv" style="left:${40+Math.random()*20}%;top:${30+Math.random()*40}%">${esc(nome)}<span class="pos">${esc(p.lbl||'')}</span></div>`; }).join('')}</div>`;
 
   return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
     <div><div class="mut" style="font-size:12px;margin-bottom:6px">🏠 ${esc(db.config.time)}</div>${html}</div>
@@ -1960,12 +1969,18 @@ function tTaticas(){
 let prSt=null;
 const PR_DEFS=`<defs><marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#fff"/></marker><marker id="ah2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#F2C11E"/></marker></defs>`;
 const prSeta=(x1,y1,x2,y2,cor,mk)=>`<line x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%" stroke="${cor}" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#${mk})"/>`;
+function prSetaEl(x1,y1,x2,y2,cor,mk,cv,W,H){
+  const X=v=>(v/100*W).toFixed(1), Y=v=>(v/100*H).toFixed(1);
+  if(!cv) return `<line x1="${X(x1)}" y1="${Y(y1)}" x2="${X(x2)}" y2="${Y(y2)}" stroke="${cor}" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#${mk})"/>`;
+  const mx=(x1+x2)/2, my=(y1+y2)/2, dx=x2-x1, dy=y2-y1;
+  return `<path d="M ${X(x1)} ${Y(y1)} Q ${X(mx-dy*cv)} ${Y(my+dx*cv)} ${X(x2)} ${Y(y2)}" fill="none" stroke="${cor}" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#${mk})"/>`;
+}
 function abrirPrancheta(id){
   const ats=elenco();
   let base={nome:'',tokens:[],setas:[],obs:''};
   if(id){ const e=byId(db.taticas.esquemas,id); const p=e.posicoes||{};
     base={nome:e.nome,tokens:JSON.parse(JSON.stringify(p.tokens||[])),setas:JSON.parse(JSON.stringify(p.setas||[])),obs:e.obs||''}; }
-  prSt={...base,modo:'mover',editId:id||null};
+  prSt={...base,modo:'mover',editId:id||null,curva:0};
   modal(`<h2>🎬 ${id?'Editar':'Nova'} jogada animada</h2>
   <label>Nome da jogada</label><input id="pr_nome" value="${esc(prSt.nome)}" placeholder="Ex.: Saída de bola pela direita">
   <label style="text-transform:none;font-size:13px">👥 Adicionar ao campinho</label>
@@ -1993,6 +2008,12 @@ function abrirPrancheta(id){
     <button class="mini sec" id="prm_seta" onclick="prModo('seta')">↗ Desenhar setas</button>
     <button class="mini sec" onclick="prSt.setas=[];prDesenha()">🧹 Limpar setas</button>
   </div>
+  <div class="row" style="margin-bottom:8px">
+    <span class="mut" style="font-size:12px;align-self:center">Traço da seta:</span>
+    <button class="mini" id="prc_0" onclick="prCurva(0)">— Reta</button>
+    <button class="mini sec" id="prc_l" onclick="prCurva(-0.35)">⤺ Curva p/ cima</button>
+    <button class="mini sec" id="prc_r" onclick="prCurva(0.35)">⤻ Curva p/ baixo</button>
+  </div>
   <div class="prancheta" id="pr_campo"><div class="plin"></div><div class="pcirc"></div><svg class="setas" id="pr_svg"></svg></div>
   <p class="mut" style="margin-top:6px">Arraste os nomes no campo. Em <strong>🎯 Destino</strong>, arraste cada um até onde deve chegar — na reprodução eles se movem até lá (seta dourada mostra o trajeto). Em <strong>↗ Setas</strong>, desenhe arrastando sobre o campo (ex.: trajetória da bola).</p>
   <label>Observações</label><input id="pr_obs" value="${esc(prSt.obs)}">
@@ -2000,22 +2021,23 @@ function abrirPrancheta(id){
   prLiga(); prDesenha();
 }
 function prModo(m){ prSt.modo=m; ['mover','destino','seta'].forEach(v=>{ const b=$('prm_'+v); if(b)b.className='mini '+(v===m?'':'sec'); }); }
+function prCurva(v){ prSt.curva=v; if($('prc_0'))$('prc_0').className='mini '+(v===0?'':'sec'); if($('prc_l'))$('prc_l').className='mini '+(v<0?'':'sec'); if($('prc_r'))$('prc_r').className='mini '+(v>0?'':'sec'); prModo('seta'); toast(v===0?'Setas retas':'Setas curvas '+(v<0?'para cima':'para baixo')+' — arraste no campo'); }
 function prAddTok(n,bola,tipo){ if(!n)return; prSt.tokens.push({n,b:!!bola,x0:50,y0:bola?58:tipo==='adv'?20:82,x1:null,y1:null,tipo:tipo||'time'}); if($('pr_add'))$('pr_add').value=''; prDesenha(); }
 function prDesenha(){
   const c=$('pr_campo'); if(!c)return;
   c.querySelectorAll('.tok').forEach(t=>t.remove());
   prSt.tokens.forEach((t,i)=>{
     const el=document.createElement('div');
-    el.className='tok'+(t.b?' bola':'')+(t.tipo==='adv'?' adv':'');
+    el.className='tok'+(t.b?' bola':t.tipo==='adv'?' adv':' time');
     el.textContent=t.n; el.dataset.i=i;
     el.style.left=t.x0+'%'; el.style.top=t.y0+'%';
-    if(t.tipo==='adv') el.style.opacity='0.6';
     c.appendChild(el);
   });
   const svg=$('pr_svg'); if(!svg)return;
+  const W=c.clientWidth||300, H=c.clientHeight||300;
   let s=PR_DEFS;
-  prSt.setas.forEach(a=>{ s+=prSeta(a[0],a[1],a[2],a[3],'#fff','ah'); });
-  prSt.tokens.filter(t=>t.x1!=null).forEach(t=>{ s+=prSeta(t.x0,t.y0,t.x1,t.y1,'#F2C11E','ah2'); });
+  prSt.setas.forEach(a=>{ s+=prSetaEl(a[0],a[1],a[2],a[3],'#fff','ah',a[4]||0,W,H); });
+  prSt.tokens.filter(t=>t.x1!=null).forEach(t=>{ s+=prSetaEl(t.x0,t.y0,t.x1,t.y1,'#F2C11E','ah2',0,W,H); });
   svg.innerHTML=s;
 }
 function prLiga(){
@@ -2032,7 +2054,7 @@ function prLiga(){
       prDesenha(); }
   };
   c.onpointerup=ev=>{
-    if(setaIni){ const [x,y]=pct(ev); if(Math.hypot(x-setaIni[0],y-setaIni[1])>4)prSt.setas.push([setaIni[0],setaIni[1],x,y]); setaIni=null; prDesenha(); }
+    if(setaIni){ const [x,y]=pct(ev); if(Math.hypot(x-setaIni[0],y-setaIni[1])>4)prSt.setas.push([setaIni[0],setaIni[1],x,y,prSt.curva||0]); setaIni=null; prDesenha(); }
     dragI=null;
   };
 }
@@ -2047,14 +2069,16 @@ async function salvaPrancheta(){
 }
 function verPrancheta(id){
   const e=byId(db.taticas.esquemas,id); const d=e.posicoes||{tokens:[],setas:[]};
-  let s=PR_DEFS;
-  (d.setas||[]).forEach(a=>{ s+=prSeta(a[0],a[1],a[2],a[3],'#fff','ah'); });
-  (d.tokens||[]).filter(t=>t.x1!=null).forEach(t=>{ s+=prSeta(t.x0,t.y0,t.x1,t.y1,'#F2C11E','ah2'); });
   modal(`<h2>🎬 ${esc(e.nome)}</h2>
-  <div class="prancheta" id="vw_campo"><div class="plin"></div><div class="pcirc"></div><svg class="setas">${s}</svg>
-  ${(d.tokens||[]).map((t,i)=>`<div class="tok ${t.b?'bola':''}" id="vw_t${i}" style="left:${t.x0}%;top:${t.y0}%;${t.tipo==='adv'?'opacity:0.6;':''}">${esc(t.n)}</div>`).join('')}</div>
+  <div class="prancheta" id="vw_campo"><div class="plin"></div><div class="pcirc"></div><svg class="setas" id="vw_svg"></svg>
+  ${(d.tokens||[]).map((t,i)=>`<div class="tok ${t.b?'bola':t.tipo==='adv'?'adv':'time'}" id="vw_t${i}" style="left:${t.x0}%;top:${t.y0}%">${esc(t.n)}</div>`).join('')}</div>
   ${e.obs?`<p style="font-size:14px;margin-top:8px">📝 ${esc(e.obs)}</p>`:''}
   <div class="row" style="margin-top:10px"><button onclick="prPlay('${id}')">▶ Reproduzir</button><button class="sec" onclick="prReset('${id}')">↺ Início</button><button class="sec" onclick="fecha()">Fechar</button></div>`);
+  const cv=$('vw_campo'), W=cv.clientWidth||300, H=cv.clientHeight||300;
+  let s=PR_DEFS;
+  (d.setas||[]).forEach(a=>{ s+=prSetaEl(a[0],a[1],a[2],a[3],'#fff','ah',a[4]||0,W,H); });
+  (d.tokens||[]).filter(t=>t.x1!=null).forEach(t=>{ s+=prSetaEl(t.x0,t.y0,t.x1,t.y1,'#F2C11E','ah2',0,W,H); });
+  $('vw_svg').innerHTML=s;
 }
 function prPlay(id){ const d=byId(db.taticas.esquemas,id).posicoes;
   (d.tokens||[]).forEach((t,i)=>{ const el=$('vw_t'+i); if(el&&t.x1!=null){ el.classList.add('mov'); el.style.left=t.x1+'%'; el.style.top=t.y1+'%'; } }); }
@@ -2307,9 +2331,9 @@ function tAgenda(){
     <div class="row">${podeEditar?`<button onclick="formEvento()">+ Novo compromisso</button>`:''}
     ${evs.length?`<button class="sec" onclick="baixarICS(db.eventos,'agenda-time.ics')">📅 Baixar agenda (.ics)</button>`:''}</div></div>
   <div class="card tblwrap"><table class="cardz"><tr><th>Data</th><th>Hora</th><th>Compromisso</th><th>Local</th><th></th></tr>
-  ${evs.length?evs.map(e=>`<tr style="${e.data<hoje()?'opacity:.55':''}">
-    <td data-l="Data"><strong>${dbr(e.data)}</strong></td><td data-l="Hora">${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''}</td>
-    <td><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong>${e.obs?`<div class="mut">${esc(e.obs)}</div>`:''}</td>
+  ${evs.length?evs.map(e=>`<tr style="${(e.dataFim||e.data)<hoje()?'opacity:.55':''}">
+    <td data-l="Data"><strong>${dbr(e.data)}</strong>${e.dataFim?`<div class="mut">até ${dbr(e.dataFim)}</div>`:''}</td><td data-l="Hora">${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''}</td>
+    <td><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong>${e.tipo==='campeonato'?' <span class="pill p-gold">campeonato</span>':''}${e.obs?`<div class="mut" style="white-space:pre-wrap">${esc(e.obs)}</div>`:''}</td>
     <td data-l="Local">${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener" title="Abrir no Google Maps">📍 ${esc(e.local)}</a>`:'—'}</td>
     <td class="row"><button class="mini sec" onclick="modalCal('${e.id}')">📅</button>
     ${podeEditar?`<button class="mini sec" onclick="formEvento('${e.id}')">✏️ Editar</button>
@@ -2318,35 +2342,37 @@ function tAgenda(){
 }
 
 function formEvento(id){
-  let e={tipo:'treino',titulo:'',data:hoje(),hora:'19:00',horaFim:'',local:'',obs:''};
+  let e={tipo:'treino',titulo:'',data:hoje(),dataFim:'',hora:'19:00',horaFim:'',local:'',obs:''};
   if(id){ const ev=byId(db.eventos,id); if(ev) e={...ev,data:ev.data,hora:ev.hora||'19:00'}; }
   modal(`<h2>${id?'Editar':'Novo'} compromisso</h2>
   <div class="grid g2">
-  <div><label>Tipo</label><select id="e_tipo"><option value="jogo" ${e.tipo==='jogo'?'selected':''}>⚽ Jogo oficial</option><option value="amistoso" ${e.tipo==='amistoso'?'selected':''}>🤝 Jogo amistoso</option><option value="treino" ${e.tipo==='treino'?'selected':''}>🏃 Treino</option><option value="reuniao" ${e.tipo==='reuniao'?'selected':''}>Reunião</option><option value="viagem" ${e.tipo==='viagem'?'selected':''}>Viagem</option></select></div>
-  <div><label>Título</label><input id="e_tit" value="${esc(e.titulo)}" placeholder="Ex.: Jogo × OAB Santarém"></div>
-  <div><label>Data</label><input id="e_data" type="date" value="${e.data}"></div>
+  <div><label>Tipo</label><select id="e_tipo" onchange="$('e_dicalbl').textContent=this.value==='campeonato'?'Dicas: hotéis indicados, local do campeonato, transporte…':'Observações'"><option value="jogo" ${e.tipo==='jogo'?'selected':''}>⚽ Jogo oficial</option><option value="amistoso" ${e.tipo==='amistoso'?'selected':''}>🤝 Jogo amistoso</option><option value="treino" ${e.tipo==='treino'?'selected':''}>🏃 Treino</option><option value="campeonato" ${e.tipo==='campeonato'?'selected':''}>🏆 Campeonato</option><option value="reuniao" ${e.tipo==='reuniao'?'selected':''}>Reunião</option><option value="viagem" ${e.tipo==='viagem'?'selected':''}>Viagem</option></select></div>
+  <div><label>Título</label><input id="e_tit" value="${esc(e.titulo)}" placeholder="Ex.: Campeonato Nacional OAB — Salvador"></div>
+  <div><label>Data ${e.dataFim?'de início':''}</label><input id="e_data" type="date" value="${e.data}"></div>
+  <div><label>Data de término (campeonatos/viagens)</label><input id="e_datafim" type="date" value="${e.dataFim||''}"></div>
   <div><label>Hora de início</label><input id="e_hora" type="time" value="${e.hora}"></div>
   <div><label>Hora de fim (opcional)</label><input id="e_horafim" type="time" value="${e.horaFim||''}"></div>
   </div>
   <label>Local</label>
   <div class="row" style="gap:8px"><input id="e_local" value="${esc(e.local)}" placeholder="Ex.: Arena Mangueirinho, Belém" style="flex:1"><button class="mini sec" type="button" onclick="const v=fval('e_local');if(v)window.open(mapsLink(v),'_blank');else toast('Digite o local primeiro')">📍 Ver no mapa</button></div>
   <p class="mut" style="margin:4px 0 0;font-size:12px">💡 Quanto mais completo o endereço, mais certeiro fica o mapa para o elenco.</p>
-  <label>Observações</label><input id="e_obs" value="${esc(e.obs)}" placeholder="Ex.: uniforme principal, chegar 30 min antes">
+  <label id="e_dicalbl">${e.tipo==='campeonato'?'Dicas: hotéis indicados, local do campeonato, transporte…':'Observações'}</label><textarea id="e_obs" style="min-height:${e.tipo==='campeonato'?'110':'60'}px" placeholder="Ex.: uniforme principal, chegar 30 min antes — para campeonatos: hotéis indicados, ginásio, como chegar">${esc(e.obs)}</textarea>
   <div class="row" style="margin-top:14px"><button onclick="salvaEvento('${id||''}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function salvaEvento(id){
   const t=fval('e_tit'),d=fval('e_data'); if(!t||!d){toast('Informe título e data');return;}
-  const hIni=fval('e_hora')||'19:00', hFim=fval('e_horafim')||'';
-  if(hFim&&hFim<=hIni){toast('A hora de fim deve ser depois da hora de início');return;}
-  let dados={tipo:fval('e_tipo'),titulo:t,data:d,hora:hIni,hora_fim:hFim||null,local:fval('e_local'),obs:fval('e_obs')};
-  // Se o banco ainda não tem a coluna hora_fim, salva sem ela e avisa
+  const hIni=fval('e_hora')||'19:00', hFim=fval('e_horafim')||'', dFim=fval('e_datafim')||'';
+  if(hFim&&hFim<=hIni&&(!dFim||dFim===d)){toast('A hora de fim deve ser depois da hora de início');return;}
+  if(dFim&&dFim<d){toast('A data de término deve ser igual ou depois da data de início');return;}
+  let dados={tipo:fval('e_tipo'),titulo:t,data:d,data_fim:dFim||null,hora:hIni,hora_fim:hFim||null,local:fval('e_local'),obs:fval('e_obs')};
+  // Se o banco ainda não tem as colunas novas, salva sem elas e avisa
   const semColuna=async op=>{
     let {error}=await op(dados);
-    if(error&&/hora_fim/.test(error.message||'')){
-      delete dados.hora_fim;
+    if(error&&/hora_fim|data_fim/.test(error.message||'')){
+      delete dados.hora_fim; delete dados.data_fim;
       const {error:e2}=await op(dados);
       if(e2){toast('⚠️ '+e2.message);throw e2;}
-      toast('⚠️ Salvo sem hora de fim — rode o SQL v6 no Supabase para ativá-la');
+      toast('⚠️ Salvo sem hora/data de fim — rode o SQL v9 no Supabase para ativá-las');
     } else if(error){toast('⚠️ '+error.message);throw error;}
   };
   if(id){
@@ -2365,7 +2391,7 @@ function delEvento(id){ const e=byId(db.eventos,id); confirma(`Excluir o comprom
 function convocar(id){
   const e=byId(db.eventos,id);
   const patN=(db.pats||[]).filter(p=>p.ativo).map(p=>p.nome);
-  const msg=`⚽ *CONVOCAÇÃO — ${db.config.time}*\n\nAtenção, @todos!\n\n${tipoEvLbl(e.tipo)}: ${e.titulo}\n📅 ${dbr(e.data)} das ${e.hora}${e.horaFim?' às '+e.horaFim:''}\n📍 ${e.local}${e.local?'\n🗺️ '+mapsLink(e.local):''}${e.obs?'\n📝 '+e.obs:''}\n\nConfirme presença! Baixe o lembrete no sistema. ⭐${patN.length?'\n\n🤝 Apoio: '+patN.join(' · '):''}`;
+  const msg=`⚽ *CONVOCAÇÃO — ${db.config.time}*\n\nAtenção, @todos!\n\n${tipoEvLbl(e.tipo)}: ${e.titulo}\n📅 ${dbr(e.data)}${e.dataFim?' a '+dbr(e.dataFim):''} das ${e.hora}${e.horaFim?' às '+e.horaFim:''}\n📍 ${e.local}${e.local?'\n🗺️ '+mapsLink(e.local):''}${e.obs?'\n📝 '+e.obs:''}\n\nConfirme presença! Baixe o lembrete no sistema. ⭐${patN.length?'\n\n🤝 Apoio: '+patN.join(' · '):''}`;
   modalWhats('Convocação',msg);
 }
 function modalWhats(titulo,msg){
@@ -2493,8 +2519,10 @@ function pdfFrequencia(){
   tr:nth-child(even){background:#f8f8f8}
   .pct{font-weight:bold}
   .rod{margin-top:14px;font-size:11px;color:#999;text-align:center}
-  @media print{body{margin:10mm}}
+  .fechar{position:fixed;top:12px;right:12px;padding:10px 18px;background:#c41e3a;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;z-index:9;font-size:14px}
+  @media print{body{margin:10mm}.fechar{display:none}}
   </style></head><body>
+  <button class="fechar" onclick="window.close()">✕ Fechar</button>
   <h1>📊 Relatório de Frequência</h1>
   <p class="sub">${esc(db.config.time)} — gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
   <div class="cards">
@@ -4611,12 +4639,13 @@ function tAjustes(){
   <h3 style="margin-top:22px">🤝 Patrocinadores</h3>
   <p class="mut">Aparecem na tela de entrada, no Dashboard de todos e nas convocações do WhatsApp.</p>
   ${(db.pats||[]).map(p=>`<div class="doc">${p.logo_url?`<img src="${esc(p.logo_url)}" alt="" style="width:44px;height:32px;object-fit:contain">`:'🏷️'}
-    <span style="flex:1"><strong>${esc(p.nome)}</strong> <span class="pill ${p.tier==='master'?'p-gold':p.tier==='ouro'?'p-warn':'p-mut'}">${p.tier}</span>${p.ativo?'':' <span class="pill p-bad">inativo</span>'}${p.beneficio?`<div class="mut">🎁 ${esc(p.beneficio)}</div>`:''}${p.vigencia_ate?`<div class="mut">📅 vigência até ${dbr(String(p.vigencia_ate))}${p.valor>0?' · '+brl(p.valor):''}</div>`:(p.valor>0?`<div class="mut">${brl(p.valor)}</div>`:'')}</span>
+    <span style="flex:1"><strong>${esc(p.nome)}</strong> <span class="pill ${p.tier==='diamante'||p.tier==='master'?'p-gold':p.tier==='ouro'?'p-warn':'p-mut'}">${p.tier}</span>${p.ativo?'':' <span class="pill p-bad">inativo</span>'}${p.local?`<div class="mut">📍 <a href="${mapsLink(p.local)}" target="_blank" rel="noopener">${esc(p.local)}</a></div>`:''}${p.beneficio?`<div class="mut">🎁 ${esc(p.beneficio)}</div>`:''}${p.vigencia_ate?`<div class="mut">📅 vigência até ${dbr(String(p.vigencia_ate))}${p.valor>0?' · '+brl(p.valor):''}</div>`:(p.valor>0?`<div class="mut">${brl(p.valor)}</div>`:'')}</span>
     <button class="mini sec" title="Contrato em PDF" onclick="pdfContratoPat('${p.id}')">📄</button>
     <button class="mini sec" onclick="formPat('${p.id}')">✏️</button>
     <button class="mini sec" onclick="delPat('${p.id}')">✕</button></div>`).join('')||'<p class="mut">Nenhum patrocinador cadastrado.</p>'}
   <div class="row" style="margin-top:8px"><button class="mini" onclick="formPat()">+ Novo patrocinador</button>
-  ${(db.pats||[]).length?`<button class="mini sec" onclick="pdfRelatorioPats()">📊 Relatório de visibilidade (PDF)</button>`:''}</div>
+  ${(db.pats||[]).length?`<button class="mini sec" onclick="pdfRelatorioPats()">📊 Relatório de visibilidade (PDF)</button>
+  <button class="mini gold" onclick="arteRodapePats()">🎨 Arte rodapé p/ posts (PNG)</button>`:''}</div>
   <h3 style="margin-top:22px">Convite para o time</h3>
   <p class="mut">Envie o link do sistema + o código do time. Cada pessoa cria a própria conta e você aprova na aba Atletas.</p>
   <button class="sec" onclick="copiar(location.origin+' — Código do time: '+db.config.codigo,'Convite copiado — cole no WhatsApp')">📋 Copiar convite</button></div>
@@ -4627,10 +4656,12 @@ function formPat(id){
   modal(`<h2>${id?'Editar':'Novo'} patrocinador</h2>
   <label>Nome</label><input id="p_nome" value="${esc(p.nome)}">
   <div class="grid g2">
-  <div><label>Categoria</label><select id="p_tier"><option value="master" ${p.tier==='master'?'selected':''}>⭐ Master (destaque)</option><option value="ouro" ${p.tier==='ouro'?'selected':''}>🥇 Ouro</option><option value="apoio" ${p.tier==='apoio'?'selected':''}>🤝 Apoio</option></select></div>
+  <div><label>Categoria</label><select id="p_tier"><option value="diamante" ${p.tier==='diamante'?'selected':''}>💎 Diamante (topo)</option><option value="master" ${p.tier==='master'?'selected':''}>⭐ Master (destaque)</option><option value="ouro" ${p.tier==='ouro'?'selected':''}>🥇 Ouro</option><option value="prata" ${p.tier==='prata'?'selected':''}>🥈 Prata</option><option value="bronze" ${p.tier==='bronze'?'selected':''}>🥉 Bronze</option><option value="apoio" ${p.tier==='apoio'?'selected':''}>🤝 Apoio</option></select></div>
   <div><label>Ordem de exibição</label><input id="p_ord" type="number" value="${p.ordem||0}"></div>
   </div>
   <label>Link (site, Instagram ou WhatsApp)</label><input id="p_link" value="${esc(p.link)}" placeholder="https://instagram.com/...">
+  <label>📍 Local / endereço (onde está estabelecido)</label>
+  <div class="row" style="gap:8px"><input id="p_local" value="${esc(p.local||'')}" placeholder="Ex.: Av. Nazaré, 100 — Belém/PA" style="flex:1"><button class="mini sec" type="button" onclick="const v=fval('p_local');if(v)window.open(mapsLink(v),'_blank');else toast('Digite o local primeiro')">📍 Mapa</button></div>
   <label>Benefício para o time (opcional)</label><input id="p_ben" value="${esc(p.beneficio)}" placeholder="Ex.: 10% de desconto para atletas">
   <div class="grid g2">
   <div><label>Valor do patrocínio (R$ — opcional)</label><input id="p_valor" type="number" step="0.01" value="${p.valor||''}"></div>
@@ -4678,7 +4709,7 @@ async function salvaPat(id){
     const {error}=await sb.storage.from('publico').upload(path,f);
     if(error){toast('⚠️ Envio da logo falhou: '+error.message);b.disabled=false;return;}
     logo_url=SB_URL+'/storage/v1/object/public/publico/'+path; }
-  const dados={nome,tier:fval('p_tier'),link:fval('p_link'),beneficio:fval('p_ben'),logo_url,ativo:$('p_ativo').checked,ordem:Number(fval('p_ord'))||0,valor:Number(fval('p_valor'))||0,vigencia_ate:fval('p_vig')||null};
+  const dados={nome,tier:fval('p_tier'),link:fval('p_link'),local:fval('p_local')||'',beneficio:fval('p_ben'),logo_url,ativo:$('p_ativo').checked,ordem:Number(fval('p_ord'))||0,valor:Number(fval('p_valor'))||0,vigencia_ate:fval('p_vig')||null};
   if(id) await q(sb.from('patrocinadores').update(dados).eq('id',id));
   else await q(sb.from('patrocinadores').insert(dados));
   log('patrocinio',`Patrocinador ${id?'atualizado':'cadastrado'}: ${nome}`);
@@ -4709,17 +4740,54 @@ function pdfContratoPat(id){
   ].filter(l=>l!=='');
   genPDF('contrato-patrocinio-'+p.nome.toLowerCase().replace(/\s+/g,'-')+'.pdf',c.time+' — CONTRATO DE PATROCÍNIO ESPORTIVO',linhas);
 }
+async function arteRodapePats(){
+  const pats=(db.pats||[]).filter(p=>p.ativo);
+  if(!pats.length){toast('Cadastre patrocinadores primeiro');return;}
+  toast('Gerando arte…');
+  const [escImg,...logos]=await Promise.all([carrImg('escudo.png'),...pats.filter(p=>p.logo_url).map(p=>carrImg(p.logo_url,true))]);
+  const ls=logos.filter(Boolean);
+  const porLinha=Math.min(6,Math.max(3,Math.ceil(ls.length/2)));
+  const nLinhas=Math.max(1,Math.ceil(ls.length/porLinha));
+  const W=1080, topo=130, lh=150, H=topo+nLinhas*lh+46;
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
+  const g=x.createLinearGradient(0,0,W,0); g.addColorStop(0,'#B8272D'); g.addColorStop(1,'#6E1013'); x.fillStyle=g; x.fillRect(0,0,W,topo);
+  x.fillStyle='rgba(255,255,255,.06)'; for(let i=-100;i<W+100;i+=170){x.save();x.translate(i,0);x.rotate(.2);x.fillRect(0,-50,60,topo+120);x.restore();}
+  if(escImg){const h2=92,w2=h2*escImg.width/escImg.height;x.drawImage(escImg,26,(topo-h2)/2,w2,h2);}
+  x.fillStyle='#F2C11E'; x.font='bold 40px Georgia'; x.textAlign='left'; x.fillText(db.config.time.toUpperCase(),146,56);
+  x.fillStyle='#fff'; x.font='600 27px Helvetica'; x.fillText('🤝 NOSSOS PATROCINADORES',146,98);
+  x.fillStyle='#fff'; x.fillRect(0,topo,W,H-topo);
+  const lw=(W-80)/porLinha;
+  ls.forEach((im,i)=>{ const row=Math.floor(i/porLinha), col=i%porLinha;
+    const nRow=Math.min(porLinha,ls.length-row*porLinha);
+    const x0=(W-nRow*lw)/2+col*lw;
+    const r=Math.min((lw-30)/im.width,(lh-44)/im.height);
+    const w2=im.width*r, h2=im.height*r;
+    x.drawImage(im,x0+(lw-w2)/2,topo+18+row*lh+(lh-44-h2)/2,w2,h2); });
+  if(!ls.length){ x.fillStyle='#5C616E'; x.font='600 32px Helvetica'; x.textAlign='center'; x.fillText(pats.map(p=>p.nome).join(' · '),W/2,topo+(H-topo)/2); }
+  x.fillStyle='#9aa0ab'; x.font='22px Helvetica'; x.textAlign='center';
+  x.fillText('Apoie quem apoia o nosso futebol ⚽',W/2,H-16);
+  cv.toBlob(bl=>{ baixar('rodape-patrocinadores-'+hoje()+'.png',bl,'image/png'); toast('🎨 Arte do rodapé gerada — está nos downloads!'); },'image/png');
+}
 function pdfRelatorioPats(){
   const c=db.config, membros=db.atletas.filter(a=>a.ativo&&!a.pendente).length;
+  const nJogos=db.eventos.filter(e=>['jogo','amistoso','campeonato'].includes(e.tipo)).length;
   const linhas=[`Data: ${agora()}`,'',
-  `Membros ativos com acesso ao sistema: ${membros} (atletas, diretoria e comissão técnica)`,'',
+  `Membros ativos com acesso ao sistema: ${membros} (atletas, diretoria e comissão técnica)`,
+  `Compromissos esportivos registrados na temporada: ${nJogos} (jogos, amistosos e campeonatos)`,'',
   'PONTOS DE EXPOSIÇÃO DA MARCA:',
   '- Tela de entrada (login): exibida em todo acesso, de todos os membros, em qualquer aparelho;',
   '- Painel principal (dashboard) e Meu espaço: primeira tela vista após cada login;',
-  '- Convocações de jogos e treinos: menção nominal em cada mensagem enviada ao grupo do WhatsApp;',
-  '- Artes pós-jogo: logomarcas nas imagens de resultado compartilhadas pelo time.','',
+  '- Convocações de jogos, amistosos e campeonatos: menção nominal em cada mensagem no grupo do WhatsApp;',
+  '- Artes pós-jogo: logomarcas nas imagens de resultado compartilhadas pelo time;',
+  '- Arte de rodapé com as logomarcas, pronta para publicações nas redes sociais do time.','',
+  'POR QUE PATROCINAR O '+c.time.toUpperCase()+':',
+  '- Marca associada à advocacia paraense: público qualificado de advogados(as), familiares e convidados;',
+  '- Presença em campeonatos estaduais e nacionais da OAB, com uniforme e materiais expostos;',
+  '- Divulgação recorrente no grupo oficial do time e nas redes sociais a cada jogo e convocação;',
+  '- Possibilidade de benefícios cruzados aos atletas (descontos e parcerias), fidelizando clientela;',
+  '- Contrato formal de patrocínio com contrapartidas de visibilidade descritas em cláusula própria.','',
   'PATROCINADORES ATIVOS:'];
-  (db.pats||[]).filter(p=>p.ativo).forEach(p=>linhas.push(`- ${p.nome} [${p.tier.toUpperCase()}]${p.valor>0?' — '+brl(p.valor):''}${p.vigencia_ate?' — vigência até '+dbr(String(p.vigencia_ate)):''}${p.beneficio?' — benefício: '+p.beneficio:''}`));
+  (db.pats||[]).filter(p=>p.ativo).forEach(p=>linhas.push(`- ${p.nome} [${p.tier.toUpperCase()}]${p.local?' — '+p.local:''}${p.valor>0?' — '+brl(p.valor):''}${p.vigencia_ate?' — vigência até '+dbr(String(p.vigencia_ate)):''}${p.beneficio?' — benefício: '+p.beneficio:''}`));
   linhas.push('','Documento gerado automaticamente pelo sistema de gestão do '+c.time+'.');
   genPDF('relatorio-patrocinio-'+hoje()+'.pdf',c.time+' — Relatório de Visibilidade de Patrocínio',linhas);
 }
@@ -4979,13 +5047,13 @@ function tMeu(){
   const gols=st.reduce((s,x)=>s+(+x.gols||0),0), asst=st.reduce((s,x)=>s+(+x.assist||0),0);
   const notas=st.filter(x=>x.nota).map(x=>+x.nota);
   const pend=meusUni.filter(u=>u.status==='pendente');
-  const prox=db.eventos.filter(e=>e.data>=hoje()).sort((a,b)=>a.data.localeCompare(b.data)).slice(0,3);
+  const prox=db.eventos.filter(e=>e.data>=hoje()||(e.dataFim&&e.dataFim>=hoje())).sort((a,b)=>a.data.localeCompare(b.data)).slice(0,3);
   const docsFaltando=db.config.docsObrig.filter(cat=>!db.arquivos.some(d=>d.atletaId===me.id&&d.categoria===cat));
   return `${bannerNotif()}
   ${pend.length?pend.map(u=>`<div class="alertline al-warn sect">👕 Você recebeu o uniforme <strong>${esc(u.descricao)} nº ${esc(u.numero)}</strong> — <button class="mini gold" onclick="aceitarUniforme('${u.id}')">Ler e aceitar o termo de responsabilidade</button></div>`).join(''):''}
   ${docsFaltando.length?`<div class="alertline al-warn sect">📁 <strong>Documentos pendentes com a diretoria:</strong> ${docsFaltando.map(esc).join(', ')} — anexe abaixo em "Meus documentos".</div>`:''}
   <div class="card sect" style="border-color:var(--blue)"><h2>🗓️ Próximos compromissos</h2>
-  ${prox.length?prox.map(e=>`<div class="alertline" style="background:var(--blue-soft)"><div style="flex:1"><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong><div class="mut">${dbr(e.data)} às ${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''} — ${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener">📍 ${esc(e.local)}</a>`:''}${e.obs?' · '+esc(e.obs):''}</div></div>
+  ${prox.length?prox.map(e=>`<div class="alertline" style="background:var(--blue-soft)"><div style="flex:1"><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong><div class="mut">${dbr(e.data)}${e.dataFim?' até '+dbr(e.dataFim):''} às ${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''} — ${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener">📍 ${esc(e.local)}</a>`:''}${e.obs?' · '+esc(e.obs):''}</div></div>
     <button class="mini" onclick="modalCal('${e.id}')">📅 Pôr no calendário</button></div>`).join(''):'<p class="mut">Nada agendado por enquanto.</p>'}
   ${prox.length?`<button class="sec mini" onclick="baixarICS(db.eventos.filter(e=>e.data>=hoje()),'agenda-oabmaster.ics')">📅 Agenda completa (.ics)</button>`:''}</div>
   <div class="grid g5 sect">
