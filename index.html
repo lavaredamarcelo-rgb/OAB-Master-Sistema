@@ -276,7 +276,7 @@ async function carregaTudo(){
   db={};
   db.atletas=perfis.map(mapAtleta);
   saude.forEach(s=>{ const a=at(s.atleta_id); if(a)a.saude={sangue:s.sangue,plano:s.plano,alergias:s.alergias,medicamentos:s.medicamentos,condicoes:s.condicoes,emergencia:s.emergencia,lesoes:s.lesoes,obs:s.obs,lesoesLista:s.lesoes_lista||[],obsLista:s.obs_lista||[]}; });
-  db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),dataFim:e.data_fim?String(e.data_fim):'',hora:e.hora,horaFim:e.hora_fim||'',local:e.local,obs:e.obs}));
+  db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),dataFim:e.data_fim?String(e.data_fim):'',hora:e.hora,horaFim:e.hora_fim||'',local:e.local,obs:e.obs,adversario:e.adversario||'',placarNos:e.placar_nos??null,placarDeles:e.placar_deles??null}));
   db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,convidado:p.convidado||null,status:p.status}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,origem:c.origem||'',lote:c.origem_lote||''}));
@@ -2345,6 +2345,14 @@ function abrirGestorImportacoes(){
 function tAgenda(){
   const evs=[...db.eventos].sort((a,b)=>a.data.localeCompare(b.data));
   const podeEditar=gestor();
+  const jogosPlacar=db.eventos.filter(e=>['jogo','amistoso'].includes(e.tipo)&&e.placarNos!=null&&e.placarDeles!=null).sort((a,b)=>b.data.localeCompare(a.data));
+  const advs=[...new Set(jogosPlacar.map(e=>e.adversario).filter(Boolean))].sort();
+  const advSel=subState.retroAdv||'';
+  const retroLista=advSel?jogosPlacar.filter(e=>e.adversario===advSel):jogosPlacar;
+  const rV=retroLista.filter(e=>e.placarNos>e.placarDeles).length;
+  const rE=retroLista.filter(e=>e.placarNos===e.placarDeles).length;
+  const rD=retroLista.filter(e=>e.placarNos<e.placarDeles).length;
+  const gp=retroLista.reduce((s,e)=>s+e.placarNos,0), gc=retroLista.reduce((s,e)=>s+e.placarDeles,0);
   return `<div class="spread sect">
     <p class="mut">Baixe o <strong>.ics</strong> para incluir jogos e treinos no calendário do celular — com lembretes automáticos (1 dia e 3 h antes).</p>
     <div class="row">${podeEditar?`<button onclick="formEvento()">+ Novo compromisso</button>`:''}
@@ -2352,12 +2360,23 @@ function tAgenda(){
   <div class="card tblwrap"><table class="cardz"><tr><th>Data</th><th>Hora</th><th>Compromisso</th><th>Local</th><th></th></tr>
   ${evs.length?evs.map(e=>`<tr style="${(e.dataFim||e.data)<hoje()?'opacity:.55':''}">
     <td data-l="Data"><strong>${dbr(e.data)}</strong>${e.dataFim?`<div class="mut">até ${dbr(e.dataFim)}</div>`:''}</td><td data-l="Hora">${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''}</td>
-    <td><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong>${e.tipo==='campeonato'?' <span class="pill p-gold">campeonato</span>':''}${e.obs?`<div class="mut" style="white-space:pre-wrap">${esc(e.obs)}</div>`:''}</td>
+    <td><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong>${e.tipo==='campeonato'?' <span class="pill p-gold">campeonato</span>':''}${e.placarNos!=null?` <span class="pill ${e.placarNos>e.placarDeles?'p-ok':e.placarNos===e.placarDeles?'p-warn':'p-bad'}">${e.placarNos}×${e.placarDeles}${e.adversario?' '+esc(e.adversario):''}</span>`:''}${e.obs?`<div class="mut" style="white-space:pre-wrap">${esc(e.obs)}</div>`:''}</td>
     <td data-l="Local">${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener" title="Abrir no Google Maps">📍 ${esc(e.local)}</a>`:'—'}</td>
     <td class="row"><button class="mini sec" onclick="modalCal('${e.id}')">📅</button>
-    ${podeEditar?`<button class="mini sec" onclick="formEvento('${e.id}')">✏️ Editar</button>
+    ${podeEditar?`${['jogo','amistoso'].includes(e.tipo)?`<button class="mini ${e.placarNos!=null?'sec':'gold'}" onclick="formPlacar('${e.id}')">⚽ Placar</button>`:''}
+    <button class="mini sec" onclick="formEvento('${e.id}')">✏️ Editar</button>
     <button class="mini sec" onclick="convocar('${e.id}')">📣 Convocar</button>
-    <button class="mini sec" onclick="delEvento('${e.id}')">✕</button>`:''}</td></tr>`).join(''):'<tr><td colspan="5" class="mut">Nenhum compromisso.</td></tr>'}</table></div>`;
+    <button class="mini sec" onclick="delEvento('${e.id}')">✕</button>`:''}</td></tr>`).join(''):'<tr><td colspan="5" class="mut">Nenhum compromisso.</td></tr>'}</table></div>
+  ${jogosPlacar.length?`<div class="card" style="margin-top:14px"><div class="spread"><h2>🏆 Retrospecto de jogos</h2>
+  <select onchange="subState.retroAdv=this.value;renderTab()" style="max-width:230px"><option value="">🌐 Todos os adversários</option>${advs.map(a=>`<option value="${esc(a)}" ${a===advSel?'selected':''}>${esc(a)}</option>`).join('')}</select></div>
+  <div class="grid g4" style="margin:10px 0">
+    <div class="card stat"><div class="n">${retroLista.length}</div><div class="l">Jogos</div></div>
+    <div class="card stat"><div class="n">${rV}V · ${rE}E · ${rD}D</div><div class="l">Resultados</div></div>
+    <div class="card stat"><div class="n">${gp} × ${gc}</div><div class="l">Gols pró × contra</div></div>
+    <div class="card stat"><div class="n" style="color:${retroLista.length&&rV/retroLista.length>=.5?'var(--ok)':'var(--warn)'}">${retroLista.length?Math.round(rV/retroLista.length*100):0}%</div><div class="l">Aproveitamento</div></div>
+  </div>
+  <div class="tblwrap"><table class="cardz"><tr><th>Data</th><th>Tipo</th><th>Adversário</th><th>Placar</th><th>Resultado</th></tr>
+  ${retroLista.map(e=>`<tr><td data-l="Data">${dbr(e.data)}</td><td data-l="Tipo">${tipoEvLbl(e.tipo)}</td><td data-l="Adversário"><strong>${esc(e.adversario||'—')}</strong></td><td data-l="Placar"><strong>${e.placarNos}×${e.placarDeles}</strong></td><td data-l="Resultado">${e.placarNos>e.placarDeles?'<span class="pill p-ok">✅ Vitória</span>':e.placarNos===e.placarDeles?'<span class="pill p-warn">🤝 Empate</span>':'<span class="pill p-bad">❌ Derrota</span>'}</td></tr>`).join('')}</table></div></div>`:''}`;
 }
 
 function formEvento(id){
@@ -2407,6 +2426,34 @@ async function salvaEvento(id){
   fecha(); await recarrega();
 }
 function delEvento(id){ const e=byId(db.eventos,id); confirma(`Excluir o compromisso "${esc(e?e.titulo:'')}" (${e?dbr(e.data):''})? As presenças e estatísticas ligadas a ele também serão excluídas.`,async()=>{ await q(sb.from('eventos').delete().eq('id',id)); await recarrega(); toast('Compromisso excluído'); }); }
+function formPlacar(id){
+  const e=byId(db.eventos,id); if(!e)return;
+  const advSugerido=e.adversario||(e.titulo||'').replace(/^.*?[×x]\s*/i,'').trim();
+  modal(`<h2>⚽ Placar — ${esc(e.titulo)}</h2>
+  <p class="mut" style="margin:0">${tipoEvIco(e.tipo)} ${dbr(e.data)}${e.local?' — '+esc(e.local):''}</p>
+  <label>Adversário</label><input id="pl_adv" value="${esc(advSugerido)}" placeholder="Ex.: OAB Santarém" list="dl_advs">
+  <datalist id="dl_advs">${[...new Set(db.eventos.map(x=>x.adversario).filter(Boolean))].map(a=>`<option>${esc(a)}</option>`).join('')}</datalist>
+  <div class="grid g2">
+  <div><label>Nossos gols</label><input id="pl_nos" type="number" min="0" max="30" value="${e.placarNos??''}"></div>
+  <div><label>Gols do adversário</label><input id="pl_deles" type="number" min="0" max="30" value="${e.placarDeles??''}"></div>
+  </div>
+  <div class="row" style="margin-top:14px"><button onclick="salvaPlacar('${id}')">Salvar placar</button>
+  ${e.placarNos!=null?`<button class="bad mini" onclick="limpaPlacar('${id}')">✕ Remover placar</button>`:''}
+  <button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+async function salvaPlacar(id){
+  const adv=fval('pl_adv'), nos=fval('pl_nos'), deles=fval('pl_deles');
+  if(nos===''||deles===''){toast('Informe os dois placares');return;}
+  const {error}=await sb.from('eventos').update({adversario:adv,placar_nos:Number(nos),placar_deles:Number(deles)}).eq('id',id);
+  if(error){toast('⚠️ '+(/placar|adversario/.test(error.message||'')?'Rode o SQL v10 no Supabase para ativar o placar':error.message));return;}
+  const e=byId(db.eventos,id);
+  log('agenda',`Placar registrado: ${e?e.titulo:''} — ${nos}×${deles}${adv?' vs '+adv:''}`);
+  fecha(); await recarrega(); toast('⚽ Placar salvo!');
+}
+async function limpaPlacar(id){
+  await q(sb.from('eventos').update({placar_nos:null,placar_deles:null}).eq('id',id));
+  fecha(); await recarrega(); toast('Placar removido');
+}
 function convocar(id){
   const e=byId(db.eventos,id);
   const patN=(db.pats||[]).filter(p=>p.ativo).map(p=>p.nome);
