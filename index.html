@@ -3806,8 +3806,67 @@ async function salvaCobranca(){
   enviarPush('💰 '+db.config.time+' — tesouraria',`${desc}: ${brl(v)}, vencimento ${dbr(venc)}. Confira no sistema.`);
   fecha(); await recarrega(); toast(`${alvos.length} cobrança(s) gerada(s)`);
 }
+/* ---- Pix: QR Code e copia e cola (padrão BR Code do Banco Central) ---- */
+function crc16(s){ let crc=0xFFFF;
+  for(let i=0;i<s.length;i++){ crc^=s.charCodeAt(i)<<8;
+    for(let j=0;j<8;j++){ crc=(crc&0x8000)?((crc<<1)^0x1021):(crc<<1); crc&=0xFFFF; } }
+  return crc.toString(16).toUpperCase().padStart(4,'0'); }
+function pixPayload(valor){
+  if(!db.config.pix)return '';
+  const emv=(id,v)=>id+String(v.length).padStart(2,'0')+v;
+  const limpa=(s,n)=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9 ]/g,' ').replace(/\s+/g,' ').trim().toUpperCase().slice(0,n);
+  const nome=limpa(db.config.time,25)||'TIME';
+  let p=emv('00','01')
+    +emv('26',emv('00','br.gov.bcb.pix')+emv('01',db.config.pix.trim()))
+    +emv('52','0000')+emv('53','986');
+  if(valor>0)p+=emv('54',valor.toFixed(2));
+  p+=emv('58','BR')+emv('59',nome)+emv('60','BELEM')+emv('62',emv('05','***'));
+  return p+'6304'+crc16(p+'6304');
+}
+async function carregaQR(){ if(window.QRCode)return;
+  await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js'; s.onload=res; s.onerror=()=>rej(new Error('sem internet para carregar o gerador de QR')); document.head.appendChild(s); });
+}
+async function pagarPix(id){
+  const c=byId(db.cobrancas,id); if(!c)return;
+  if(!db.config.pix){toast('Cadastre a chave Pix do time em Ajustes primeiro');return;}
+  const valor=Number(valorDe(c));
+  const payload=pixPayload(valor);
+  modal(`<h2>💳 Pagar com Pix</h2>
+  <p style="margin:0"><strong>${esc(c.desc)}</strong> — <strong style="color:var(--ok);font-size:18px">${brl(valor)}</strong><br>
+  <span class="mut">Vencimento ${dbr(c.venc)} · favorecido: ${esc(db.config.time)}</span></p>
+  <div style="display:flex;justify-content:center;margin:14px 0"><canvas id="pix_qr" style="background:#fff;padding:10px;border-radius:12px;max-width:100%"></canvas></div>
+  <p class="mut" style="text-align:center;margin:0 0 10px">📱 Aponte a câmera do app do banco para o QR Code<br>ou use o copia e cola abaixo — o valor já vai exato.</p>
+  <label>Pix copia e cola</label><textarea id="pix_cc" readonly style="min-height:76px;font-size:11.5px" onclick="this.select()">${payload}</textarea>
+  <div class="row" style="margin-top:12px">
+    <button onclick="copiar($('pix_cc').value,'Código Pix copiado — cole no app do banco')">📋 Copiar código Pix</button>
+    <button class="sec" onclick="fecha()">Fechar</button>
+  </div>
+  <p class="mut" style="margin-top:10px">Após o pagamento, envie o comprovante à diretoria para dar baixa. 🤝</p>`);
+  try{ await carregaQR(); window.QRCode.toCanvas($('pix_qr'),payload,{width:232,margin:1}); }
+  catch(_){ const el=$('pix_qr'); if(el)el.parentElement.innerHTML='<p class="mut">Não consegui desenhar o QR — use o copia e cola abaixo, funciona igual.</p>'; }
+}
+function mostraDetalheCobranca(id){
+  const c=byId(db.cobrancas,id); if(!c)return;
+  const a=c.atletaId?at(c.atletaId):null;
+  modal(`<h2>💰 Detalhe da cobrança</h2>
+  <div class="grid g2" style="margin-top:10px">
+    <div><span class="mut">Quem:</span><br><strong>${esc(a?a.nome:('🎟️ '+(c.convidado||'Convidado')))}</strong></div>
+    <div><span class="mut">Descrição:</span><br><strong>${esc(c.desc)}</strong></div>
+    <div><span class="mut">Valor:</span><br><strong>${brl(valorDe(c))}</strong>${ehMensal(c)&&c.status==='atrasado'?`<div class="mut">era ${brl(c.valor)} até o dia ${db.config.mensDia}</div>`:''}</div>
+    <div><span class="mut">Vencimento:</span><br><strong>${dbr(c.venc)}</strong></div>
+    <div><span class="mut">Situação:</span><br>${c.status==='pago'?`<span class="pill p-ok">Pago em ${dbr(c.pagoEm)}</span>`:c.status==='atrasado'?'<span class="pill p-bad">Atrasado</span>':'<span class="pill p-warn">Pendente</span>'}</div>
+    ${c.origem?`<div><span class="mut">Origem:</span><br>${esc(c.origem)}</div>`:''}
+  </div>
+  ${c.detalhes?`<p style="margin-top:10px"><span class="mut">Detalhes:</span> ${esc(c.detalhes)}</p>`:''}
+  <div class="row" style="margin-top:16px">
+  ${c.status!=='pago'?`<button class="gold" onclick="fecha();pagarPix('${c.id}')">💳 QR Code Pix</button>
+  ${a&&a.fone?`<button onclick="cobraWhats('${c.id}')">📱 Cobrar</button>`:''}
+  <button style="background:var(--ok)" onclick="fecha();formPagamento('${c.id}')">✔ Marcar pago</button>`:''}
+  <button class="sec" onclick="fecha();editaCobranca('${c.id}')">📝 Editar</button>
+  <button class="sec" onclick="fecha()">Fechar</button></div>`);
+}
 function msgCobranca(c){
-  const a=at(c.atletaId), pix=db.config.pix?`\n💳 Pix: ${db.config.pix}`:'';
+  const a=at(c.atletaId), pix=db.config.pix?`\n💳 Pix: ${db.config.pix}\n\n📲 Ou pague com o *Pix copia e cola* (valor exato) — copie o código abaixo e cole no app do banco:\n${pixPayload(Number(valorDe(c)))}`:'';
   const linhaValor=ehMensal(c)?`💵 ${brl(c.valor)} até o dia ${db.config.mensDia}; a partir do dia ${db.config.mensDia+1}: ${brl(db.config.mensApos)}${c.status==='atrasado'?`\n⚠️ *Prazo vencido — valor atual: ${brl(db.config.mensApos)}*`:''}`:`💵 ${brl(valorDe(c))}${c.status==='atrasado'?'\n⚠️ *Pagamento vencido — pedimos regularização*':''}`;
   return `Prezado(a) @${pnome(a.nome)},\n\n*${db.config.time} — Tesouraria* 🏦\n\nConsta em nosso controle a seguinte pendência:\n\n📌 ${c.desc}\n${linhaValor}\n📅 Vencimento: ${dbr(c.venc)}${pix}\n\nApós o pagamento, por gentileza envie o comprovante. Qualquer divergência, fale com a diretoria.\n\nObrigado! 🤝⚖️`;
 }
@@ -3824,7 +3883,7 @@ function cobraTudoWhats(aid){
   if(!abertas.length){toast('Nada em aberto para este jogador 🎉');return;}
   const total=abertas.reduce((s,c)=>s+Number(valorDe(c)),0);
   const linhas=abertas.map(c=>`• ${c.desc} — ${brl(valorDe(c))} (venc. ${dbr(c.venc)}${c.status==='atrasado'?', em atraso':''})`).join('\n');
-  const pix=db.config.pix?`\n\n💳 Pix: ${db.config.pix}`:'';
+  const pix=db.config.pix?`\n\n💳 Pix: ${db.config.pix}\n\n📲 Ou pague tudo com o *Pix copia e cola* (valor exato) — copie o código abaixo e cole no app do banco:\n${pixPayload(total)}`:'';
   const msg=`Prezado(a) @${pnome(a.nome)},\n\n*${db.config.time} — Tesouraria* 🏦\n\nConstam em aberto em seu nome:\n\n${linhas}\n\n*Total: ${brl(total)}*\n\n💡 Dica: a diretoria pode fazer a quitação com condições especiais — fale conosco.${pix}\n\nApós o pagamento, por gentileza envie o comprovante. Obrigado! 🤝⚖️`;
   window.open(waLink(a.fone,msg),'_blank');
   log('financeiro',`Cobrança consolidada enviada via WhatsApp: ${a.nome} — ${abertas.length} cobranças (${brl(total)})`);
@@ -5188,7 +5247,7 @@ function tMeu(){
   </div>
   <div class="grid g2">
   <div class="card"><h2>💰 Minhas pendências</h2>
-  ${minhasCob.length?minhasCob.map(c=>`<div class="alertline ${c.status==='atrasado'?'al-bad':'al-warn'}"><div style="flex:1"><strong>${esc(c.desc)}</strong> — ${brl(valorDe(c))}${ehMensal(c)&&c.status!=='atrasado'?`<div class="mut">até o dia ${db.config.mensDia}; depois ${brl(db.config.mensApos)}</div>`:''}<div class="mut">vence ${dbr(c.venc)}</div></div>${db.config.pix?`<button class="mini sec" onclick="copiar('${esc(db.config.pix)}','Chave Pix copiada')">💳 Copiar Pix</button>`:''}</div>`).join(''):'<p class="mut">Tudo pago. 👏</p>'}</div>
+  ${minhasCob.length?minhasCob.map(c=>`<div class="alertline ${c.status==='atrasado'?'al-bad':'al-warn'}"><div style="flex:1"><strong>${esc(c.desc)}</strong> — ${brl(valorDe(c))}${ehMensal(c)&&c.status!=='atrasado'?`<div class="mut">até o dia ${db.config.mensDia}; depois ${brl(db.config.mensApos)}</div>`:''}<div class="mut">vence ${dbr(c.venc)}</div></div>${db.config.pix?`<button class="mini gold" onclick="pagarPix('${c.id}')">💳 Pagar com Pix</button>`:''}</div>`).join(''):'<p class="mut">Tudo pago. 👏</p>'}</div>
   <div class="card"><h2>🎯 Minhas metas</h2>
   ${minhasMetas.length?minhasMetas.map(m=>`<div class="alertline" style="background:var(--bg)"><div style="flex:1"><strong>${esc(m.desc)}</strong><div class="mut">Prazo: ${dbr(m.prazo)}</div></div>${statusMeta(m)}</div>`).join(''):'<p class="mut">Sem metas atribuídas.</p>'}
   <p class="mut" style="margin-top:8px"><a href="#" onclick="vai('avaliacao');return false">Ver minhas avaliações físicas →</a></p></div>
