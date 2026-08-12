@@ -2486,7 +2486,8 @@ function tPres(){
   let quadro='';
   if(podeMarcar){
     quadro=sel?`<div class="card sect"><label style="margin-top:0">Fazer chamada — compromisso</label>
-    <select onchange="subState.presEv=this.value;renderTab()">${evs.map(e=>`<option value="${e.id}" ${e.id===sel?'selected':''}>${dbr(e.data)} — ${esc(e.titulo)}</option>`).join('')}</select>
+    <select onchange="subState.presEv=this.value;renderTab()">${evs.map(e=>`<option value="${e.id}" ${e.id===sel?'selected':''}>${dbr(e.data)} — ${tipoEvIco(e.tipo)} ${esc(e.titulo)}</option>`).join('')}</select>
+    <div class="row" style="margin-top:8px"><button class="mini sec" onclick="copiarFrequencia('${sel}')">📋 Copiar marcações de outra chamada</button><span class="mut" style="font-size:12px;align-self:center">• útil quando treino e jogo acontecem no mesmo dia</span></div>
     <div style="background:var(--bg2);padding:12px;border-radius:8px;border:1px solid var(--border);margin-top:14px">
       <div style="font-weight:500;margin-bottom:8px;display:flex;gap:8px;align-items:center">
         <span>➕ Adicionar convidado</span>
@@ -2558,6 +2559,36 @@ function adicionaConvidadoPres(){
   subState.convidadosPres.push(nome);
   $('nome_conv_pres').value='';
   renderTab();
+}
+function copiarFrequencia(evDestino){
+  const destino=byId(db.eventos,evDestino); if(!destino)return;
+  const fontes=[...new Set(db.presencas.map(p=>p.eventoId))].filter(id=>id!==evDestino)
+    .map(id=>({e:byId(db.eventos,id),n:db.presencas.filter(p=>p.eventoId===id).length}))
+    .filter(x=>x.e).sort((a,b)=>b.e.data.localeCompare(a.e.data));
+  if(!fontes.length){toast('Nenhuma outra chamada registrada ainda');return;}
+  modal(`<h2>📋 Copiar chamada</h2>
+  <p class="mut">Traz todas as marcações (presenças, faltas, atrasos — atletas e convidados) de outro compromisso para <strong>${esc(destino.titulo)}</strong> (${dbr(destino.data)}). O que já estiver marcado no destino é atualizado, e depois você pode ajustar caso a caso.</p>
+  <label>Copiar de</label><select id="cf_fonte">${fontes.map(x=>`<option value="${x.e.id}">${dbr(x.e.data)} — ${tipoEvIco(x.e.tipo)} ${esc(x.e.titulo)} (${x.n} marcações)</option>`).join('')}</select>
+  <div class="row" style="margin-top:14px"><button id="btn_cfreq" onclick="copiarFrequenciaGo('${evDestino}')">📋 Copiar marcações</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+async function copiarFrequenciaGo(destino){
+  const fonte=fval('cf_fonte'); if(!fonte)return;
+  const b=$('btn_cfreq'); if(b)b.disabled=true;
+  const marcas=db.presencas.filter(p=>p.eventoId===fonte);
+  let n=0;
+  for(const p of marcas){
+    if(p.atletaId){
+      const {error}=await sb.from('presencas').upsert({evento_id:destino,atleta_id:p.atletaId,status:p.status},{onConflict:'evento_id,atleta_id'});
+      if(!error)n++;
+    }else if(p.convidado){
+      const {data:upd}=await sb.from('presencas').update({status:p.status}).eq('evento_id',destino).eq('convidado',p.convidado).select();
+      if(!upd||!upd.length){ const {error}=await sb.from('presencas').insert({evento_id:destino,atleta_id:null,convidado:p.convidado,status:p.status}); if(!error)n++; }
+      else n++;
+    }
+  }
+  const f=byId(db.eventos,fonte), d=byId(db.eventos,destino);
+  log('presenca',`Chamada copiada: ${f?f.titulo:''} → ${d?d.titulo:''} (${n} marcações)`);
+  fecha(); await recarrega(); toast(`📋 ${n} marcação(ões) copiada(s) — ajuste o que precisar`);
 }
 function csvFaltas(){
   const linhas=[['Atleta','Compromisso','Tipo','Data','Situação']];
