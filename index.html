@@ -2483,13 +2483,23 @@ async function marca(ev,aid,st){
   if(isConv){
     const idx=Number(aid.split('_')[1]);
     const nomeConv=subState.convidadosPres?.[idx];
+    const i=db.presencas.findIndex(p=>p.eventoId===ev&&!p.atletaId&&p.convidado===nomeConv);
+    if(i>=0&&db.presencas[i].status===st){
+      // Tocar de novo no mesmo botão desmarca
+      await q(sb.from('presencas').delete().eq('evento_id',ev).eq('convidado',nomeConv));
+      db.presencas.splice(i,1); renderTab(); toast('Marcação removida'); return;
+    }
     const {data:upd}=await sb.from('presencas').update({status:st}).eq('evento_id',ev).eq('convidado',nomeConv).select();
     if(!upd||!upd.length) await q(sb.from('presencas').insert({evento_id:ev,atleta_id:null,convidado:nomeConv,status:st}));
-    const i=db.presencas.findIndex(p=>p.eventoId===ev&&!p.atletaId&&p.convidado===nomeConv);
     if(i>=0)db.presencas[i].status=st; else db.presencas.push({eventoId:ev,atletaId:null,convidado:nomeConv,status:st});
   }else{
-    await q(sb.from('presencas').upsert({evento_id:ev,atleta_id:aid,status:st},{onConflict:'evento_id,atleta_id'}));
     const i=db.presencas.findIndex(p=>p.eventoId===ev&&p.atletaId===aid);
+    if(i>=0&&db.presencas[i].status===st){
+      // Tocar de novo no mesmo botão desmarca
+      await q(sb.from('presencas').delete().eq('evento_id',ev).eq('atleta_id',aid));
+      db.presencas.splice(i,1); renderTab(); toast('Marcação removida'); return;
+    }
+    await q(sb.from('presencas').upsert({evento_id:ev,atleta_id:aid,status:st},{onConflict:'evento_id,atleta_id'}));
     if(i>=0)db.presencas[i].status=st; else db.presencas.push({eventoId:ev,atletaId:aid,status:st});
   }
   renderTab();
@@ -3528,7 +3538,8 @@ function tFinRelatorios(){
   <p class="mut" style="margin-bottom:16px">Gere relatórios em PDF ou Excel com todos os dados consolidados.</p>
 
   <div class="row" style="margin-bottom:16px;gap:8px;flex-wrap:wrap">
-    <button class="gold" onclick="gerarPDFFinanceiro()">📊 PDF - Financeiro Completo</button>
+    <button class="gold" onclick="gerarPDFFinanceiro()">📊 PDF - Financeiro Detalhado (mês a mês)</button>
+    <button class="gold" onclick="pdfMensalidades()">💳 PDF - Mensalidades</button>
     <button class="gold" onclick="gerarPDFMes()">📅 PDF - Mês Atual</button>
     <button class="sec" onclick="exportarExcelFinanceiro()">📈 Excel - Financeiro</button>
     <button class="sec" onclick="exportarExcelMensalidades()">📈 Excel - Mensalidades</button>
@@ -3554,42 +3565,119 @@ function tFinRelatorios(){
   </div>
   </div>`;
 }
+const CSS_RELATORIO=`body{font-family:Arial,sans-serif;margin:24px;color:#333}
+  h1{text-align:center;color:#c41e3a;margin-bottom:2px}
+  .sub{text-align:center;color:#777;margin:0 0 18px;font-size:13px}
+  .cards{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
+  .card{border:1px solid #ddd;border-radius:8px;padding:10px 18px;text-align:center;min-width:110px}
+  .card .n{font-size:20px;font-weight:bold}.card .l{font-size:11px;color:#777;text-transform:uppercase}
+  h2{color:#c41e3a;border-bottom:2px solid #c41e3a;padding-bottom:6px;margin:26px 0 8px;font-size:18px}
+  table{width:100%;border-collapse:collapse;margin:10px 0}
+  th,td{border:1px solid #ddd;padding:6px 9px;text-align:left;font-size:12.5px}
+  th{background:#c41e3a;color:#fff}
+  tr:nth-child(even){background:#f8f8f8}
+  .tot td{background:#f3e3c8;font-weight:bold}
+  .ok{color:#28a745}.bad{color:#c41e3a}.warn{color:#b8860b}
+  .mes{page-break-inside:avoid}
+  .fechar{position:fixed;top:12px;right:12px;padding:10px 18px;background:#c41e3a;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;z-index:9;font-size:14px}
+  .rod{margin-top:16px;font-size:11px;color:#999;text-align:center}
+  @media print{body{margin:10mm}.fechar{display:none}}`;
+function abreRelatorio(html,titulo){
+  const w=window.open('','_blank');
+  if(!w){toast('Libere pop-ups para gerar o PDF');return;}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titulo}</title><style>${CSS_RELATORIO}</style></head><body>
+  <button class="fechar" onclick="window.close()">✕ Fechar</button>${html}
+  <p class="rod">Gerado em ${new Date().toLocaleString('pt-BR')} pelo sistema de gestão do ${esc(db.config.time)}</p>
+  <script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+  toast('📄 Na janela que abriu, escolha "Salvar como PDF"');
+}
+const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 function gerarPDFFinanceiro(){
-  const ano=new Date().getFullYear();
-  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Relatório Financeiro ${ano}</title>
-  <style>body{font-family:Arial;margin:20px;color:#333}h1{text-align:center;color:#c41e3a}h2{margin-top:20px;border-bottom:2px solid #c41e3a;padding-bottom:8px}
-  table{width:100%;border-collapse:collapse;margin:12px 0}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#c41e3a;color:white;font-weight:bold}
-  tr:nth-child(even){background:#f9f9f9}.stat{background:#f0f0f0;padding:10px;margin:10px 0;border-radius:4px}
-  .total{font-weight:bold;background:#e8f4f8;padding:10px}.ok{color:#28a745}.bad{color:#c41e3a}</style></head><body>
-  <h1>⚽ OAB/PA Master - Relatório Financeiro</h1>
-  <p style="text-align:center;color:#666">Período: ${ano}</p>
-
-  <h2>📊 Resumo Anual</h2>
-  <div class="stat">Receitas: <span class="ok">${brl(db.balanco.filter(r=>r.data.startsWith(ano)).reduce((s,r)=>s+Number(r.valor),0))}</span></div>
-  <div class="stat">Mensalidades Recebidas: <span class="ok">${brl(db.cobrancas.filter(c=>c.venc.startsWith(ano)&&c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0))}</span></div>
-  <div class="stat">Despesas: <span class="bad">${brl(db.despesas.filter(d=>d.data.startsWith(ano)).reduce((s,d)=>s+Number(d.valor),0))}</span></div>
-
-  <h2>💵 Receitas (${ano})</h2>
-  <table><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Status</th></tr>
-  ${db.balanco.filter(r=>r.data.startsWith(ano)).sort((a,b)=>b.data.localeCompare(a.data)).map(r=>`<tr>
-    <td>${dbr(r.data)}</td><td>${esc(r.descricao)}</td><td>${r.tipo}</td><td>${brl(r.valor)}</td><td>${r.pago?'Pago':'Pendente'}</td></tr>`).join('')}
+  const ano=String(new Date().getFullYear());
+  const recAno=db.balanco.filter(r=>r.data.startsWith(ano)&&r.pago).reduce((s,r)=>s+Number(r.valor),0);
+  const menAno=db.cobrancas.filter(c=>c.venc.startsWith(ano)&&c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
+  const desAno=db.despesas.filter(d=>d.data.startsWith(ano)&&d.pago).reduce((s,d)=>s+Number(d.valor),0);
+  const saldoFinal=db.config.saldoIni+recAno+menAno-desAno;
+  // Tabela anual com acumulado mês a mês
+  let acum=db.config.saldoIni;
+  const linhasAno=Array.from({length:12},(_,i)=>{
+    const pf=ano+'-'+String(i+1).padStart(2,'0');
+    const rec=db.balanco.filter(r=>r.data.startsWith(pf)&&r.pago).reduce((s,r)=>s+Number(r.valor),0);
+    const men=db.cobrancas.filter(c=>c.venc.startsWith(pf)&&c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
+    const des=db.despesas.filter(d=>d.data.startsWith(pf)&&d.pago).reduce((s,d)=>s+Number(d.valor),0);
+    const saldo=rec+men-des; acum+=saldo;
+    return {i,pf,rec,men,des,saldo,acum};
+  });
+  // Seções mensais detalhadas (só meses com movimento)
+  const seccoes=linhasAno.map(m=>{
+    const itens=[];
+    db.balanco.filter(r=>r.data.startsWith(m.pf)).forEach(r=>itens.push({data:r.data,desc:r.descricao,tipo:'💵 Receita',valor:Number(r.valor),pago:r.pago,ent:true}));
+    db.cobrancas.filter(c=>c.venc.startsWith(m.pf)).forEach(c=>itens.push({data:c.venc,desc:c.desc+' — '+(c.atletaId?pnome(nomeAt(c.atletaId)):(c.convidado||'')),tipo:'💳 Mensalidade',valor:Number(valorDe(c)),pago:c.status==='pago',ent:true}));
+    db.despesas.filter(d=>d.data.startsWith(m.pf)).forEach(d=>itens.push({data:d.data,desc:d.item,tipo:'🧾 Despesa',valor:Number(d.valor),pago:d.pago,ent:false}));
+    if(!itens.length)return '';
+    itens.sort((a,b)=>a.data.localeCompare(b.data));
+    return `<div class="mes"><h2>📅 ${MESES_NOME[m.i]} / ${ano}</h2>
+    <table><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Situação</th></tr>
+    ${itens.map(x=>`<tr><td>${dbr(x.data)}</td><td>${esc(x.desc)}</td><td>${x.tipo}</td><td class="${x.ent?'ok':'bad'}">${x.ent?'+':'−'} ${brl(x.valor)}</td><td>${x.pago?'<span class="ok">✔ Pago</span>':'<span class="warn">Pendente</span>'}</td></tr>`).join('')}
+    <tr class="tot"><td colspan="3">Resultado do mês (somente pagos)</td><td colspan="2" class="${m.saldo>=0?'ok':'bad'}">${m.saldo>=0?'+':''}${brl(m.saldo)} · acumulado: ${brl(m.acum)}</td></tr>
+    </table></div>`;
+  }).join('');
+  abreRelatorio(`<h1>💰 Relatório Financeiro Detalhado</h1>
+  <p class="sub">${esc(db.config.time)} — ano ${ano} · valores consolidados consideram apenas lançamentos pagos</p>
+  <div class="cards">
+    <div class="card"><div class="n">${brl(db.config.saldoIni)}</div><div class="l">Saldo inicial</div></div>
+    <div class="card"><div class="n ok">${brl(recAno+menAno)}</div><div class="l">Recebido no ano</div></div>
+    <div class="card"><div class="n bad">${brl(desAno)}</div><div class="l">Despesas pagas</div></div>
+    <div class="card"><div class="n ${saldoFinal>=0?'ok':'bad'}">${brl(saldoFinal)}</div><div class="l">Saldo em caixa</div></div>
+  </div>
+  <h2>📊 Visão anual — mês a mês</h2>
+  <table><tr><th>Mês</th><th>Receitas</th><th>Mensalidades</th><th>Despesas</th><th>Saldo do mês</th><th>Acumulado</th></tr>
+  ${linhasAno.map(m=>`<tr><td><strong>${MESES_NOME[m.i]}</strong></td><td class="ok">${brl(m.rec)}</td><td class="ok">${brl(m.men)}</td><td class="bad">${brl(m.des)}</td><td class="${m.saldo>=0?'ok':'bad'}"><strong>${brl(m.saldo)}</strong></td><td class="${m.acum>=0?'ok':'bad'}"><strong>${brl(m.acum)}</strong></td></tr>`).join('')}
   </table>
-
-  <h2>🧾 Despesas (${ano})</h2>
-  <table><tr><th>Data</th><th>Item</th><th>Categoria</th><th>Valor</th></tr>
-  ${db.despesas.filter(d=>d.data.startsWith(ano)).sort((a,b)=>b.data.localeCompare(a.data)).map(d=>`<tr>
-    <td>${dbr(d.data)}</td><td>${esc(d.item)}</td><td>${esc(d.categoria)}</td><td>${brl(d.valor)}</td></tr>`).join('')}
+  ${seccoes||'<p style="color:#999">Nenhum lançamento no ano.</p>'}`,`Financeiro ${ano} — ${db.config.time}`);
+}
+function pdfMensalidades(){
+  const ano=String(new Date().getFullYear());
+  const mens=db.cobrancas.filter(c=>ehMensal(c)&&c.venc.startsWith(ano));
+  if(!mens.length){toast('Nenhuma mensalidade lançada neste ano');return;}
+  const vPagas=mens.filter(c=>c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
+  const vPend=mens.filter(c=>c.status==='pendente').reduce((s,c)=>s+Number(valorDe(c)),0);
+  const vAtr=mens.filter(c=>c.status==='atrasado').reduce((s,c)=>s+Number(valorDe(c)),0);
+  const isentos=elenco().filter(a=>a.isentoMens);
+  // Por mês
+  const porMes=Array.from({length:12},(_,i)=>{
+    const pf=ano+'-'+String(i+1).padStart(2,'0');
+    const l=mens.filter(c=>c.venc.startsWith(pf));
+    return {i,n:l.length,pagas:l.filter(c=>c.status==='pago').length,
+      rec:l.filter(c=>c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0),
+      aberto:l.filter(c=>c.status!=='pago').reduce((s,c)=>s+Number(valorDe(c)),0)};
+  }).filter(m=>m.n);
+  // Por jogador
+  const chave=c=>c.atletaId||('g:'+(c.convidado||''));
+  const jog={};
+  mens.forEach(c=>{ const k=chave(c); (jog[k]??={nome:c.atletaId?nomeAt(c.atletaId):'🎟️ '+(c.convidado||'Convidado'),pagas:0,pend:0,atr:0,vPago:0,vAberto:0});
+    if(c.status==='pago'){jog[k].pagas++;jog[k].vPago+=Number(valorDe(c));}
+    else{ if(c.status==='atrasado')jog[k].atr++; else jog[k].pend++; jog[k].vAberto+=Number(valorDe(c)); } });
+  const lista=Object.values(jog).sort((a,b)=>b.vAberto-a.vAberto||a.nome.localeCompare(b.nome));
+  abreRelatorio(`<h1>💳 Relatório de Mensalidades</h1>
+  <p class="sub">${esc(db.config.time)} — ano ${ano}</p>
+  <div class="cards">
+    <div class="card"><div class="n">${mens.length}</div><div class="l">Geradas</div></div>
+    <div class="card"><div class="n ok">${brl(vPagas)}</div><div class="l">Recebido</div></div>
+    <div class="card"><div class="n warn">${brl(vPend)}</div><div class="l">A vencer</div></div>
+    <div class="card"><div class="n bad">${brl(vAtr)}</div><div class="l">Em atraso</div></div>
+    <div class="card"><div class="n">${isentos.length}</div><div class="l">Isentos 🧤</div></div>
+  </div>
+  <h2>📅 Por mês</h2>
+  <table><tr><th>Mês</th><th>Geradas</th><th>Pagas</th><th>Recebido</th><th>Em aberto</th><th>Adimplência</th></tr>
+  ${porMes.map(m=>`<tr><td><strong>${MESES_NOME[m.i]}</strong></td><td>${m.n}</td><td>${m.pagas}</td><td class="ok">${brl(m.rec)}</td><td class="${m.aberto?'bad':'ok'}">${brl(m.aberto)}</td><td><strong>${Math.round(m.pagas/m.n*100)}%</strong></td></tr>`).join('')}
   </table>
-
-  <p style="margin-top:30px;text-align:center;color:#666;font-size:12px">Relatório gerado em ${new Date().toLocaleString('pt-BR')}</p>
-  </body></html>`;
-  const blob=new Blob([html],{type:'text/html'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.download=`financeiro-${ano}.html`;
-  a.click();
-  toast('✅ Relatório HTML gerado (abra com navegador para imprimir como PDF)');
+  <h2>👥 Por jogador</h2>
+  <table><tr><th>Jogador</th><th>Pagas</th><th>A vencer</th><th>Atrasadas</th><th>Valor pago</th><th>Em aberto</th><th>Situação</th></tr>
+  ${lista.map(j=>`<tr><td><strong>${esc(j.nome)}</strong></td><td>${j.pagas}</td><td>${j.pend}</td><td>${j.atr}</td><td class="ok">${brl(j.vPago)}</td><td class="${j.vAberto?'bad':'ok'}">${brl(j.vAberto)}</td><td>${j.vAberto?'<span class="bad">Devendo</span>':'<span class="ok">Em dia ✔</span>'}</td></tr>`).join('')}
+  </table>
+  ${isentos.length?`<p style="font-size:12px;color:#777">🧤 Isentos de mensalidade: ${isentos.map(a=>esc(pnome(a.nome))).join(', ')}</p>`:''}`,`Mensalidades ${ano} — ${db.config.time}`);
 }
 function gerarPDFMes(){
   const mes=subState.finMesFilter||hoje().slice(0,7);
