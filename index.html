@@ -1677,28 +1677,35 @@ function lancAoVivo(evId){
         <div style="background:var(--bg3);padding:8px;border-radius:4px;text-align:center">
           <div class="mut">⚽ Gols</div>
           <div style="font-size:20px;font-weight:bold;color:var(--ok)">${t.g}</div>
-          <button class="mini gold" style="margin-top:4px;width:100%" onclick="subState.statsTemp['${evId}']['${a.id}'].g++;renderTab()">+1 Gol</button>
+          <button class="mini gold" style="margin-top:4px;width:100%" onclick="bumpStat('${evId}','${a.id}','g')">+1 Gol</button>
         </div>
         <div style="background:var(--bg3);padding:8px;border-radius:4px;text-align:center">
           <div class="mut">🅰️ Assist</div>
           <div style="font-size:20px;font-weight:bold;color:var(--warn)">${t.as}</div>
-          <button class="mini gold" style="margin-top:4px;width:100%" onclick="subState.statsTemp['${evId}']['${a.id}'].as++;renderTab()">+1 Assist</button>
+          <button class="mini gold" style="margin-top:4px;width:100%" onclick="bumpStat('${evId}','${a.id}','as')">+1 Assist</button>
         </div>
         <div style="background:var(--bg3);padding:8px;border-radius:4px;text-align:center">
           <div class="mut">⚔️ Duelos</div>
           <div style="font-size:20px;font-weight:bold;color:var(--bad)">${t.due}</div>
-          <button class="mini gold" style="margin-top:4px;width:100%" onclick="subState.statsTemp['${evId}']['${a.id}'].due++;renderTab()">+1 Duelo</button>
+          <button class="mini gold" style="margin-top:4px;width:100%" onclick="bumpStat('${evId}','${a.id}','due')">+1 Duelo</button>
         </div>
         <div style="background:var(--bg3);padding:8px;border-radius:4px;text-align:center">
           <div class="mut">🎯 Passes</div>
           <div style="font-size:20px;font-weight:bold">${t.pas}</div>
-          <button class="mini gold" style="margin-top:4px;width:100%" onclick="subState.statsTemp['${evId}']['${a.id}'].pas++;renderTab()">+1 Passe</button>
+          <button class="mini gold" style="margin-top:4px;width:100%" onclick="bumpStat('${evId}','${a.id}','pas')">+1 Passe</button>
         </div>
       </div>
     </div>`;
   }).join('')}
   <button style="margin-top:14px;padding:12px;font-weight:700;background:var(--ok);color:white;border:none;border-radius:4px;cursor:pointer" onclick="salvaStatsAoVivo('${evId}')">💾 Salvar Todos</button>
   </div>`;
+}
+function bumpStat(evId,atId,campo){
+  subState.statsTemp??={};
+  const ev=subState.statsTemp[evId]??={};
+  const t=ev[atId]??={g:0,as:0,due:0,pas:0};
+  t[campo]++;
+  renderTab();
 }
 function adicionaConvidadoDesemp(){
   const nome=fval('nome_conv')||'';
