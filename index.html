@@ -1700,6 +1700,24 @@ function lancAoVivo(evId){
   <button style="margin-top:14px;padding:12px;font-weight:700;background:var(--ok);color:white;border:none;border-radius:4px;cursor:pointer" onclick="salvaStatsAoVivo('${evId}')">💾 Salvar Todos</button>
   </div>`;
 }
+function pdfTotaisTemporada(){
+  const cats=[{k:'todos',t:'🌐 Geral — tudo somado'},{k:'jogo',t:'🏆 Jogos oficiais'},{k:'amistoso',t:'🤝 Amistosos'},{k:'treino',t:'🏃 Treinos'}];
+  const tipoDe=id=>{const e=byId(db.eventos,id);return e?e.tipo:'';};
+  const secoes=cats.map(c=>{
+    const agg={};
+    db.stats.filter(s=>s.atletaId&&(c.k==='todos'||tipoDe(s.eventoId)===c.k)).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,pas:0,j:0,notas:[]};
+      a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.pas+=+s.passes||0; a.j++; if(s.nota)a.notas.push(+s.nota); });
+    const linhas=Object.entries(agg).sort((x,y)=>y[1].g-x[1].g||y[1].as-x[1].as||nomeAt(x[0]).localeCompare(nomeAt(y[0])));
+    if(!linhas.length)return '';
+    return `<div class="mes"><h2>${c.t}</h2>
+    <table><tr><th>Atleta</th><th>Partidas</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>Passes</th><th>Nota média</th></tr>
+    ${linhas.map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td>${a.j}</td><td>${a.g}</td><td>${a.as}</td><td>${a.ca}</td><td>${a.cv}</td><td>${a.des}</td><td>${a.due}</td><td>${a.pas}</td><td>${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join('')}</table></div>`;
+  }).join('');
+  if(!secoes){toast('Nenhuma estatística lançada ainda');return;}
+  abreRelatorio(`<h1>📊 Totais da Temporada</h1>
+  <p class="sub">${esc(db.config.time)} — visão geral e separada por categoria · ordenado por gols e assistências</p>
+  ${secoes}`,`Totais da temporada — ${db.config.time}`);
+}
 function bumpStat(evId,atId,campo){
   subState.statsTemp??={};
   const ev=subState.statsTemp[evId]??={};
@@ -1767,7 +1785,7 @@ function tDesemp(){
     <div class="card"><h2>🛡️ Desarmes</h2>${rank(a=>a.des)}</div>
     <div class="card"><h2>⚔️ Duelos vencidos</h2>${rank(a=>a.due)}</div>
   </div>
-  <div class="card"><h2>📊 Totais da temporada ${cat==='jogo'?'<span class="pill p-gold">🏆 oficiais</span>':cat==='amistoso'?'<span class="pill p-warn">🤝 amistosos</span>':cat==='treino'?'<span class="pill p-mut">🏃 treinos</span>':''}</h2>
+  <div class="card"><div class="spread"><h2 style="margin:0">📊 Totais da temporada ${cat==='jogo'?'<span class="pill p-gold">🏆 oficiais</span>':cat==='amistoso'?'<span class="pill p-warn">🤝 amistosos</span>':cat==='treino'?'<span class="pill p-mut">🏃 treinos</span>':''}</h2><button class="mini gold" onclick="pdfTotaisTemporada()">📄 PDF completo</button></div>
   <div class="tblwrap"><table class="cardz"><tr><th>Atleta</th><th>Partidas</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>Passes</th><th>Nota média</th></tr>
   ${Object.keys(agg).length?Object.entries(agg).map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td data-l="Partidas">${a.j}</td><td data-l="Gols">${a.g}</td><td data-l="Assist.">${a.as}</td><td data-l="🟨 Amarelos">${a.ca}</td><td data-l="🟥 Vermelhos">${a.cv}</td><td data-l="Desarmes">${a.des}</td><td data-l="Duelos">${a.due}</td><td data-l="Passes">${a.pas}</td><td data-l="Nota média">${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join(''):'<tr><td colspan="10" class="mut">Nenhuma estatística lançada ainda.</td></tr>'}</table></div>
   ${Object.keys(agg).length?`<button class="sec mini" style="margin-top:12px" onclick="csvStats()">⬇ Baixar estatísticas (CSV)</button>`:''}</div>`;
