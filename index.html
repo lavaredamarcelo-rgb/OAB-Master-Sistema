@@ -282,7 +282,7 @@ async function carregaTudo(){
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,origem:c.origem||'',lote:c.origem_lote||''}));
   db.avaliacoes=avaliacoes.map(v=>({id:v.id,atletaId:v.atleta_id,data:String(v.data),peso:v.peso,altura:v.altura,gordura:v.gordura,vo2:v.vo2,notas:v.notas}));
   db.metas=metas.map(m=>({id:m.id,atletaId:m.atleta_id,desc:m.descricao,prazo:m.prazo?String(m.prazo):'',status:m.status}));
-  db.stats=stats.map(s=>({id:s.id,eventoId:s.evento_id,atletaId:s.atleta_id,minutos:s.minutos,gols:s.gols,assist:s.assist,amarelos:s.amarelos,vermelho:s.vermelho,desarmes:s.desarmes,duelos:s.duelos,passes:s.passes,nota:s.nota,obs:s.obs}));
+  db.stats=stats.map(s=>({id:s.id,eventoId:s.evento_id,atletaId:s.atleta_id,minutos:s.minutos,gols:s.gols,assist:s.assist,amarelos:s.amarelos,vermelho:s.vermelho,desarmes:s.desarmes,duelos:s.duelos,passes:s.passes,antecipacao:s.antecipacao||0,duelosAereos:s.duelos_aereos||0,chutesGol:s.chutes_gol||0,defesas:s.defesas||0,passesErrados:s.passes_errados||0,nota:s.nota,obs:s.obs}));
   db.uniformes=uniformes.map(u=>({id:u.id,descricao:u.descricao,numero:u.numero,tamanho:u.tamanho,status:u.status,atletaId:u.atleta_id,entregueEm:u.entregue_em,aceitoEm:u.aceito_em,pecas:u.pecas||{camisa:'estoque',short:'estoque',meiao:'estoque'},fornecedor:u.fornecedor||'',convidado:u.convidado||'',convFone:u.convidado_fone||'',goleiro:!!u.goleiro,cor:u.cor||''}));
   db.inventario=inventario.map(i=>({id:i.id,nome:i.nome,cat:i.cat,qtd:i.qtd,marca:i.marca||'',cor:i.cor||'',material:i.material||'',obs:i.obs||'',fotoUrl:i.foto_url||'',emprestimos:i.emprestimos||[]}));
   const mapDoc=d=>({id:d.id,atletaId:d.atleta_id,categoria:d.categoria,nome:d.nome,path:d.path,mime:d.mime,tam:d.tam,quem:d.quem,quando:fdt(d.quando)});
@@ -1674,26 +1674,12 @@ function lancAoVivo(evId){
         ${!isConv?`<button class="mini sec" onclick="formStat('${evId}','${a.id}')">📝 Detalhe</button>`:``}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+        ${[['g','⚽ Gols','var(--ok)'],['as','🅰️ Assist','var(--warn)'],['due','⚔️ Duelos','var(--bad)'],['da','🦅 Aéreos','var(--ink)'],['ant','🧠 Antecip.','var(--ink)'],['ch','🎯 Chutes gol','var(--ok)'],['df','🧤 Defesas','var(--gold)'],['pe','❌ P. errados','var(--bad)']].map(([k,lbl,cor])=>`
         <div style="background:var(--bg3);padding:8px;border-radius:4px;text-align:center">
-          <div class="mut">⚽ Gols</div>
-          <div style="font-size:20px;font-weight:bold;color:var(--ok)">${t.g}</div>
-          <button class="mini gold" style="margin-top:4px;width:100%" onclick="bumpStat('${evId}','${a.id}','g')">+1 Gol</button>
-        </div>
-        <div style="background:var(--bg3);padding:8px;border-radius:4px;text-align:center">
-          <div class="mut">🅰️ Assist</div>
-          <div style="font-size:20px;font-weight:bold;color:var(--warn)">${t.as}</div>
-          <button class="mini gold" style="margin-top:4px;width:100%" onclick="bumpStat('${evId}','${a.id}','as')">+1 Assist</button>
-        </div>
-        <div style="background:var(--bg3);padding:8px;border-radius:4px;text-align:center">
-          <div class="mut">⚔️ Duelos</div>
-          <div style="font-size:20px;font-weight:bold;color:var(--bad)">${t.due}</div>
-          <button class="mini gold" style="margin-top:4px;width:100%" onclick="bumpStat('${evId}','${a.id}','due')">+1 Duelo</button>
-        </div>
-        <div style="background:var(--bg3);padding:8px;border-radius:4px;text-align:center">
-          <div class="mut">🎯 Passes</div>
-          <div style="font-size:20px;font-weight:bold">${t.pas}</div>
-          <button class="mini gold" style="margin-top:4px;width:100%" onclick="bumpStat('${evId}','${a.id}','pas')">+1 Passe</button>
-        </div>
+          <div class="mut">${lbl}</div>
+          <div style="font-size:20px;font-weight:bold;color:${cor}">${t[k]||0}</div>
+          <button class="mini gold" style="margin-top:4px;width:100%" onclick="bumpStat('${evId}','${a.id}','${k}')">+1</button>
+        </div>`).join('')}
       </div>
     </div>`;
   }).join('')}
@@ -1705,13 +1691,13 @@ function pdfTotaisTemporada(){
   const tipoDe=id=>{const e=byId(db.eventos,id);return e?e.tipo:'';};
   const secoes=cats.map(c=>{
     const agg={};
-    db.stats.filter(s=>s.atletaId&&(c.k==='todos'||tipoDe(s.eventoId)===c.k)).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,pas:0,j:0,notas:[]};
-      a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.pas+=+s.passes||0; a.j++; if(s.nota)a.notas.push(+s.nota); });
+    db.stats.filter(s=>s.atletaId&&(c.k==='todos'||tipoDe(s.eventoId)===c.k)).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,j:0,notas:[]};
+      a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.j++; if(s.nota)a.notas.push(+s.nota); });
     const linhas=Object.entries(agg).sort((x,y)=>y[1].g-x[1].g||y[1].as-x[1].as||nomeAt(x[0]).localeCompare(nomeAt(y[0])));
     if(!linhas.length)return '';
     return `<div class="mes"><h2>${c.t}</h2>
-    <table><tr><th>Atleta</th><th>Partidas</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>Passes</th><th>Nota média</th></tr>
-    ${linhas.map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td>${a.j}</td><td>${a.g}</td><td>${a.as}</td><td>${a.ca}</td><td>${a.cv}</td><td>${a.des}</td><td>${a.due}</td><td>${a.pas}</td><td>${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join('')}</table></div>`;
+    <table><tr><th>Atleta</th><th>Partidas</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>🦅 Aéreos</th><th>🧠 Antecip.</th><th>🎯 Chutes</th><th>🧤 Defesas</th><th>❌ P. errados</th><th>Nota média</th></tr>
+    ${linhas.map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td>${a.j}</td><td>${a.g}</td><td>${a.as}</td><td>${a.ca}</td><td>${a.cv}</td><td>${a.des}</td><td>${a.due}</td><td>${a.da}</td><td>${a.ant}</td><td>${a.ch}</td><td>${a.df}</td><td>${a.pe}</td><td>${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join('')}</table></div>`;
   }).join('');
   if(!secoes){toast('Nenhuma estatística lançada ainda');return;}
   abreRelatorio(`<h1>📊 Totais da Temporada</h1>
@@ -1721,8 +1707,8 @@ function pdfTotaisTemporada(){
 function bumpStat(evId,atId,campo){
   subState.statsTemp??={};
   const ev=subState.statsTemp[evId]??={};
-  const t=ev[atId]??={g:0,as:0,due:0,pas:0};
-  t[campo]++;
+  const t=ev[atId]??={};
+  t[campo]=(t[campo]||0)+1;
   renderTab();
 }
 function adicionaConvidadoDesemp(){
@@ -1733,22 +1719,31 @@ function adicionaConvidadoDesemp(){
   $('nome_conv').value='';
   renderTab();
 }
-function salvaStatsAoVivo(evId){
+async function salvaStatsAoVivo(evId){
   const temp=subState.statsTemp?.[evId]||{};
   if(!Object.keys(temp).length){toast('Nenhuma estatística para salvar');return;}
-  Object.entries(temp).forEach(async ([atId,stats])=>{
-    if(String(atId).startsWith('conv_')){
-      const idx=Number(atId.split('_')[1]);
-      const nomeConv=subState.convidadosDesemp?.[idx];
-      await q(sb.from('stats').insert({evento_id:evId,atleta_id:null,convidado:nomeConv,gols:stats.g||0,assist:stats.as||0,duelos:stats.due||0,passes:stats.pas||0}));
-    }else{
-      await q(sb.from('stats').upsert({evento_id:evId,atleta_id:atId,gols:stats.g||0,assist:stats.as||0,duelos:stats.due||0,passes:stats.pas||0},{onConflict:'evento_id,atleta_id'}));
+  const NOVOS=['antecipacao','duelos_aereos','chutes_gol','defesas','passes_errados'];
+  let semNovos=false;
+  const monta=st=>{ const d={gols:st.g||0,assist:st.as||0,duelos:st.due||0,antecipacao:st.ant||0,duelos_aereos:st.da||0,chutes_gol:st.ch||0,defesas:st.df||0,passes_errados:st.pe||0};
+    if(semNovos)NOVOS.forEach(k=>delete d[k]); return d; };
+  const grava=async(atId,st)=>{
+    const dados=monta(st);
+    const op=()=>String(atId).startsWith('conv_')
+      ?sb.from('stats').insert({evento_id:evId,atleta_id:null,convidado:subState.convidadosDesemp?.[Number(atId.split('_')[1])],...dados})
+      :sb.from('stats').upsert({evento_id:evId,atleta_id:atId,...dados},{onConflict:'evento_id,atleta_id'});
+    let {error}=await op();
+    if(error&&/antecipacao|duelos_aereos|chutes_gol|defesas|passes_errados/.test(error.message||'')){
+      semNovos=true;
+      const {error:e2}=await grava(atId,st)||{}; if(e2)throw e2; return;
     }
-  });
+    if(error)throw error;
+  };
+  try{ for(const [atId,st] of Object.entries(temp)) await grava(atId,st); }
+  catch(e){ toast('⚠️ '+e.message); return; }
   delete subState.statsTemp[evId];
   subState.convidadosDesemp=[];
-  recarrega();
-  toast('✅ Estatísticas salvas ao vivo!');
+  await recarrega();
+  toast(semNovos?'⚠️ Salvo sem os itens novos — rode o SQL v11 no Supabase':'✅ Estatísticas salvas ao vivo!');
 }
 function tDesemp(){
   const jogos=db.eventos.filter(e=>['jogo','amistoso','treino'].includes(e.tipo)).sort((a,b)=>b.data.localeCompare(a.data));
@@ -1759,8 +1754,8 @@ function tDesemp(){
   const cat=subState.despCat||'todos';
   const catDe=evId=>{const e=byId(db.eventos,evId);return e?e.tipo:'';};
   const agg={};
-  db.stats.filter(s=>cat==='todos'||catDe(s.eventoId)===cat).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,pas:0,j:0,notas:[]};
-    a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.pas+=+s.passes||0; a.j++; if(s.nota)a.notas.push(+s.nota); });
+  db.stats.filter(s=>cat==='todos'||catDe(s.eventoId)===cat).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,j:0,notas:[]};
+    a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.j++; if(s.nota)a.notas.push(+s.nota); });
   const catBtn=(v,lbl)=>`<button class="mini ${cat===v?'':'sec'}" onclick="subState.despCat='${v}';renderTab()">${lbl}</button>`;
   const filtroCat=`<div class="row sect" style="gap:6px;flex-wrap:wrap"><span class="mut" style="font-size:12px;align-self:center">Estatísticas de:</span>
     ${catBtn('todos','🌐 Tudo')}${catBtn('jogo','🏆 Oficiais')}${catBtn('amistoso','🤝 Amistosos')}${catBtn('treino','🏃 Treinos')}</div>`;
@@ -1768,10 +1763,11 @@ function tDesemp(){
     .map((r,i)=>`<div class="alertline" style="background:var(--bg)"><span class="medal">${['🥇','🥈','🥉','4º','5º'][i]}</span><span style="flex:1">${esc(nomeAt(r.id))}</span><strong>${fmt?fmt(r.v):r.v}</strong></div>`).join('')||'<p class="mut">Sem registros.</p>';
   let lanc='<p class="mut">Cadastre um jogo na Agenda para lançar estatísticas.</p>';
   if(sel){
-    lanc=`<div class="tblwrap"><table><tr><th>Atleta</th><th>⚽ Gols</th><th>🅰️ Assist.</th><th>🟨</th><th>🟥</th><th>🛡️ Desarmes</th><th>⚔️ Duelos</th><th>Passes</th><th>Nota</th>${podeEditar?'<th></th>':''}</tr>
+    lanc=`<div class="tblwrap"><table><tr><th>Atleta</th><th>⚽</th><th>🅰️</th><th>🟨</th><th>🟥</th><th>🛡️</th><th>⚔️</th><th>🦅</th><th>🧠</th><th>🎯</th><th>🧤</th><th>❌</th><th>Nota</th>${podeEditar?'<th></th>':''}</tr>
     ${ats.map(a=>{ const s=statDe(sel,a.id)||{};
-      return `<tr><td>${esc(a.nome)}</td><td>${s.gols??'—'}</td><td>${s.assist??'—'}</td><td>${s.amarelos??'—'}</td><td>${s.vermelho?'1':'—'}</td><td>${s.desarmes??'—'}</td><td>${s.duelos??'—'}</td><td>${s.passes??'—'}</td><td>${s.nota?`<strong>${s.nota}</strong>`:'—'}</td>
-      ${podeEditar?`<td><button class="mini sec" onclick="formStat('${sel}','${a.id}')">✏️ Lançar</button></td>`:''}</tr>`; }).join('')}</table></div>`;
+      return `<tr><td>${esc(a.nome)}</td><td>${s.gols??'—'}</td><td>${s.assist??'—'}</td><td>${s.amarelos??'—'}</td><td>${s.vermelho?'1':'—'}</td><td>${s.desarmes??'—'}</td><td>${s.duelos??'—'}</td><td>${s.duelosAereos||'—'}</td><td>${s.antecipacao||'—'}</td><td>${s.chutesGol||'—'}</td><td>${s.defesas||'—'}</td><td>${s.passesErrados||'—'}</td><td>${s.nota?`<strong>${s.nota}</strong>`:'—'}</td>
+      ${podeEditar?`<td><button class="mini sec" onclick="formStat('${sel}','${a.id}')">✏️ Lançar</button></td>`:''}</tr>`; }).join('')}</table></div>
+    <p class="mut" style="margin-top:6px;font-size:12px">Legenda: ⚽ gols · 🅰️ assistências · 🛡️ desarmes · ⚔️ duelos · 🦅 duelos aéreos · 🧠 antecipações · 🎯 chutes no gol · 🧤 defesas · ❌ passes errados</p>`;
   }
   return `<div class="card sect"><div class="spread"><label style="margin-top:0">Jogo / amistoso / treino</label><div style="gap:8px;display:flex">${podeEditar?`<button class="mini ${modeLancAV?'on':'gold'}" onclick="subState.modeLancAV=!subState.modeLancAV;renderTab()">⚡ Rápido</button>`:''}<button class="mini gold" onclick="artePosJogo()">🎨 Arte pós-jogo</button></div></div>
   <select onchange="subState.despEv=this.value;renderTab()">${jogos.length?jogos.map(j=>`<option value="${j.id}" ${j.id===sel?'selected':''}>${tipoEvIco(j.tipo)} ${dbr(j.data)} — ${esc(j.titulo)}</option>`).join(''):'<option value="">— nenhum jogo cadastrado —</option>'}</select>
@@ -1784,10 +1780,23 @@ function tDesemp(){
     <div class="card"><h2>🟨🟥 Cartões</h2>${rank(a=>a.ca+a.cv*2)}</div>
     <div class="card"><h2>🛡️ Desarmes</h2>${rank(a=>a.des)}</div>
     <div class="card"><h2>⚔️ Duelos vencidos</h2>${rank(a=>a.due)}</div>
+    <div class="card"><h2>🦅 Duelos aéreos</h2>${rank(a=>a.da)}</div>
+    <div class="card"><h2>🧠 Antecipações</h2>${rank(a=>a.ant)}</div>
+    <div class="card"><h2>🎯 Chutes no gol</h2>${rank(a=>a.ch)}</div>
+    <div class="card"><h2>🧤 Defesas</h2>${rank(a=>a.df)}</div>
   </div>
   <div class="card"><div class="spread"><h2 style="margin:0">📊 Totais da temporada ${cat==='jogo'?'<span class="pill p-gold">🏆 oficiais</span>':cat==='amistoso'?'<span class="pill p-warn">🤝 amistosos</span>':cat==='treino'?'<span class="pill p-mut">🏃 treinos</span>':''}</h2><button class="mini gold" onclick="pdfTotaisTemporada()">📄 PDF completo</button></div>
-  <div class="tblwrap"><table class="cardz"><tr><th>Atleta</th><th>Partidas</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>Passes</th><th>Nota média</th></tr>
-  ${Object.keys(agg).length?Object.entries(agg).map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td data-l="Partidas">${a.j}</td><td data-l="Gols">${a.g}</td><td data-l="Assist.">${a.as}</td><td data-l="🟨 Amarelos">${a.ca}</td><td data-l="🟥 Vermelhos">${a.cv}</td><td data-l="Desarmes">${a.des}</td><td data-l="Duelos">${a.due}</td><td data-l="Passes">${a.pas}</td><td data-l="Nota média">${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join(''):'<tr><td colspan="10" class="mut">Nenhuma estatística lançada ainda.</td></tr>'}</table></div>
+  ${Object.keys(agg).length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:10px;margin-top:10px">
+  ${Object.entries(agg).sort((x,y)=>y[1].g-x[1].g||y[1].as-x[1].as).map(([id,a])=>{
+    const nota=a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):null;
+    const chips=[['⚽','Gols',a.g],['🅰️','Assist.',a.as],['🎯','Chutes',a.ch],['🛡️','Desarmes',a.des],['⚔️','Duelos',a.due],['🦅','Aéreos',a.da],['🧠','Antecip.',a.ant],['🧤','Defesas',a.df],['❌','P. err.',a.pe],['🟨','Cartões',a.ca+a.cv]];
+    return `<div style="background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px">
+      <div class="spread" style="margin-bottom:8px;gap:6px"><strong>${esc(pnome(nomeAt(id)))}</strong>
+        <span style="white-space:nowrap">${nota?`<span class="pill p-gold">⭐ ${nota}</span> `:''}<span class="pill p-mut">${a.j} part.</span></span></div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;text-align:center">
+        ${chips.map(([ic,lb,v])=>`<div style="background:var(--bg);border-radius:8px;padding:6px 2px${v>0?'':';opacity:.45'}"><div style="font-size:13px;line-height:1">${ic}</div><div style="font-weight:800;font-size:15px;line-height:1.3">${v}</div><div class="mut" style="font-size:8.5px;text-transform:uppercase;letter-spacing:.02em">${lb}</div></div>`).join('')}
+      </div></div>`;
+  }).join('')}</div>`:'<p class="mut">Nenhuma estatística lançada ainda.</p>'}
   ${Object.keys(agg).length?`<button class="sec mini" style="margin-top:12px" onclick="csvStats()">⬇ Baixar estatísticas (CSV)</button>`:''}</div>`;
 }
 function formStat(evId,atId){
@@ -1800,7 +1809,11 @@ function formStat(evId,atId){
   <div><label>🟨 Amarelos</label><select id="st_ca"><option value="0" ${!s.amarelos?'selected':''}>0</option><option value="1" ${s.amarelos==1?'selected':''}>1</option><option value="2" ${s.amarelos==2?'selected':''}>2</option></select></div>
   <div><label>🛡️ Desarmes</label><input id="st_d" type="number" value="${s.desarmes??''}"></div>
   <div><label>⚔️ Duelos vencidos</label><input id="st_du" type="number" value="${s.duelos??''}"></div>
-  <div><label>Passes certos</label><input id="st_p" type="number" value="${s.passes??''}"></div>
+  <div><label>🦅 Duelos aéreos</label><input id="st_da" type="number" value="${s.duelosAereos??''}"></div>
+  <div><label>🧠 Antecipações</label><input id="st_ant" type="number" value="${s.antecipacao??''}"></div>
+  <div><label>🎯 Chutes no gol</label><input id="st_ch" type="number" value="${s.chutesGol??''}"></div>
+  <div><label>🧤 Defesas (goleiro)</label><input id="st_df" type="number" value="${s.defesas??''}"></div>
+  <div><label>❌ Passes errados</label><input id="st_pe" type="number" value="${s.passesErrados??''}"></div>
   <div><label>Nota (0–10)</label><input id="st_n" type="number" step="0.5" min="0" max="10" value="${s.nota??''}"></div>
   </div>
   <div class="row" style="margin-top:8px"><input type="checkbox" id="st_cv" ${s.vermelho?'checked':''} style="width:auto"><span>🟥 Expulso (cartão vermelho)</span></div>
@@ -1809,7 +1822,14 @@ function formStat(evId,atId){
 }
 async function salvaStat(evId,atId){
   const n=v=>v===''?null:Number(v);
-  await q(sb.from('stats').upsert({evento_id:evId,atleta_id:atId,minutos:n(fval('st_min')),gols:n(fval('st_g'))||0,assist:n(fval('st_a'))||0,amarelos:Number(fval('st_ca'))||0,vermelho:$('st_cv').checked,desarmes:n(fval('st_d'))||0,duelos:n(fval('st_du'))||0,passes:n(fval('st_p'))||0,nota:n(fval('st_n')),obs:fval('st_obs')},{onConflict:'evento_id,atleta_id'}));
+  let dados={evento_id:evId,atleta_id:atId,minutos:n(fval('st_min')),gols:n(fval('st_g'))||0,assist:n(fval('st_a'))||0,amarelos:Number(fval('st_ca'))||0,vermelho:$('st_cv').checked,desarmes:n(fval('st_d'))||0,duelos:n(fval('st_du'))||0,antecipacao:n(fval('st_ant'))||0,duelos_aereos:n(fval('st_da'))||0,chutes_gol:n(fval('st_ch'))||0,defesas:n(fval('st_df'))||0,passes_errados:n(fval('st_pe'))||0,nota:n(fval('st_n')),obs:fval('st_obs')};
+  let {error}=await sb.from('stats').upsert(dados,{onConflict:'evento_id,atleta_id'});
+  if(error&&/antecipacao|duelos_aereos|chutes_gol|defesas|passes_errados/.test(error.message||'')){
+    ['antecipacao','duelos_aereos','chutes_gol','defesas','passes_errados'].forEach(k=>delete dados[k]);
+    const {error:e2}=await sb.from('stats').upsert(dados,{onConflict:'evento_id,atleta_id'});
+    if(e2){toast('⚠️ '+e2.message);return;}
+    toast('⚠️ Salvo sem os itens novos — rode o SQL v11 no Supabase para ativá-los');
+  } else if(error){toast('⚠️ '+error.message);return;}
   log('desempenho',`Estatísticas lançadas: ${nomeAt(atId)} (${byId(db.eventos,evId).titulo})`);
   fecha(); await recarrega(); toast('Estatísticas salvas');
 }
@@ -1858,8 +1878,8 @@ async function geraArte(){
   cv.toBlob(bl=>{ baixar('arte-pos-jogo-'+String(ev.data)+'.png',bl,'image/png'); b.disabled=false; fecha(); toast('🎨 Arte gerada! Está nos downloads — compartilhe no grupo'); },'image/png');
 }
 function csvStats(){
-  const linhas=[['Atleta','Jogo','Data','Minutos','Gols','Assistências','Amarelos','Vermelho','Desarmes','Duelos','Passes','Nota','Obs']];
-  db.stats.forEach(s=>{ const e=byId(db.eventos,s.eventoId); linhas.push([nomeAt(s.atletaId),e?e.titulo:'',e?dbr(e.data):'',s.minutos,s.gols,s.assist,s.amarelos,s.vermelho?'sim':'',s.desarmes,s.duelos,s.passes,s.nota,s.obs]); });
+  const linhas=[['Atleta','Jogo','Data','Minutos','Gols','Assistências','Amarelos','Vermelho','Desarmes','Duelos','Duelos aéreos','Antecipações','Chutes no gol','Defesas','Passes errados','Nota','Obs']];
+  db.stats.forEach(s=>{ const e=byId(db.eventos,s.eventoId); linhas.push([nomeAt(s.atletaId),e?e.titulo:'',e?dbr(e.data):'',s.minutos,s.gols,s.assist,s.amarelos,s.vermelho?'sim':'',s.desarmes,s.duelos,s.duelosAereos,s.antecipacao,s.chutesGol,s.defesas,s.passesErrados,s.nota,s.obs]); });
   csv('desempenho-time.csv',linhas);
 }
 
