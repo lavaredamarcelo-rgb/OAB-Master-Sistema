@@ -2542,11 +2542,30 @@ function tPres(){
         <button class="mini gold" onclick="adicionaConvidadoPres()">Adicionar</button>
       </div>
     </div>
-    <div style="margin-top:14px" class="tblwrap"><table class="cardz"><tr><th>Atleta</th><th>Situação</th></tr>${todosAtletas.map(a=>{
-      const isConv=String(a.id).startsWith('conv_');
-      const p=db.presencas.find(x=>x.eventoId===sel&&(isConv?!x.atletaId&&x.convidado===a.nome:x.atletaId===a.id));
-      return `<tr><td>${esc(a.nome)}${isConv?` <span class="pill p-warn" style="font-size:10px">Convidado</span>`:''}</td><td><div class="row">${opts.map(o=>`<button class="mini ${p&&p.status===o?(o==='presente'?'':o==='falta'?'bad':'warn'):'sec'}" onclick="marca('${sel}','${a.id}','${o}')">${lbl[o]}</button>`).join('')}</div></td></tr>`;
-    }).join('')}</table></div></div>`:'<div class="card sect"><p class="mut">Cadastre compromissos na Agenda para fazer a chamada.</p></div>';
+    ${(()=>{
+      const busca=a=>{const isConv=String(a.id).startsWith('conv_');return db.presencas.find(x=>x.eventoId===sel&&(isConv?!x.atletaId&&x.convidado===a.nome:x.atletaId===a.id));};
+      const ordem=p=>!p?4:p.status==='presente'?0:p.status==='atraso'?1:p.status==='justificada'?2:3;
+      const linhas=todosAtletas.map(a=>({a,p:busca(a),isConv:String(a.id).startsWith('conv_')}))
+        .sort((x,y)=>ordem(x.p)-ordem(y.p)||x.a.nome.localeCompare(y.a.nome));
+      const nP=linhas.filter(x=>x.p&&x.p.status==='presente').length, nA=linhas.filter(x=>x.p&&x.p.status==='atraso').length,
+            nF=linhas.filter(x=>x.p&&x.p.status==='falta').length, nJ=linhas.filter(x=>x.p&&x.p.status==='justificada').length,
+            nS=linhas.filter(x=>!x.p).length;
+      const ico={presente:'✅',atraso:'⏰',falta:'❌',justificada:'📝'};
+      const fundo={presente:'var(--ok-soft)',atraso:'var(--warn-soft)',falta:'var(--bad-soft)',justificada:'var(--warn-soft)'};
+      return `<div class="row" style="margin-top:12px;gap:6px;flex-wrap:wrap">
+        <span class="pill p-ok">✅ ${nP} presente${nP===1?'':'s'}</span>
+        <span class="pill p-warn">⏰ ${nA} atraso${nA===1?'':'s'}</span>
+        <span class="pill p-bad">❌ ${nF} falta${nF===1?'':'s'}</span>
+        <span class="pill p-warn">📝 ${nJ} justificada${nJ===1?'':'s'}</span>
+        <span class="pill p-mut">⚪ ${nS} sem marcação</span></div>
+      <div style="margin-top:10px">
+      ${linhas.map(({a,p,isConv})=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;background:${p?fundo[p.status]:'var(--bg2)'}">
+        <span style="font-size:16px">${p?ico[p.status]:'⚪'}</span>
+        <strong style="flex:1;min-width:0;overflow-wrap:anywhere">${esc(pnome(a.nome))}${isConv?` <span class="pill p-warn" style="font-size:10px">🎟️</span>`:''}</strong>
+        <div class="row" style="gap:4px;flex-shrink:0">${opts.map(o=>`<button class="mini ${p&&p.status===o?(o==='presente'?'':o==='falta'?'bad':'warn'):'sec'}" style="padding:6px 9px" title="${lbl[o]}" onclick="marca('${sel}','${a.id}','${o}')">${ico[o]}</button>`).join('')}</div>
+      </div>`).join('')}</div>
+      <p class="mut" style="font-size:12px;margin-top:4px">✅ Presente · ⏰ Atraso · ❌ Falta · 📝 Justificada — toque de novo para desmarcar. A lista se reordena: presentes no topo, sem marcação no fim.</p>`;
+    })()}</div>`:'<div class="card sect"><p class="mut">Cadastre compromissos na Agenda para fazer a chamada.</p></div>';
   }
   const rank=ats.map(a=>{
     const ps=db.presencas.filter(p=>p.atletaId===a.id);
