@@ -231,14 +231,15 @@ const pnome=n=>{
   const limpa=x=>String(x).trim().split(/\s+/).filter(w=>!/^(dr\.?|dra\.?|prof\.?|profa\.?)$/i.test(w));
   const p=limpa(n);
   const primeiro=p[0]||String(n).trim();
-  // Desambiguação: se outro membro tem o mesmo primeiro nome, acrescenta o sobrenome
   try{
-    if(db&&db.atletas&&p[1]){
-      const iguais=db.atletas.filter(a=>a&&!a.pendente&&a.nome&&(limpa(a.nome)[0]||'').toLowerCase()===primeiro.toLowerCase());
-      if(iguais.length>1){
-        const ini=p[1][0].toUpperCase();
-        const conflitoInicial=iguais.filter(a=>{const q=limpa(a.nome);return q[1]&&q[1][0].toUpperCase()===ini;}).length>1;
-        return conflitoInicial?primeiro+' '+p[1]:primeiro+' '+ini+'.';
+    if(db&&db.atletas){
+      // 1º: se a pessoa escolheu como quer ser chamada, respeita
+      const eu=db.atletas.find(a=>a&&a.nome&&a.nome.trim()===String(n).trim());
+      if(eu&&eu.apelido)return eu.apelido;
+      // 2º: nomes repetidos ganham o sobrenome inteiro
+      if(p[1]){
+        const iguais=db.atletas.filter(a=>a&&!a.pendente&&a.nome&&(limpa(a.nome)[0]||'').toLowerCase()===primeiro.toLowerCase());
+        if(iguais.length>1)return primeiro+' '+p[1];
       }
     }
   }catch(_){}
@@ -285,7 +286,7 @@ function baixar(nome,conteudo,mime){ const b=conteudo instanceof Blob?conteudo:n
 function log(tipo,texto){ sb.from('logs').insert({tipo,texto,quem:me?me.nome:'sistema'}).then(()=>{}); }
 
 /* ================= CARREGAMENTO ================= */
-function mapAtleta(r){ return {id:r.id,nome:r.nome,fone:r.fone,email:r.email,oab:r.oab,posicao:r.posicao,role:r.role,ativo:r.ativo,pendente:!r.aprovado,fundador:!!r.fundador,cargo:r.cargo||'',cadastroManual:!!r.cadastro_manual,isentoMens:!!r.isento_mensalidade,fotoUrl:r.foto_url||'',
+function mapAtleta(r){ return {id:r.id,nome:r.nome,apelido:r.apelido||'',fone:r.fone,email:r.email,oab:r.oab,posicao:r.posicao,role:r.role,ativo:r.ativo,pendente:!r.aprovado,fundador:!!r.fundador,cargo:r.cargo||'',cadastroManual:!!r.cadastro_manual,isentoMens:!!r.isento_mensalidade,fotoUrl:r.foto_url||'',
   consent:{aceito:r.consent_status==='aceito',recusado:r.consent_status==='recusado',revogado:r.consent_status==='revogado',quando:fdt(r.consent_quando),versao:r.consent_versao||TERMO_LGPD_V},saude:{}}; }
 async function carregaTudo(){
   const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist]=await Promise.all([
@@ -1119,6 +1120,20 @@ function verCardJogador(id){
   <button class="sec" onclick="fecha()">Fechar</button></div>`);
 }
 async function enviaFotoCard(id,inp){ if(await enviaFotoAtleta(id,inp)) verCardJogador(id); }
+function formApelido(){
+  modal(`<h2>✏️ Como você quer ser chamado?</h2>
+  <p class="mut">Esse nome aparece na chamada, nos rankings, no card, nas cobranças — em todo o sistema. Deixe vazio para usar o automático (primeiro nome, com sobrenome se houver xará).</p>
+  <label>Nome de exibição</label><input id="ap_nome" value="${esc(me.apelido||'')}" maxlength="25" placeholder="Ex.: Marcelão, J. Silva, Careca…">
+  <div class="row" style="margin-top:14px"><button onclick="salvaApelido()">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+async function salvaApelido(){
+  const ap=fval('ap_nome')||'';
+  const {error}=await sb.from('perfis').update({apelido:ap}).eq('id',me.id);
+  if(error){toast('⚠️ '+(/apelido/.test(error.message||'')?'Rode o SQL v13 no Supabase para ativar':error.message));return;}
+  log('cadastro',`${me.nome} definiu nome de exibição: ${ap||'(automático)'}`);
+  me.apelido=ap;
+  fecha(); await recarrega(); toast(ap?'✏️ Agora você é '+ap+'!':'Nome de exibição voltou ao automático');
+}
 const CARGOS=['Presidente','Vice-Presidente','Diretor Financeiro','Diretor de Futebol','Diretor Jurídico','Diretor Social','Diretor de Comunicação','Diretor de Patrimônio','Suplente'];
 function formNovoAtletaManual(){
   modal(`<h2>📋 Cadastrar atleta manualmente</h2>
@@ -1155,6 +1170,7 @@ function formAtleta(id){
   modal(`<h2>Editar cadastro</h2>
   ${cadastroManual?`<div class="alertline al-gold sect">📋 Existe um <strong>cadastro manual</strong> com este nome. <button class="mini gold" onclick="vincularManualmente('${id}','${cadastroManual.id}')">🔗 Vincular dados</button></div>`:''}
   <label>Nome completo</label><input id="a_nome" value="${esc(a.nome)}">
+  <label>Como quer ser chamado(a) — nome de exibição (opcional)</label><input id="a_apelido" value="${esc(a.apelido||'')}" placeholder="Ex.: Marcelão, J. Silva, Careca… (vazio = automático)">
   <div class="grid g2">
   <div><label>WhatsApp (com DDD)</label><input id="a_fone" value="${esc(a.fone)}"></div>
   <div><label>Nº OAB — opcional (comissão técnica não precisa)</label><input id="a_oab" value="${esc(a.oab)}"></div>
@@ -1181,10 +1197,16 @@ async function salvaAtleta(id){
   const nome=fval('a_nome'); if(!nome){toast('Informe o nome');return;}
   const a=at(id);
   const isento=$('a_isento')?$('a_isento').checked:false;
-  const patch={nome,fone:fval('a_fone'),oab:fval('a_oab'),posicao:fval('a_pos'),cargo:fval('a_cargo'),isento_mensalidade:isento};
+  const patch={nome,apelido:fval('a_apelido')||'',fone:fval('a_fone'),oab:fval('a_oab'),posicao:fval('a_pos'),cargo:fval('a_cargo'),isento_mensalidade:isento};
   const travaDir=a.role==='diretoria'&&!me.fundador;
   if(!travaDir){ patch.role=fval('a_role')||a.role; patch.ativo=$('a_ativo').checked; }
-  await q(sb.from('perfis').update(patch).eq('id',id));
+  let {error}=await sb.from('perfis').update(patch).eq('id',id);
+  if(error&&/apelido/.test(error.message||'')){
+    delete patch.apelido;
+    const {error:e2}=await sb.from('perfis').update(patch).eq('id',id);
+    if(e2){toast('⚠️ '+e2.message);return;}
+    toast('⚠️ Salvo sem o apelido — rode o SQL v13 no Supabase');
+  } else if(error){toast('⚠️ '+error.message);return;}
   log('cadastro',`Cadastro atualizado: ${nome}`);
   // Se acabou de ficar isento, oferece limpar as mensalidades em aberto
   const abertas=isento?db.cobrancas.filter(c=>c.atletaId===id&&ehMensal(c)&&c.status!=='pago'):[];
@@ -5553,8 +5575,9 @@ function tMeu(){
       <div class="row"><button class="mini ${(subState.cardEstilo||'ouro')==='ouro'?'':'sec'}" onclick="subState.cardEstilo='ouro';renderTab()">🏆 Dourado</button>
       <button class="mini ${subState.cardEstilo==='clube'?'':'sec'}" onclick="subState.cardEstilo='clube';renderTab()">🛡️ Clube</button></div></div>
     <div style="display:flex;justify-content:center;margin-top:10px">${cardJogador(me)}</div>
-    <div class="row" style="justify-content:center;margin-top:12px">
+    <div class="row" style="justify-content:center;margin-top:12px;flex-wrap:wrap">
       <label class="mini sec" style="cursor:pointer;padding:9px 14px;border:1px solid var(--line);border-radius:10px;display:inline-flex;align-items:center;gap:6px">📸 ${me.fotoUrl?'Trocar minha foto':'Enviar minha foto'}<input type="file" accept="image/*" style="display:none" onchange="enviaFotoAtleta('${me.id}',this)"></label>
+      <button class="mini sec" onclick="formApelido()">✏️ Como quero ser chamado${me.apelido?': '+esc(me.apelido):''}</button>
     </div>
   </div>
   <div class="grid g2">
