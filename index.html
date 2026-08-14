@@ -236,14 +236,10 @@ const pnome=n=>{
       // 1º: se a pessoa escolheu como quer ser chamada, respeita
       const eu=db.atletas.find(a=>a&&a.nome&&a.nome.trim()===String(n).trim());
       if(eu&&eu.apelido)return eu.apelido;
-      // 2º: nomes repetidos ganham o sobrenome inteiro
-      if(p[1]){
-        const iguais=db.atletas.filter(a=>a&&!a.pendente&&a.nome&&(limpa(a.nome)[0]||'').toLowerCase()===primeiro.toLowerCase());
-        if(iguais.length>1)return primeiro+' '+p[1];
-      }
     }
   }catch(_){}
-  return primeiro;
+  // 2º: padrão para todos — nome e sobrenome
+  return p[1]?primeiro+' '+p[1]:primeiro;
 };
 const byId=(arr,id)=>arr.find(x=>x.id===id);
 const at=id=>byId(db.atletas,id);
