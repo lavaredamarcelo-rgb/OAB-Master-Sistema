@@ -1645,37 +1645,69 @@ function lancAoVivo(evId){
   const temp=subState.statsTemp[evId];
   const convidados=subState.convidadosDesemp;
   const todosAtletas=[...ats,...convidados.map((n,i)=>({id:'conv_'+i,nome:n}))];
-  return `<div style="display:grid;gap:12px">
-  <div style="background:var(--bg2);padding:12px;border-radius:8px;border:1px solid var(--border)">
-    <div style="font-weight:500;margin-bottom:8px;display:flex;gap:8px;align-items:center">
-      <span>➕ Adicionar convidado</span>
+  const DEFS=[['g','⚽','Gol'],['as','🅰️','Assist'],['due','⚔️','Duelo'],['da','🦅','Aéreo'],['ant','🧠','Antecip.'],['ch','🎯','Chute'],['df','🧤','Defesa'],['pe','❌','P. err.']];
+  const stat=subState.statAtivo||'g';
+  const defAtivo=DEFS.find(d=>d[0]===stat)||DEFS[0];
+  const totalLanc=Object.values(temp).reduce((s,t)=>s+Object.values(t).reduce((x,v)=>x+(Number(v)||0),0),0);
+  return `<div style="display:grid;gap:10px">
+  <div style="background:var(--bg2);padding:10px 12px;border-radius:10px;border:1px solid var(--line)">
+    <div class="mut" style="font-size:12px;margin-bottom:6px">1️⃣ Escolha o lance:</div>
+    <div class="row" style="gap:5px;flex-wrap:wrap">
+      ${DEFS.map(([k,ic,lb])=>`<button class="mini ${stat===k?'':'sec'}" style="padding:7px 10px" onclick="subState.statAtivo='${k}';renderTab()">${ic} ${lb}</button>`).join('')}
     </div>
-    <div style="display:flex;gap:8px">
-      <input id="nome_conv" placeholder="Ex: João da escolinha" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:4px">
-      <button class="mini gold" onclick="adicionaConvidadoDesemp(event)">Adicionar</button>
-    </div>
+    <div class="mut" style="font-size:12px;margin-top:8px">2️⃣ Toque no atleta para somar <strong>+1 ${defAtivo[1]} ${defAtivo[2]}</strong> · use − para corrigir</div>
   </div>
-  <div style="display:grid;gap:12px">
+  <div>
   ${todosAtletas.map(a=>{
-    const t=temp[a.id]||{g:0,as:0,due:0,pas:0};
+    const t=temp[a.id]||{};
     const isConv=String(a.id).startsWith('conv_');
-    return `<div style="background:var(--bg2);padding:12px;border-radius:8px;border:1px solid var(--border)">
-      <div style="font-weight:500;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
-        <span>${esc(a.nome)}${isConv?` <span class="pill p-warn" style="font-size:10px">Convidado</span>`:''}</span>
-        ${!isConv?`<button class="mini sec" onclick="formStat('${evId}','${a.id}')">📝 Detalhe</button>`:``}
+    const n=Number(t[stat])||0;
+    const chips=DEFS.filter(([k])=>Number(t[k])>0).map(([k,ic])=>`${ic}${t[k]}`).join(' ');
+    return `<div onclick="bumpStat('${evId}','${a.id}','${stat}')" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;background:${n>0?'var(--ok-soft)':'var(--bg2)'};cursor:pointer;user-select:none">
+      <div style="flex:1;min-width:0">
+        <strong style="overflow-wrap:anywhere">${esc(pnome(a.nome))}</strong>${isConv?' <span class="pill p-warn" style="font-size:10px">🎟️</span>':''}
+        ${chips?`<div class="mut" style="font-size:11.5px;margin-top:2px">${chips}</div>`:''}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
-        ${[['g','⚽ Gols','var(--ok)'],['as','🅰️ Assist','var(--warn)'],['due','⚔️ Duelos','var(--bad)'],['da','🦅 Aéreos','var(--ink)'],['ant','🧠 Antecip.','var(--ink)'],['ch','🎯 Chutes gol','var(--ok)'],['df','🧤 Defesas','var(--gold)'],['pe','❌ P. errados','var(--bad)']].map(([k,lbl,cor])=>`
-        <div style="background:var(--bg3);padding:8px;border-radius:4px;text-align:center">
-          <div class="mut">${lbl}</div>
-          <div style="font-size:20px;font-weight:bold;color:${cor}">${t[k]||0}</div>
-          <button class="mini gold" style="margin-top:4px;width:100%" onclick="bumpStat('${evId}','${a.id}','${k}')">+1</button>
-        </div>`).join('')}
-      </div>
+      <span style="font-size:19px;font-weight:800;min-width:34px;text-align:center;color:${n>0?'var(--ok)':'var(--ink2)'}">${defAtivo[1]} ${n}</span>
+      <button class="mini sec" style="padding:6px 10px" onclick="event.stopPropagation();decStat('${evId}','${a.id}','${stat}')">−</button>
     </div>`;
   }).join('')}
-  <button style="margin-top:14px;padding:12px;font-weight:700;background:var(--ok);color:white;border:none;border-radius:4px;cursor:pointer" onclick="salvaStatsAoVivo('${evId}')">💾 Salvar Todos</button>
+  </div>
+  <div style="background:var(--bg2);padding:10px 12px;border-radius:10px;border:1px solid var(--line)">
+    <div class="row" style="gap:8px">
+      <input id="nome_conv" placeholder="➕ Convidado: nome" style="flex:1">
+      <button class="mini gold" onclick="adicionaConvidadoDesemp()">Adicionar</button>
+    </div>
+  </div>
+  <button style="padding:13px;font-weight:700;background:var(--ok);color:white;border:none;border-radius:10px;cursor:pointer" onclick="salvaStatsAoVivo('${evId}')">💾 Salvar Todos${totalLanc?` (${totalLanc} lançamentos)`:''}</button>
   </div>`;
+}
+function decStat(evId,atId,campo){
+  const t=subState.statsTemp?.[evId]?.[atId];
+  if(!t||!t[campo]){toast('Nada para corrigir aqui');return;}
+  t[campo]=Math.max(0,(Number(t[campo])||0)-1);
+  renderTab();
+}
+function pdfFichaJogo(){
+  const ev=byId(db.eventos,subState.despEv);
+  const ats=[...elenco()].sort((a,b)=>a.nome.localeCompare(b.nome));
+  if(!ats.length){toast('Nenhum jogador no elenco');return;}
+  const cols=[['⚽','Gols'],['🅰️','Assist.'],['⚔️','Duelos'],['🦅','Aéreos'],['🧠','Antecip.'],['🎯','Chutes'],['🧤','Defesas'],['❌','P. err.'],['⭐','Nota']];
+  const linhaVazia=n=>`<tr><td style="height:30px">${n||''}</td>${cols.map(()=>'<td></td>').join('')}</tr>`;
+  abreRelatorio(`<h1>📝 Ficha de Jogo — Súmula de Estatísticas</h1>
+  <p class="sub">${esc(db.config.time)}${ev?` — ${tipoEvIco(ev.tipo)} ${esc(ev.titulo)} · ${dbr(ev.data)}${ev.local?' · '+esc(ev.local):''}`:''}</p>
+  <div class="cards">
+    <div class="card" style="min-width:150px"><div class="n" style="border-bottom:2px solid #ccc;min-height:26px"></div><div class="l">Adversário</div></div>
+    <div class="card" style="min-width:90px"><div class="n" style="border-bottom:2px solid #ccc;min-height:26px"></div><div class="l">Placar nós</div></div>
+    <div class="card" style="min-width:90px"><div class="n" style="border-bottom:2px solid #ccc;min-height:26px"></div><div class="l">Placar deles</div></div>
+    <div class="card" style="min-width:110px"><div class="n" style="border-bottom:2px solid #ccc;min-height:26px"></div><div class="l">Data</div></div>
+  </div>
+  <h2>Marque com risquinhos (𝍷) durante o jogo</h2>
+  <table><tr><th>Atleta</th>${cols.map(([ic,lb])=>`<th style="text-align:center">${ic}<br><span style="font-size:9px">${lb}</span></th>`).join('')}</tr>
+  ${ats.map(a=>linhaVazia('<strong>'+esc(pnome(a.nome))+'</strong>')).join('')}
+  ${linhaVazia('🎟️ ____________')}${linhaVazia('🎟️ ____________')}${linhaVazia('🎟️ ____________')}
+  </table>
+  <p style="font-size:11.5px;color:#8a8f99">Depois do jogo, transcreva para o sistema em Desempenho → ⚡ Rápido. As três últimas linhas são para convidados.</p>`,`Ficha de jogo — ${db.config.time}`);
 }
 function pdfTotaisTemporada(){
   const cats=[{k:'todos',t:'🌐 Geral — tudo somado'},{k:'jogo',t:'🏆 Jogos oficiais'},{k:'amistoso',t:'🤝 Amistosos'},{k:'treino',t:'🏃 Treinos'}];
@@ -1760,7 +1792,7 @@ function tDesemp(){
       ${podeEditar?`<td><button class="mini sec" onclick="formStat('${sel}','${a.id}')">✏️ Lançar</button></td>`:''}</tr>`; }).join('')}</table></div>
     <p class="mut" style="margin-top:6px;font-size:12px">Legenda: ⚽ gols · 🅰️ assistências · 🛡️ desarmes · ⚔️ duelos · 🦅 duelos aéreos · 🧠 antecipações · 🎯 chutes no gol · 🧤 defesas · ❌ passes errados</p>`;
   }
-  return `<div class="card sect"><div class="spread"><label style="margin-top:0">Jogo / amistoso / treino</label><div style="gap:8px;display:flex">${podeEditar?`<button class="mini ${modeLancAV?'on':'gold'}" onclick="subState.modeLancAV=!subState.modeLancAV;renderTab()">⚡ Rápido</button>`:''}<button class="mini gold" onclick="artePosJogo()">🎨 Arte pós-jogo</button></div></div>
+  return `<div class="card sect"><div class="spread"><label style="margin-top:0">Jogo / amistoso / treino</label><div style="gap:8px;display:flex">${podeEditar?`<button class="mini ${modeLancAV?'on':'gold'}" onclick="subState.modeLancAV=!subState.modeLancAV;renderTab()">⚡ Rápido</button><button class="mini sec" onclick="pdfFichaJogo()">🖨️ Ficha</button>`:''}<button class="mini gold" onclick="artePosJogo()">🎨 Arte pós-jogo</button></div></div>
   <select onchange="subState.despEv=this.value;renderTab()">${jogos.length?jogos.map(j=>`<option value="${j.id}" ${j.id===sel?'selected':''}>${tipoEvIco(j.tipo)} ${dbr(j.data)} — ${esc(j.titulo)}</option>`).join(''):'<option value="">— nenhum jogo cadastrado —</option>'}</select>
   <div style="margin-top:14px">${modeLancAV&&sel?lancAoVivo(sel):lanc}</div></div>
   ${filtroCat}
