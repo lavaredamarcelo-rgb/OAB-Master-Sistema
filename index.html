@@ -903,6 +903,7 @@ function pdfPosicoes(){
   if(!keys.length){toast('Nenhum jogador cadastrado');return;}
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Elenco por posição — ${esc(db.config.time)}</title>
   <style>
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   body{font-family:Arial,sans-serif;margin:24px;color:#333}
   h1{text-align:center;color:#c41e3a;margin-bottom:2px}
   .sub{text-align:center;color:#777;margin:0 0 18px;font-size:13px}
@@ -2685,6 +2686,7 @@ function pdfFrequencia(){
   const corPct=p=>p>=75?'#28a745':p>=50?'#e0a800':'#c41e3a';
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Frequência — ${esc(db.config.time)}</title>
   <style>
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   body{font-family:Arial,sans-serif;margin:24px;color:#333}
   h1{text-align:center;color:#c41e3a;margin-bottom:2px}
   .sub{text-align:center;color:#777;margin:0 0 18px;font-size:13px}
@@ -3719,7 +3721,8 @@ function tFinRelatorios(){
   </div>
   </div>`;
 }
-const CSS_RELATORIO=`body{font-family:'Segoe UI',Helvetica,Arial,sans-serif;margin:0;padding:24px 28px;color:#2b2f36;background:#fff}
+const CSS_RELATORIO=`*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  body{font-family:'Segoe UI',Helvetica,Arial,sans-serif;margin:0;padding:24px 28px;color:#2b2f36;background:#fff}
   h1{background:linear-gradient(120deg,#B8272D,#6E1013);color:#fff;padding:18px 22px;border-radius:14px;text-align:center;font-size:23px;margin:0 0 6px;letter-spacing:.02em;box-shadow:0 5px 16px rgba(110,16,19,.22)}
   .sub{text-align:center;color:#8a8f99;margin:8px 0 20px;font-size:13px}
   .cards{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:20px}
