@@ -4135,7 +4135,7 @@ function formPagamento(id){
     <button class="mini sec" onclick="$('pg_valor').value='${Math.max(0,Number(c.valor)-jaPago).toFixed(2)}'">Restante valor base (${brl(c.valor)})</button>
   </div>`:''}
   <div class="row" style="margin-top:8px"><input type="checkbox" id="pg_quita" style="width:auto"><span>Dar por <strong>quitada</strong> com este pagamento (ex.: desconto negociado)</span></div>
-  <p class="mut" style="margin-top:6px">💡 Pagou só uma parte? Registre o valor recebido — a cobrança fica <strong>parcial</strong> e o resto você lança depois, em outra data.</p>`:''}
+  <p class="mut" style="margin-top:6px">💡 Pagou só uma parte? Registre o valor recebido — a cobrança fica <strong>parcial</strong> e o resto você lança depois, em outra data.<br>📅 Registrando um pagamento antigo? Use a <strong>data real</strong>: se foi dentro do prazo, vale o valor base, <strong>sem acréscimo</strong>.</p>`:''}
   <div class="row" style="margin-top:14px">
   ${c.status!=='pago'?`<button style="background:var(--ok)" onclick="pagouGo('${id}')">Confirmar pagamento</button>`:''}
   ${c.status==='pago'?`<button class="warn" onclick="desfazPagamento('${id}')">↩ Desfazer pagamento</button>`:''}
@@ -4144,12 +4144,18 @@ function formPagamento(id){
 async function pagouGo(id){
   const c=byId(db.cobrancas,id);
   const valor=Number(fval('pg_valor'))||0, data=fval('pg_data')||hoje(), forma=fval('pg_forma')||'';
-  if(valor<=0){toast('Informe o valor recebido');return;}
-  const pags=[...(c.pagamentos||[]),{data,valor,forma,quem:me.nome}];
+  const quitaChk=$('pg_quita')&&$('pg_quita').checked;
+  const jaTinha=pagoParcial(c);
+  if(valor<=0&&!quitaChk&&jaTinha<=0){toast('Informe o valor recebido');return;}
+  const pags=valor>0?[...(c.pagamentos||[]),{data,valor,forma,quem:me.nome}]:[...(c.pagamentos||[])];
   const totalPago=pags.reduce((s,p)=>s+Number(p.valor||0),0);
-  const quita=($('pg_quita')&&$('pg_quita').checked)||totalPago>=Number(valorDe(c))-0.005;
+  // Pagamento com data dentro do prazo: vale o valor base, sem acréscimo de atraso
+  const dataRef=pags.length?pags[pags.length-1].data:data;
+  const dentroPrazo=String(dataRef)<=String(c.venc);
+  const devido=(ehMensal(c)&&c.status==='atrasado'&&dentroPrazo)?Number(c.valor):Number(valorDe(c));
+  const quita=quitaChk||(totalPago>0&&totalPago>=devido-0.005);
   let dados=quita
-    ?{status:'pago',pago_em:data,valor:totalPago,forma_pagamento:pags.length>1?pags.map(p=>p.forma||'—').join(' + '):forma,pagamentos:pags}
+    ?{status:'pago',pago_em:dataRef,valor:totalPago>0?totalPago:Number(c.valor),forma_pagamento:pags.length>1?pags.map(p=>p.forma||'—').join(' + '):(pags.length?pags[pags.length-1].forma:forma),pagamentos:pags}
     :{pagamentos:pags};
   let {error}=await sb.from('cobrancas').update(dados).eq('id',id);
   if(error&&/pagamentos|forma_pagamento/.test(error.message||'')){
@@ -4161,7 +4167,7 @@ async function pagouGo(id){
   } else if(error){toast('⚠️ '+error.message);return;}
   log('financeiro',`Pagamento ${quita?'registrado':'PARCIAL'}: ${nomeCob(c)} — ${c.desc} (${brl(valor)} em ${dbr(data)}${forma?' via '+forma:''})`);
   fecha(); await recarrega();
-  toast(quita?'Pagamento registrado 💰':'Parcial registrado — restante '+brl(Math.max(0,Number(valorDe(c))-totalPago)));
+  toast(quita?(dentroPrazo&&ehMensal(c)&&c.status==='atrasado'?'Pagamento registrado 💰 — em dia pela data, sem acréscimo':'Pagamento registrado 💰'):'Parcial registrado — restante '+brl(Math.max(0,devido-totalPago)));
 }
 async function removePagamento(id,idx){
   const c=byId(db.cobrancas,id); const pags=[...(c.pagamentos||[])]; const rem=pags.splice(idx,1)[0];
