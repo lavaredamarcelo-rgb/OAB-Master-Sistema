@@ -230,6 +230,25 @@ const pnome=n=>{const p=n.trim().split(/\s+/).filter(w=>!/^(dr\.?|dra\.?|prof\.?
 const byId=(arr,id)=>arr.find(x=>x.id===id);
 const at=id=>byId(db.atletas,id);
 const elenco=()=>db.atletas.filter(a=>a.ativo&&!a.pendente&&(a.role==='atleta'||a.role==='diretoria'));
+/* Frequência POR DIA: treino + amistoso no mesmo dia contam uma vez só,
+   valendo a melhor situação do dia (presente > atraso > justificada > falta) */
+function freqAtleta(atId){
+  const peso={presente:0,atraso:1,justificada:2,falta:3};
+  const porDia={};
+  db.presencas.filter(p=>p.atletaId===atId).forEach(p=>{
+    const e=byId(db.eventos,p.eventoId); if(!e)return;
+    const d=porDia[e.data];
+    const ehJogo=['jogo','amistoso'].includes(e.tipo);
+    if(!d||peso[p.status]<peso[d.status]) porDia[e.data]={status:p.status,jogo:ehJogo||(d?d.jogo:false)};
+    else if(ehJogo) d.jogo=true;
+  });
+  const dias=Object.values(porDia);
+  const cmp=dias.filter(x=>['presente','atraso'].includes(x.status));
+  return {tot:dias.length,cmp:cmp.length,jg:cmp.filter(x=>x.jogo).length,tr:cmp.filter(x=>!x.jogo).length,
+    f:dias.filter(x=>x.status==='falta').length,at:dias.filter(x=>x.status==='atraso').length,
+    j:dias.filter(x=>x.status==='justificada').length,
+    pct:dias.length?Math.round(cmp.length/dias.length*100):null};
+}
 const membros=()=>db.atletas.filter(a=>a.ativo&&!a.pendente);
 const nomeAt=id=>{const a=at(id);return a?a.nome:'(removido)';};
 const kb=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.round(n/1024)+' KB';
@@ -279,7 +298,7 @@ async function carregaTudo(){
   db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),dataFim:e.data_fim?String(e.data_fim):'',hora:e.hora,horaFim:e.hora_fim||'',local:e.local,obs:e.obs,adversario:e.adversario||'',placarNos:e.placar_nos??null,placarDeles:e.placar_deles??null}));
   db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,convidado:p.convidado||null,status:p.status}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
-    status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,origem:c.origem||'',lote:c.origem_lote||''}));
+    status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,forma:c.forma_pagamento||'',origem:c.origem||'',lote:c.origem_lote||''}));
   db.avaliacoes=avaliacoes.map(v=>({id:v.id,atletaId:v.atleta_id,data:String(v.data),peso:v.peso,altura:v.altura,gordura:v.gordura,vo2:v.vo2,notas:v.notas}));
   db.metas=metas.map(m=>({id:m.id,atletaId:m.atleta_id,desc:m.descricao,prazo:m.prazo?String(m.prazo):'',status:m.status}));
   db.stats=stats.map(s=>({id:s.id,eventoId:s.evento_id,atletaId:s.atleta_id,minutos:s.minutos,gols:s.gols,assist:s.assist,amarelos:s.amarelos,vermelho:s.vermelho,desarmes:s.desarmes,duelos:s.duelos,passes:s.passes,antecipacao:s.antecipacao||0,duelosAereos:s.duelos_aereos||0,chutesGol:s.chutes_gol||0,defesas:s.defesas||0,passesErrados:s.passes_errados||0,nota:s.nota,obs:s.obs}));
@@ -303,7 +322,7 @@ async function carregaTudo(){
   db.config={time:cfg.time_nome,pix:cfg.pix,grupo:cfg.grupo,limiteFaltas:cfg.limite_faltas||0,encarregado:cfg.encarregado,encContato:cfg.enc_contato,codigo:cfg.codigo_time,docsObrig:cfg.docs_obrigatorios||[],mensAuto:cfg.mensalidade_auto!==false,mensValor:cfg.mensalidade_valor||130,mensApos:cfg.mensalidade_valor_apos||150,mensDia:cfg.mensalidade_dia||10,avulsoValor:cfg.avulso_valor||30,saldoIni:Number(cfg.saldo_inicial)||0,saldoIniObs:cfg.saldo_inicial_obs||''};
   db.lotes=lotes.map(l=>({id:l.id,nomeArquivo:l.nome_arquivo,versao:l.versao,hash:l.hash_arquivo,dataImport:fdt(l.data_import),dataAtualizacao:l.data_atualizacao?fdt(l.data_atualizacao):'',status:l.status,totalCobracas:l.total_cobracas||0,totalDespesas:l.total_despesas||0,totalEntrada:l.total_entrada||0,totalSaida:l.total_saida||0,notas:l.notas||'',autor:l.autor||'',lotePosteriorId:l.lote_anterior_id||''}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
-    status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,origem:c.origem||'',lote:c.origem_lote||'',importLoteId:c.import_lote_id||'',tipoLancamento:c.tipo_lancamento||'manual',consolidado:c.consolidado||false,pessoa:c.pessoa||'',detalhes:c.detalhes||''}));
+    status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,forma:c.forma_pagamento||'',origem:c.origem||'',lote:c.origem_lote||'',importLoteId:c.import_lote_id||'',tipoLancamento:c.tipo_lancamento||'manual',consolidado:c.consolidado||false,pessoa:c.pessoa||'',detalhes:c.detalhes||''}));
   db.balanco=balancorec.map(r=>({id:r.id,data:String(r.data),tipo:r.tipo,descricao:r.descricao,valor:r.valor,origem:r.origem||'',cobrancaId:r.cobranca_id||'',autor:r.autor||'',quando:fdt(r.quando),pago:r.pago||false,pessoa:r.pessoa||'',detalhes:r.detalhes||''}));
   db.unifHist=unifhist.map(h=>({id:h.id,uniformeId:h.uniforme_id,numero:h.numero,acao:h.acao,atletaId:h.atleta_id||'',nomeConvidado:h.nome_convidado||'',data:String(h.data),notas:h.notas||'',quem:h.quem||'',quando:fdt(h.quando)}));
   db.debitos=[];
@@ -777,7 +796,7 @@ function pendencias(a){
   const atras=cobAb.filter(c=>c.status==='atrasado');
   if(atras.length)P.push({txt:`💰 ${atras.length} pagamento(s) em atraso — ${brl(atras.reduce((s,c)=>s+Number(valorDe(c)),0))}`,tab:'financeiro'});
   else if(cobAb.length)P.push({txt:`💰 ${cobAb.length} cobrança(s) a vencer — ${brl(cobAb.reduce((s,c)=>s+Number(valorDe(c)),0))}`,tab:'financeiro'});
-  const f=db.presencas.filter(p=>p.atletaId===a.id&&p.status==='falta').length;
+  const f=freqAtleta(a.id).f;
   if(db.config.limiteFaltas>0&&f>=db.config.limiteFaltas)P.push({txt:`🚫 ${f} faltas (limite: ${db.config.limiteFaltas})`,tab:'presencas'});
   if(a.role==='atleta'||a.role==='diretoria')db.config.docsObrig.filter(cat=>!db.arquivos.some(d=>d.atletaId===a.id&&d.categoria===cat)).forEach(cat=>P.push({txt:`📁 Enviar documento: ${cat}`,tab:'docs'}));
   db.metas.filter(m=>m.atletaId===a.id&&m.status==='andamento'&&m.prazo&&m.prazo<hoje()).forEach(m=>P.push({txt:`📈 Meta vencida: ${m.desc}`,tab:'avaliacao'}));
@@ -793,7 +812,7 @@ function alertas(){
   db.metas.filter(m=>m.status==='andamento'&&m.prazo&&m.prazo<hoje()).forEach(m=>A.push({t:'warn',tab:'avaliacao',m:`📈 Meta vencida não alcançada: ${esc(nomeAt(m.atletaId))} — ${esc(m.desc)} (prazo ${dbr(m.prazo)})`}));
   db.atletas.filter(a=>a.ativo&&!a.pendente).forEach(a=>{
     if(a.role==='atleta'||a.role==='diretoria'){
-      const f=db.presencas.filter(p=>p.atletaId===a.id&&p.status==='falta').length;
+      const f=freqAtleta(a.id).f;
       if(db.config.limiteFaltas>0&&f>=db.config.limiteFaltas)A.push({t:'warn',tab:'presencas',m:`🚫 ${esc(a.nome)} atingiu ${f} faltas (limite: ${db.config.limiteFaltas})`});
       const faltamDocs=db.config.docsObrig.filter(cat=>!db.arquivos.some(d=>d.atletaId===a.id&&d.categoria===cat));
       if(faltamDocs.length&&me.role==='diretoria')A.push({t:'warn',tab:'docs',m:`📁 ${esc(a.nome)} ainda não enviou: ${esc(faltamDocs.join(', '))}`});
@@ -1025,9 +1044,7 @@ function recusaCadastro(id){
 }
 function perfil(id){
   const a=at(id), P=pendencias(a);
-  const f=db.presencas.filter(p=>p.atletaId===id&&p.status==='falta').length;
-  const pres=db.presencas.filter(p=>p.atletaId===id&&['presente','atraso'].includes(p.status)).length;
-  const tot=db.presencas.filter(p=>p.atletaId===id).length;
+  const fq=freqAtleta(id), f=fq.f, pres=fq.cmp, tot=fq.tot;
   const st=db.stats.filter(s=>s.atletaId===id);
   const gols=st.reduce((s,x)=>s+(+x.gols||0),0), asst=st.reduce((s,x)=>s+(+x.assist||0),0);
   const uni=db.uniformes.filter(u=>u.atletaId===id);
@@ -1075,9 +1092,7 @@ function cardJogador(a,estilo){
   estilo=estilo||subState.cardEstilo||'ouro';
   const avs=db.avaliacoes.filter(v=>v.atletaId===a.id).sort((x,y)=>String(y.data).localeCompare(String(x.data)));
   const av=avs[0]||{};
-  const ps=db.presencas.filter(p=>p.atletaId===a.id);
-  const cmp=ps.filter(p=>['presente','atraso'].includes(p.status)).length;
-  const pct=ps.length?Math.round(cmp/ps.length*100):null;
+  const pct=freqAtleta(a.id).pct;
   const uni=db.uniformes.find(u=>u.atletaId===a.id);
   const pos=(a.posicao||'').split(',')[0].trim();
   const fv=v=>v!==undefined&&v!==null&&String(v).trim()!==''?esc(String(v)):'—';
@@ -2568,12 +2583,8 @@ function tPres(){
     })()}</div>`:'<div class="card sect"><p class="mut">Cadastre compromissos na Agenda para fazer a chamada.</p></div>';
   }
   const rank=ats.map(a=>{
-    const ps=db.presencas.filter(p=>p.atletaId===a.id);
-    const cmp=ps.filter(p=>['presente','atraso'].includes(p.status));
-    const jg=cmp.filter(p=>{const e=byId(db.eventos,p.eventoId);return e&&(e.tipo==='jogo'||e.tipo==='amistoso');}).length;
-    const tr=cmp.filter(p=>{const e=byId(db.eventos,p.eventoId);return e&&e.tipo==='treino';}).length;
-    const f=ps.filter(p=>p.status==='falta').length, at_=ps.filter(p=>p.status==='atraso').length, j=ps.filter(p=>p.status==='justificada').length;
-    return {a,jg,tr,f,at_,j,tot:ps.length,pct:ps.length?Math.round(cmp.length/ps.length*100):null};
+    const fq=freqAtleta(a.id);
+    return {a,jg:fq.jg,tr:fq.tr,f:fq.f,at_:fq.at,j:fq.j,tot:fq.tot,pct:fq.pct};
   });
   const comDados=rank.filter(r=>r.tot>0).sort((x,y)=>(y.pct-x.pct)||(y.jg+y.tr)-(x.jg+x.tr));
   const minhas=me.role==='atleta'?db.presencas.filter(p=>p.atletaId===me.id).map(p=>({p,e:byId(db.eventos,p.eventoId)})).filter(x=>x.e).sort((x,y)=>y.e.data.localeCompare(x.e.data)):[];
@@ -2662,16 +2673,13 @@ function csvFaltas(){
 function pdfFrequencia(){
   const ats=elenco();
   const rank=ats.map(a=>{
-    const ps=db.presencas.filter(p=>p.atletaId===a.id);
-    const cmp=ps.filter(p=>['presente','atraso'].includes(p.status));
-    const jg=cmp.filter(p=>{const e=byId(db.eventos,p.eventoId);return e&&(e.tipo==='jogo'||e.tipo==='amistoso');}).length;
-    const tr=cmp.filter(p=>{const e=byId(db.eventos,p.eventoId);return e&&e.tipo==='treino';}).length;
-    const f=ps.filter(p=>p.status==='falta').length, at_=ps.filter(p=>p.status==='atraso').length, j=ps.filter(p=>p.status==='justificada').length;
-    return {a,jg,tr,f,at_,j,tot:ps.length,pct:ps.length?Math.round(cmp.length/ps.length*100):null};
+    const fq=freqAtleta(a.id);
+    return {a,jg:fq.jg,tr:fq.tr,f:fq.f,at_:fq.at,j:fq.j,tot:fq.tot,pct:fq.pct};
   }).filter(r=>r.tot>0).sort((x,y)=>(y.pct-x.pct)||(y.jg+y.tr)-(x.jg+x.tr));
   if(!rank.length){toast('Nenhuma chamada registrada ainda');return;}
   const evsComChamada=[...new Set(db.presencas.map(p=>p.eventoId))].map(id=>byId(db.eventos,id)).filter(Boolean);
-  const nJogos=evsComChamada.filter(e=>e.tipo==='jogo'||e.tipo==='amistoso').length, nTreinos=evsComChamada.filter(e=>e.tipo==='treino').length;
+  const diasJogo=new Set(evsComChamada.filter(e=>e.tipo==='jogo'||e.tipo==='amistoso').map(e=>e.data));
+  const nJogos=diasJogo.size, nTreinos=new Set(evsComChamada.filter(e=>e.tipo==='treino').map(e=>e.data).filter(d=>!diasJogo.has(d))).size;
   const totF=rank.reduce((s,r)=>s+r.f,0), totAt=rank.reduce((s,r)=>s+r.at_,0), totJ=rank.reduce((s,r)=>s+r.j,0);
   const pctMedia=Math.round(rank.reduce((s,r)=>s+r.pct,0)/rank.length);
   const corPct=p=>p>=75?'#28a745':p>=50?'#e0a800':'#c41e3a';
@@ -3372,11 +3380,13 @@ function maisAcoesCob(){
 }
 function tFinCob(){
   const cs=[...db.cobrancas].sort((a,b)=>(a.status==='pago')-(b.status==='pago')||a.venc.localeCompare(b.venc));
-  const tot=s=>cs.filter(c=>c.status===s).reduce((x,c)=>x+Number(valorDe(c)),0);
+  const tot=s=>cs.filter(c=>c.status===s).reduce((x,c)=>x+(s==='pago'?Number(valorDe(c)):restanteDe(c)),0);
+  const totParciais=cs.filter(c=>c.status!=='pago').reduce((s,c)=>s+pagoParcial(c),0);
   return `<div class="grid g4 sect">
     <div class="card stat"><div class="n" style="color:var(--ok)">${brl(tot('pago'))}</div><div class="l">Recebido${db.config.saldoIni?` <span style="text-transform:none">(+ ${brl(db.config.saldoIni)} ${esc(db.config.saldoIniObs||'saldo inicial')})</span>`:''}</div></div>
     <div class="card stat"><div class="n" style="color:var(--warn)">${brl(tot('pendente'))}</div><div class="l">A vencer</div></div>
     <div class="card stat"><div class="n" style="color:var(--bad)">${brl(tot('atrasado'))}</div><div class="l">Em atraso</div></div>
+    ${totParciais>0?`<div class="card stat"><div class="n" style="color:var(--ok)">${brl(totParciais)}</div><div class="l">💰 Parciais recebidos</div></div>`:''}
   </div>
   <div class="row sect">
     <button onclick="formCobranca()">+ Nova cobrança</button>
@@ -3390,7 +3400,7 @@ function tFinCob(){
     const chave=c=>c.atletaId||('g:'+(c.convidado||'Convidado'));
     const ids=[...new Set(db.cobrancas.map(chave))];
     const pessoas=ids.map(id=>{ const list=db.cobrancas.filter(c=>chave(c)===id);
-      const aberto=list.filter(c=>c.status!=='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
+      const aberto=list.filter(c=>c.status!=='pago').reduce((s,c)=>s+restanteDe(c),0);
       const nAtr=list.filter(c=>c.status==='atrasado').length;
       const guest=String(id).startsWith('g:');
       return {id,guest,nome:guest?'🎟️ '+id.slice(2)+' (convidado)':nomeAt(id),list,aberto,nAtr}; }).sort((x,y)=>x.nome.localeCompare(y.nome));
@@ -3398,16 +3408,17 @@ function tFinCob(){
     return pessoas.map(p=>`<details><summary>${esc(p.nome)}
       ${p.aberto>0?`<span class="pill p-bad">${brl(p.aberto)} em aberto</span>`:'<span class="pill p-ok">Em dia ✅</span>'}
       ${p.nAtr?`<span class="pill p-warn">${p.nAtr} atrasada${p.nAtr>1?'s':''}</span>`:''}</summary>
-      ${p.aberto>0&&!p.guest?`<div class="row" style="margin:10px 0 4px">
-        <button style="background:var(--bad);font-weight:700" onclick="cobraTudoWhats('${p.id}')">📱 Cobrar tudo no WhatsApp (${brl(p.aberto)})</button>
-        <button class="mini gold" onclick="quitacaoLote('${p.id}')">💳 Quitar deste jogador</button></div>`:''}
+      ${!p.guest?`<div class="row" style="margin:10px 0 4px">
+        ${p.aberto>0?`<button style="background:var(--bad);font-weight:700" onclick="cobraTudoWhats('${p.id}')">📱 Cobrar tudo no WhatsApp (${brl(p.aberto)})</button>
+        <button class="mini gold" onclick="quitacaoLote('${p.id}')">💳 Quitar deste jogador</button>`:''}
+        <button class="mini sec" onclick="pdfExtratoAtleta('${p.id}')">🧾 Extrato (PDF)</button></div>`:''}
       <div class="tblwrap" style="margin-top:6px"><table class="cardz"><tr><th></th><th>Descrição</th><th>Valor</th><th>Venc.</th><th>Situação</th><th></th></tr>
       ${p.list.sort((a,b)=>b.venc.localeCompare(a.venc)).map(c=>`<tr style="cursor:pointer" onclick="mostraDetalheCobranca('${c.id}')">
         <td><input type="checkbox" onchange="selTog('c','${c.id}',this.checked);event.stopPropagation()" ${selCob.has(c.id)?'checked':''} style="width:auto"></td>
         <td><strong>${esc(c.desc)}</strong>${c.pessoa?`<div class="mut" style="font-size:11px">👤 ${esc(c.pessoa)}</div>`:''}${c.origem?`<div class="mut" style="font-size:11px">📄 ${esc(c.origem)}</div>`:''}</td>
         <td data-l="Valor">${brl(valorDe(c))}${ehMensal(c)&&c.status==='atrasado'?`<div class="mut">era ${brl(c.valor)} até dia ${db.config.mensDia}</div>`:''}</td>
         <td data-l="Venc.">${dbr(c.venc)}</td>
-        <td data-l="Situação">${c.status==='pago'?`<span class="pill p-ok">Pago ${dbr(c.pagoEm)}</span>`:c.status==='atrasado'?'<span class="pill p-bad">Atrasado</span>':'<span class="pill p-warn">Pendente</span>'}</td>
+        <td data-l="Situação">${c.status==='pago'?`<span class="pill p-ok">Pago ${dbr(c.pagoEm)}</span>${c.forma?`<div class="mut" style="font-size:11px">via ${esc(c.forma)}</div>`:''}`:c.status==='atrasado'?'<span class="pill p-bad">Atrasado</span>':'<span class="pill p-warn">Pendente</span>'}${c.status!=='pago'&&pagoParcial(c)>0?`<div class="mut" style="font-size:11px">💰 parcial: ${brl(pagoParcial(c))} · resta ${brl(restanteDe(c))}</div>`:''}</td>
         <td class="row" onclick="event.stopPropagation()">${c.status!=='pago'?`<button style="background:var(--bad);font-weight:700;padding:7px 14px" onclick="cobraWhats('${c.id}')">📱 Cobrar</button><button class="mini" style="background:var(--ok)" onclick="formPagamento('${c.id}')">✔ Pago</button>`:`<button class="mini sec" onclick="editPagamento('${c.id}')">✏️ Pgto</button>`}
         <button class="mini gold" onclick="editaCobranca('${c.id}')">📝 Det</button>
         <button class="mini sec" onclick="delCobranca('${c.id}')">✕</button></td></tr>`).join('')}</table></div></details>`).join('');
@@ -3971,7 +3982,7 @@ async function carregaQR(){ if(window.QRCode)return;
 async function pagarPix(id){
   const c=byId(db.cobrancas,id); if(!c)return;
   if(!db.config.pix){toast('Cadastre a chave Pix do time em Ajustes primeiro');return;}
-  const valor=Number(valorDe(c));
+  const valor=restanteDe(c)>0?restanteDe(c):Number(valorDe(c));
   const payload=pixPayload(valor);
   modal(`<h2>💳 Pagar com Pix</h2>
   <p style="margin:0"><strong>${esc(c.desc)}</strong> — <strong style="color:var(--ok);font-size:18px">${brl(valor)}</strong><br>
@@ -4008,9 +4019,9 @@ function mostraDetalheCobranca(id){
   <button class="sec" onclick="fecha()">Fechar</button></div>`);
 }
 function msgCobranca(c){
-  const a=at(c.atletaId), pix=db.config.pix?`\n💳 Pix: ${db.config.pix}\n\n📲 Ou pague com o *Pix copia e cola* (valor exato) — copie o código abaixo e cole no app do banco:\n${pixPayload(Number(valorDe(c)))}`:'';
+  const a=at(c.atletaId), parcial=pagoParcial(c), pix=db.config.pix?`\n💳 Pix: ${db.config.pix}\n\n📲 Ou pague com o *Pix copia e cola* (valor exato${parcial>0?' do restante':''}) — copie o código abaixo e cole no app do banco:\n${pixPayload(restanteDe(c)>0?restanteDe(c):Number(valorDe(c)))}`:'';
   const linhaValor=ehMensal(c)?`💵 ${brl(c.valor)} até o dia ${db.config.mensDia}; a partir do dia ${db.config.mensDia+1}: ${brl(db.config.mensApos)}${c.status==='atrasado'?`\n⚠️ *Prazo vencido — valor atual: ${brl(db.config.mensApos)}*`:''}`:`💵 ${brl(valorDe(c))}${c.status==='atrasado'?'\n⚠️ *Pagamento vencido — pedimos regularização*':''}`;
-  return `Prezado(a) @${pnome(a.nome)},\n\n*${db.config.time} — Tesouraria* 🏦\n\nConsta em nosso controle a seguinte pendência:\n\n📌 ${c.desc}\n${linhaValor}\n📅 Vencimento: ${dbr(c.venc)}${pix}\n\nApós o pagamento, por gentileza envie o comprovante. Qualquer divergência, fale com a diretoria.\n\nObrigado! 🤝⚖️`;
+  return `Prezado(a) @${pnome(a.nome)},\n\n*${db.config.time} — Tesouraria* 🏦\n\nConsta em nosso controle a seguinte pendência:\n\n📌 ${c.desc}\n${linhaValor}\n📅 Vencimento: ${dbr(c.venc)}${parcial>0?`\n💰 Já recebido parcial: ${brl(parcial)} — *restante: ${brl(restanteDe(c))}*`:''}${pix}\n\nApós o pagamento, por gentileza envie o comprovante. Qualquer divergência, fale com a diretoria.\n\nObrigado! 🤝⚖️`;
 }
 function cobraWhats(id){
   const c=byId(db.cobrancas,id), a=at(c.atletaId);
@@ -4023,8 +4034,8 @@ function cobraTudoWhats(aid){
   if(!a||!a.fone){toast('Jogador sem WhatsApp cadastrado');return;}
   const abertas=db.cobrancas.filter(c=>c.atletaId===aid&&c.status!=='pago').sort((x,y)=>x.venc.localeCompare(y.venc));
   if(!abertas.length){toast('Nada em aberto para este jogador 🎉');return;}
-  const total=abertas.reduce((s,c)=>s+Number(valorDe(c)),0);
-  const linhas=abertas.map(c=>`• ${c.desc} — ${brl(valorDe(c))} (venc. ${dbr(c.venc)}${c.status==='atrasado'?', em atraso':''})`).join('\n');
+  const total=abertas.reduce((s,c)=>s+restanteDe(c),0);
+  const linhas=abertas.map(c=>`• ${c.desc} — ${brl(restanteDe(c))}${pagoParcial(c)>0?' (restante; '+brl(pagoParcial(c))+' já pago)':''} (venc. ${dbr(c.venc)}${c.status==='atrasado'?', em atraso':''})`).join('\n');
   const pix=db.config.pix?`\n\n💳 Pix: ${db.config.pix}\n\n📲 Ou pague tudo com o *Pix copia e cola* (valor exato) — copie o código abaixo e cole no app do banco:\n${pixPayload(total)}`:'';
   const msg=`Prezado(a) @${pnome(a.nome)},\n\n*${db.config.time} — Tesouraria* 🏦\n\nConstam em aberto em seu nome:\n\n${linhas}\n\n*Total: ${brl(total)}*\n\n💡 Dica: a diretoria pode fazer a quitação com condições especiais — fale conosco.${pix}\n\nApós o pagamento, por gentileza envie o comprovante. Obrigado! 🤝⚖️`;
   window.open(waLink(a.fone,msg),'_blank');
@@ -4100,37 +4111,106 @@ async function salvaAvulso(){
   log('financeiro',`Treino avulso ${dbr(data)}: ${rows.length} lançamento(s) de ${brl(v)}${pago?' (pagos)':' (em aberto)'}`);
   fecha(); await recarrega(); toast(rows.length+' registro(s) de treino avulso 🏃');
 }
+const pagoParcial=c=>(c.pagamentos||[]).reduce((s,p)=>s+Number(p.valor||0),0);
+const restanteDe=c=>Math.max(0,Number(valorDe(c))-pagoParcial(c));
+const FORMAS_PG=['Pix','Dinheiro','Transferência','Cartão','Outro'];
 function formPagamento(id){
   const c=byId(db.cobrancas,id); const tardia=ehMensal(c)&&c.status==='atrasado';
+  const devido=Number(valorDe(c)), jaPago=pagoParcial(c), resto=c.status==='pago'?0:Math.max(0,devido-jaPago);
   modal(`<h2>✔ Registrar pagamento</h2>
-  <p class="mut">${esc(nomeAt(c.atletaId))} — ${esc(c.desc)}</p>
-  <label>Data do pagamento</label><input id="pg_data" type="date" value="${hoje()}">
-  <label>Valor pago (R$) — ajuste livremente</label>
-  <input id="pg_valor" type="number" step="0.01" value="${Number(valorDe(c)).toFixed(2)}">
+  <p class="mut">${esc(nomeCob(c))} — ${esc(c.desc)} · vence ${dbr(c.venc)}</p>
+  <div class="grid g3" style="margin-top:8px">
+    <div class="card stat" style="padding:8px"><div class="n" style="font-size:17px">${brl(devido)}</div><div class="l">Devido</div></div>
+    <div class="card stat" style="padding:8px"><div class="n" style="font-size:17px;color:var(--ok)">${brl(jaPago)}</div><div class="l">Já pago</div></div>
+    <div class="card stat" style="padding:8px"><div class="n" style="font-size:17px;color:${resto>0?'var(--warn)':'var(--ok)'}">${brl(resto)}</div><div class="l">Restante</div></div>
+  </div>
+  ${(c.pagamentos||[]).length?`<label style="margin-top:10px">Pagamentos já registrados</label>${c.pagamentos.map((p,i)=>`<div class="alertline al-ok" style="padding:6px 10px"><div style="flex:1">💰 ${brl(p.valor)} — ${dbr(p.data)}${p.forma?' · '+esc(p.forma):''}${p.quem?` <span class="mut">(${esc(p.quem)})</span>`:''}</div><button class="mini sec" onclick="removePagamento('${id}',${i})">✕</button></div>`).join('')}`:''}
+  ${c.status!=='pago'?`<div class="grid g3">
+  <div><label>Data</label><input id="pg_data" type="date" value="${hoje()}"></div>
+  <div><label>Valor recebido (R$)</label><input id="pg_valor" type="number" step="0.01" value="${resto.toFixed(2)}"></div>
+  <div><label>Forma</label><select id="pg_forma">${FORMAS_PG.map(f=>`<option>${f}</option>`).join('')}</select></div>
+  </div>
   ${tardia?`<div class="row" style="margin-top:6px">
-    <button class="mini sec" onclick="$('pg_valor').value='${Number(db.config.mensApos).toFixed(2)}'">${brl(db.config.mensApos)} — com acréscimo</button>
-    <button class="mini sec" onclick="$('pg_valor').value='${Number(c.valor).toFixed(2)}'">${brl(c.valor)} — valor base (pagou no prazo)</button>
+    <button class="mini sec" onclick="$('pg_valor').value='${Math.max(0,Number(db.config.mensApos)-jaPago).toFixed(2)}'">Restante c/ acréscimo (${brl(db.config.mensApos)})</button>
+    <button class="mini sec" onclick="$('pg_valor').value='${Math.max(0,Number(c.valor)-jaPago).toFixed(2)}'">Restante valor base (${brl(c.valor)})</button>
   </div>`:''}
-  <div class="row" style="margin-top:14px"><button style="background:var(--ok)" onclick="pagouGo('${id}')">Confirmar pagamento</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+  <div class="row" style="margin-top:8px"><input type="checkbox" id="pg_quita" style="width:auto"><span>Dar por <strong>quitada</strong> com este pagamento (ex.: desconto negociado)</span></div>
+  <p class="mut" style="margin-top:6px">💡 Pagou só uma parte? Registre o valor recebido — a cobrança fica <strong>parcial</strong> e o resto você lança depois, em outra data.</p>`:''}
+  <div class="row" style="margin-top:14px">
+  ${c.status!=='pago'?`<button style="background:var(--ok)" onclick="pagouGo('${id}')">Confirmar pagamento</button>`:''}
+  ${c.status==='pago'?`<button class="warn" onclick="desfazPagamento('${id}')">↩ Desfazer pagamento</button>`:''}
+  <button class="sec" onclick="fecha()">Fechar</button></div>`);
 }
 async function pagouGo(id){
   const c=byId(db.cobrancas,id);
-  const valor=Number(fval('pg_valor'))||c.valor, data=fval('pg_data')||hoje();
-  await q(sb.from('cobrancas').update({status:'pago',pago_em:data,valor}).eq('id',id));
-  log('financeiro',`Pagamento registrado: ${nomeAt(c.atletaId)} — ${c.desc} (${brl(valor)} em ${dbr(data)})`);
-  fecha(); await recarrega(); toast('Pagamento registrado 💰');
+  const valor=Number(fval('pg_valor'))||0, data=fval('pg_data')||hoje(), forma=fval('pg_forma')||'';
+  if(valor<=0){toast('Informe o valor recebido');return;}
+  const pags=[...(c.pagamentos||[]),{data,valor,forma,quem:me.nome}];
+  const totalPago=pags.reduce((s,p)=>s+Number(p.valor||0),0);
+  const quita=($('pg_quita')&&$('pg_quita').checked)||totalPago>=Number(valorDe(c))-0.005;
+  let dados=quita
+    ?{status:'pago',pago_em:data,valor:totalPago,forma_pagamento:pags.length>1?pags.map(p=>p.forma||'—').join(' + '):forma,pagamentos:pags}
+    :{pagamentos:pags};
+  let {error}=await sb.from('cobrancas').update(dados).eq('id',id);
+  if(error&&/pagamentos|forma_pagamento/.test(error.message||'')){
+    if(!quita){toast('⚠️ Rode o SQL v12 no Supabase para ativar pagamentos parciais');return;}
+    delete dados.pagamentos; delete dados.forma_pagamento;
+    const {error:e2}=await sb.from('cobrancas').update(dados).eq('id',id);
+    if(e2){toast('⚠️ '+e2.message);return;}
+    toast('⚠️ Pago salvo sem o detalhe da forma — rode o SQL v12 no Supabase');
+  } else if(error){toast('⚠️ '+error.message);return;}
+  log('financeiro',`Pagamento ${quita?'registrado':'PARCIAL'}: ${nomeCob(c)} — ${c.desc} (${brl(valor)} em ${dbr(data)}${forma?' via '+forma:''})`);
+  fecha(); await recarrega();
+  toast(quita?'Pagamento registrado 💰':'Parcial registrado — restante '+brl(Math.max(0,Number(valorDe(c))-totalPago)));
 }
-function editPagamento(id){
+async function removePagamento(id,idx){
+  const c=byId(db.cobrancas,id); const pags=[...(c.pagamentos||[])]; const rem=pags.splice(idx,1)[0];
+  await q(sb.from('cobrancas').update({pagamentos:pags,...(c.status==='pago'?{status:'pendente',pago_em:null}:{})}).eq('id',id));
+  log('financeiro',`Pagamento parcial removido: ${nomeCob(c)} — ${brl(rem?rem.valor:0)}`);
+  await recarrega(); fecha(); formPagamento(id);
+}
+function desfazPagamento(id){
   const c=byId(db.cobrancas,id);
-  modal(`<h2>✏️ Ajustar pagamento</h2>
-  <p class="mut">${esc(nomeAt(c.atletaId))} — ${esc(c.desc)}</p>
-  <div class="grid g2">
-  <div><label>Data do pagamento</label><input id="pg_data" type="date" value="${c.pagoEm?String(c.pagoEm).slice(0,10):hoje()}"></div>
-  <div><label>Valor pago (R$)</label><input id="pg_valor" type="number" step="0.01" value="${c.valor}"></div>
+  confirma(`Desfazer o pagamento de <strong>${esc(nomeCob(c))} — ${esc(c.desc)}</strong>? A cobrança volta a ficar em aberto e os lançamentos parciais são apagados.`,async()=>{
+    let {error}=await sb.from('cobrancas').update({status:'pendente',pago_em:null,pagamentos:[],forma_pagamento:''}).eq('id',id);
+    if(error) await q(sb.from('cobrancas').update({status:'pendente',pago_em:null}).eq('id',id));
+    log('financeiro',`Pagamento desfeito: ${nomeCob(c)} — ${c.desc}`);
+    await recarrega(); toast('Pagamento desfeito');
+  });
+}
+function editPagamento(id){ formPagamento(id); }
+function pdfExtratoAtleta(atId){
+  const a=at(atId); if(!a){toast('Atleta não encontrado');return;}
+  const cs=db.cobrancas.filter(c=>c.atletaId===atId).sort((x,y)=>x.venc.localeCompare(y.venc));
+  if(!cs.length){toast('Nenhuma cobrança lançada para '+pnome(a.nome));return;}
+  const pagas=cs.filter(c=>c.status==='pago'), abertas=cs.filter(c=>c.status!=='pago');
+  const totPago=pagas.reduce((s,c)=>s+Number(c.valor),0)+abertas.reduce((s,c)=>s+pagoParcial(c),0);
+  const totAberto=abertas.reduce((s,c)=>s+restanteDe(c),0);
+  const comoPagou=c=>{
+    if(c.pagamentos&&c.pagamentos.length) return c.pagamentos.map(p=>`${dbr(p.data)} — ${brl(p.valor)}${p.forma?' ('+esc(p.forma)+')':''}`).join('<br>');
+    return `${c.pagoEm?dbr(c.pagoEm):'—'} — ${brl(c.valor)}${c.forma?' ('+esc(c.forma)+')':''}`;
+  };
+  abreRelatorio(`<h1>🧾 Extrato Financeiro do Atleta</h1>
+  <p class="sub">${esc(a.nome)}${a.oab?' · OAB '+esc(a.oab):''} — ${esc(db.config.time)}</p>
+  <div class="cards">
+    <div class="card"><div class="n">${cs.length}</div><div class="l">Cobranças</div></div>
+    <div class="card"><div class="n ok">${brl(totPago)}</div><div class="l">Total pago</div></div>
+    <div class="card"><div class="n ${totAberto?'bad':'ok'}">${brl(totAberto)}</div><div class="l">Em aberto</div></div>
+    <div class="card"><div class="n ${totAberto?'warn':'ok'}">${totAberto?'Devendo':'Em dia ✔'}</div><div class="l">Situação</div></div>
   </div>
-  <div class="row" style="margin-top:14px"><button onclick="pagouGo('${id}')">Salvar ajuste</button>
-  <button class="warn" onclick="confirma('Desfazer este pagamento? A cobrança volta a ficar em aberto.',async()=>{await q(sb.from('cobrancas').update({status:'pendente',pago_em:null}).eq('id','${id}'));log('financeiro','Pagamento desfeito: ${esc(nomeAt(c.atletaId))} — ${esc(c.desc)}');await recarrega();toast('Pagamento desfeito');})">↩ Desfazer pagamento</button>
-  <button class="sec" onclick="fecha()">Cancelar</button></div>`);
+  ${pagas.length||abertas.some(c=>pagoParcial(c)>0)?`<h2>✔ Pagamentos realizados</h2>
+  <table><tr><th>Cobrança</th><th>Vencimento</th><th>Como foi pago</th><th>Total pago</th></tr>
+  ${pagas.map(c=>`<tr><td>${esc(c.desc)}</td><td>${dbr(c.venc)}</td><td>${comoPagou(c)}</td><td class="ok">${brl(c.valor)}</td></tr>`).join('')}
+  ${abertas.filter(c=>pagoParcial(c)>0).map(c=>`<tr><td>${esc(c.desc)} <span class="warn">(parcial)</span></td><td>${dbr(c.venc)}</td><td>${comoPagou(c)}</td><td class="warn">${brl(pagoParcial(c))} de ${brl(valorDe(c))}</td></tr>`).join('')}
+  </table>`:''}
+  ${abertas.length?`<h2>⏳ Em aberto</h2>
+  <table><tr><th>Cobrança</th><th>Vencimento</th><th>Situação</th><th>Valor restante</th></tr>
+  ${abertas.map(c=>`<tr><td>${esc(c.desc)}</td><td>${dbr(c.venc)}</td><td>${c.status==='atrasado'?'<span class="bad">Em atraso</span>':'Pendente'}${pagoParcial(c)>0?` · <span class="warn">parcial: ${brl(pagoParcial(c))} já pago</span>`:''}</td><td class="bad">${brl(restanteDe(c))}</td></tr>`).join('')}
+  </table>`:'<p class="ok" style="font-weight:bold">Nenhuma pendência — atleta em dia. 👏</p>'}
+  <div style="margin-top:56px;display:flex;gap:40px;text-align:center">
+    <div style="flex:1;border-top:1px solid #333;padding-top:6px">Diretoria — ${esc(db.config.time)}</div>
+    <div style="flex:1;border-top:1px solid #333;padding-top:6px">${esc(a.nome)}</div>
+  </div>`,`Extrato — ${pnome(a.nome)}`);
 }
 function quitacaoLote(aidPre){
   const devs=elenco().map(a=>({a,cs:db.cobrancas.filter(c=>c.atletaId===a.id&&c.status!=='pago')})).filter(x=>x.cs.length);
@@ -5354,10 +5434,8 @@ function tMeu(){
   const minhasCob=db.cobrancas.filter(c=>c.atletaId===me.id&&c.status!=='pago');
   const minhasMetas=db.metas.filter(m=>m.atletaId===me.id);
   const meusUni=db.uniformes.filter(u=>u.atletaId===me.id);
-  const minhasFaltas=db.presencas.filter(p=>p.atletaId===me.id&&p.status==='falta').length;
-  const minhasPres=db.presencas.filter(p=>p.atletaId===me.id);
-  const cmp=minhasPres.filter(p=>['presente','atraso'].includes(p.status)).length;
-  const pct=minhasPres.length?Math.round(cmp/minhasPres.length*100):null;
+  const fqMe=freqAtleta(me.id);
+  const minhasFaltas=fqMe.f, pct=fqMe.pct;
   const st=db.stats.filter(s=>s.atletaId===me.id);
   const gols=st.reduce((s,x)=>s+(+x.gols||0),0), asst=st.reduce((s,x)=>s+(+x.assist||0),0);
   const notas=st.filter(x=>x.nota).map(x=>+x.nota);
@@ -5374,7 +5452,7 @@ function tMeu(){
   <div class="grid g5 sect">
     <div class="card stat clickable" onclick="vai('presencas')"><div class="n">${pct===null?'—':pct+'%'}</div><div class="l">Minha frequência →</div></div>
     <div class="card stat clickable" onclick="vai('desempenho')"><div class="n">${gols}⚽ ${asst}🅰️</div><div class="l">Gols / Assist. →</div></div>
-    <div class="card stat"><div class="n" style="color:${minhasCob.length?'var(--warn)':'var(--ok)'}">${brl(minhasCob.reduce((s,c)=>s+Number(valorDe(c)),0))}</div><div class="l">Em aberto comigo</div></div>
+    <div class="card stat"><div class="n" style="color:${minhasCob.length?'var(--warn)':'var(--ok)'}">${brl(minhasCob.reduce((s,c)=>s+restanteDe(c),0))}</div><div class="l">Em aberto comigo</div></div>
     <div class="card stat"><div class="n" style="color:${db.config.limiteFaltas>0&&minhasFaltas>=db.config.limiteFaltas?'var(--bad)':'var(--ink)'}">${minhasFaltas}</div><div class="l">${db.config.limiteFaltas>0?`Faltas (limite ${db.config.limiteFaltas})`:'Faltas'}</div></div>
     <div class="card stat clickable" onclick="vai('taticas')"><div class="n">🎬</div><div class="l">Táticas →</div></div>
   </div>
@@ -5388,8 +5466,8 @@ function tMeu(){
     </div>
   </div>
   <div class="grid g2">
-  <div class="card"><h2>💰 Minhas pendências</h2>
-  ${minhasCob.length?minhasCob.map(c=>`<div class="alertline ${c.status==='atrasado'?'al-bad':'al-warn'}"><div style="flex:1"><strong>${esc(c.desc)}</strong> — ${brl(valorDe(c))}${ehMensal(c)&&c.status!=='atrasado'?`<div class="mut">até o dia ${db.config.mensDia}; depois ${brl(db.config.mensApos)}</div>`:''}<div class="mut">vence ${dbr(c.venc)}</div></div>${db.config.pix?`<button class="mini gold" onclick="pagarPix('${c.id}')">💳 Pagar com Pix</button>`:''}</div>`).join(''):'<p class="mut">Tudo pago. 👏</p>'}</div>
+  <div class="card"><div class="spread"><h2>💰 Minhas pendências</h2><button class="mini sec" onclick="pdfExtratoAtleta(me.id)">🧾 Meu extrato</button></div>
+  ${minhasCob.length?minhasCob.map(c=>`<div class="alertline ${c.status==='atrasado'?'al-bad':'al-warn'}"><div style="flex:1"><strong>${esc(c.desc)}</strong> — ${pagoParcial(c)>0?`resta ${brl(restanteDe(c))} <span class="mut">(de ${brl(valorDe(c))} · ${brl(pagoParcial(c))} já pago)</span>`:brl(valorDe(c))}${ehMensal(c)&&c.status!=='atrasado'?`<div class="mut">até o dia ${db.config.mensDia}; depois ${brl(db.config.mensApos)}</div>`:''}<div class="mut">vence ${dbr(c.venc)}</div></div>${db.config.pix?`<button class="mini gold" onclick="pagarPix('${c.id}')">💳 Pagar com Pix</button>`:''}</div>`).join(''):'<p class="mut">Tudo pago. 👏</p>'}</div>
   <div class="card"><h2>🎯 Minhas metas</h2>
   ${minhasMetas.length?minhasMetas.map(m=>`<div class="alertline" style="background:var(--bg)"><div style="flex:1"><strong>${esc(m.desc)}</strong><div class="mut">Prazo: ${dbr(m.prazo)}</div></div>${statusMeta(m)}</div>`).join(''):'<p class="mut">Sem metas atribuídas.</p>'}
   <p class="mut" style="margin-top:8px"><a href="#" onclick="vai('avaliacao');return false">Ver minhas avaliações físicas →</a></p></div>
