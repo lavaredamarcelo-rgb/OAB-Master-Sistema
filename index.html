@@ -901,43 +901,18 @@ function pdfPosicoes(){
   elenco().forEach(a=>{ const pp=posicoesDe(a); (pp.length?pp:['Sem posição definida']).forEach(p=>{ const k=p.charAt(0).toUpperCase()+p.slice(1).toLowerCase(); (ps[k]??=[]).push(a); }); });
   const keys=Object.keys(ps).sort((a,b)=>ps[b].length-ps[a].length);
   if(!keys.length){toast('Nenhum jogador cadastrado');return;}
-  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Elenco por posição — ${esc(db.config.time)}</title>
-  <style>
-  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  body{font-family:Arial,sans-serif;margin:24px;color:#333}
-  h1{text-align:center;color:#c41e3a;margin-bottom:2px}
-  .sub{text-align:center;color:#777;margin:0 0 18px;font-size:13px}
-  .cards{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
-  .card{border:1px solid #ddd;border-radius:8px;padding:10px 18px;text-align:center;min-width:100px}
-  .card .n{font-size:22px;font-weight:bold}.card .l{font-size:11px;color:#777;text-transform:uppercase}
-  table{width:100%;border-collapse:collapse;margin:10px 0}
-  th,td{border:1px solid #ddd;padding:7px 9px;text-align:left;font-size:13px}
-  th{background:#c41e3a;color:#fff}
-  tr:nth-child(even){background:#f8f8f8}
-  .qtd{text-align:center;font-weight:bold}
-  .pouco{color:#c41e3a}.bem{color:#28a745}
-  .rod{margin-top:14px;font-size:11px;color:#999;text-align:center}
-  .fechar{position:fixed;top:12px;right:12px;padding:10px 18px;background:#c41e3a;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;z-index:9;font-size:14px}
-  @media print{body{margin:10mm}.fechar{display:none}}
-  </style></head><body>
-  <button class="fechar" onclick="window.close()">✕ Fechar</button>
-  <h1>⚽ Elenco por Posição</h1>
-  <p class="sub">${esc(db.config.time)} — gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
+  const carencia=keys.filter(k=>ps[k].length<2&&k!=='Sem posição definida').length;
+  abreRelatorio(`<h1>⚽ Elenco por Posição</h1>
+  <p class="sub">${esc(db.config.time)}</p>
   <div class="cards">
     <div class="card"><div class="n">${elenco().length}</div><div class="l">Jogadores</div></div>
     <div class="card"><div class="n">${keys.filter(k=>k!=='Sem posição definida').length}</div><div class="l">Posições</div></div>
-    <div class="card"><div class="n" style="color:${keys.some(k=>ps[k].length<2&&k!=='Sem posição definida')?'#c41e3a':'#28a745'}">${keys.filter(k=>ps[k].length<2&&k!=='Sem posição definida').length}</div><div class="l">Com carência</div></div>
+    <div class="card"><div class="n ${carencia?'bad':'ok'}">${carencia}</div><div class="l">Com carência</div></div>
   </div>
-  <table><tr><th>Posição</th><th style="text-align:center">Qtd.</th><th>Jogadores</th></tr>
-  ${keys.map(k=>`<tr><td><strong>${esc(k)}</strong></td><td class="qtd ${ps[k].length>=2?'bem':'pouco'}">${ps[k].length}</td><td>${ps[k].map(a=>esc(a.nome)).join(' · ')}</td></tr>`).join('')}
-  </table>
-  <p class="rod">Atleta com mais de uma posição no cadastro conta em cada uma · Qtd. em vermelho = posição com menos de 2 jogadores</p>
-  <script>window.onload=()=>window.print()<\/script>
-  </body></html>`;
-  const w=window.open('','_blank');
-  if(!w){toast('Libere pop-ups para gerar o PDF');return;}
-  w.document.write(html); w.document.close();
-  toast('📄 Na janela que abriu, escolha "Salvar como PDF"');
+  <h2>📋 Distribuição do elenco</h2>
+  <table><tr><th>Posição</th><th>Qtd.</th><th>Jogadores</th></tr>
+  ${keys.map(k=>`<tr><td><strong>${esc(k)}</strong></td><td class="${ps[k].length>=2?'ok':'bad'}"><strong>${ps[k].length}</strong></td><td>${ps[k].map(a=>esc(a.nome)).join(' · ')}</td></tr>`).join('')}</table>
+  <p style="font-size:11.5px;color:#8a8f99">Atleta com mais de uma posição conta em cada uma · Qtd. em vermelho = posição com menos de 2 jogadores.</p>`,`Elenco por posição — ${db.config.time}`);
 }
 function cardPosicoes(){
   const ps={};
@@ -2673,58 +2648,29 @@ function csvFaltas(){
 }
 function pdfFrequencia(){
   const ats=elenco();
-  const rank=ats.map(a=>{
-    const fq=freqAtleta(a.id);
-    return {a,jg:fq.jg,tr:fq.tr,f:fq.f,at_:fq.at,j:fq.j,tot:fq.tot,pct:fq.pct};
-  }).filter(r=>r.tot>0).sort((x,y)=>(y.pct-x.pct)||(y.jg+y.tr)-(x.jg+x.tr));
+  const rank=ats.map(a=>{const q=freqAtleta(a.id);return {a,...q};}).filter(r=>r.tot>0).sort((x,y)=>(y.pct-x.pct)||(y.jg+y.tr)-(x.jg+x.tr));
   if(!rank.length){toast('Nenhuma chamada registrada ainda');return;}
   const evsComChamada=[...new Set(db.presencas.map(p=>p.eventoId))].map(id=>byId(db.eventos,id)).filter(Boolean);
   const diasJogo=new Set(evsComChamada.filter(e=>e.tipo==='jogo'||e.tipo==='amistoso').map(e=>e.data));
   const nJogos=diasJogo.size, nTreinos=new Set(evsComChamada.filter(e=>e.tipo==='treino').map(e=>e.data).filter(d=>!diasJogo.has(d))).size;
-  const totF=rank.reduce((s,r)=>s+r.f,0), totAt=rank.reduce((s,r)=>s+r.at_,0), totJ=rank.reduce((s,r)=>s+r.j,0);
+  const totF=rank.reduce((s,r)=>s+r.f,0), totAt=rank.reduce((s,r)=>s+r.at,0), totJ=rank.reduce((s,r)=>s+r.j,0);
   const pctMedia=Math.round(rank.reduce((s,r)=>s+r.pct,0)/rank.length);
-  const corPct=p=>p>=75?'#28a745':p>=50?'#e0a800':'#c41e3a';
-  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Frequência — ${esc(db.config.time)}</title>
-  <style>
-  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  body{font-family:Arial,sans-serif;margin:24px;color:#333}
-  h1{text-align:center;color:#c41e3a;margin-bottom:2px}
-  .sub{text-align:center;color:#777;margin:0 0 18px;font-size:13px}
-  .cards{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
-  .card{border:1px solid #ddd;border-radius:8px;padding:10px 18px;text-align:center;min-width:100px}
-  .card .n{font-size:22px;font-weight:bold}.card .l{font-size:11px;color:#777;text-transform:uppercase}
-  table{width:100%;border-collapse:collapse;margin:10px 0}
-  th,td{border:1px solid #ddd;padding:7px 9px;text-align:center;font-size:13px}
-  td:first-child,th:first-child{text-align:left}
-  th{background:#c41e3a;color:#fff}
-  tr:nth-child(even){background:#f8f8f8}
-  .pct{font-weight:bold}
-  .rod{margin-top:14px;font-size:11px;color:#999;text-align:center}
-  .fechar{position:fixed;top:12px;right:12px;padding:10px 18px;background:#c41e3a;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;z-index:9;font-size:14px}
-  @media print{body{margin:10mm}.fechar{display:none}}
-  </style></head><body>
-  <button class="fechar" onclick="window.close()">✕ Fechar</button>
-  <h1>📊 Relatório de Frequência</h1>
-  <p class="sub">${esc(db.config.time)} — gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
+  const corPct=v=>v>=75?'ok':v>=50?'warn':'bad';
+  abreRelatorio(`<h1>📊 Relatório de Frequência</h1>
+  <p class="sub">${esc(db.config.time)} — contagem por dia: treino + jogo na mesma data valem uma presença/falta só</p>
   <div class="cards">
-    <div class="card"><div class="n">${nJogos+nTreinos}</div><div class="l">Chamadas</div></div>
-    <div class="card"><div class="n">${nJogos}</div><div class="l">Jogos</div></div>
-    <div class="card"><div class="n">${nTreinos}</div><div class="l">Treinos</div></div>
-    <div class="card"><div class="n" style="color:${corPct(pctMedia)}">${pctMedia}%</div><div class="l">Freq. média</div></div>
-    <div class="card"><div class="n" style="color:#c41e3a">${totF}</div><div class="l">Faltas</div></div>
-    <div class="card"><div class="n" style="color:#e0a800">${totAt}</div><div class="l">Atrasos</div></div>
+    <div class="card"><div class="n">${nJogos+nTreinos}</div><div class="l">Dias c/ chamada</div></div>
+    <div class="card"><div class="n">${nJogos}</div><div class="l">Dias de jogo</div></div>
+    <div class="card"><div class="n">${nTreinos}</div><div class="l">Dias de treino</div></div>
+    <div class="card"><div class="n ${corPct(pctMedia)}">${pctMedia}%</div><div class="l">Freq. média</div></div>
+    <div class="card"><div class="n bad">${totF}</div><div class="l">Faltas</div></div>
+    <div class="card"><div class="n warn">${totAt}</div><div class="l">Atrasos</div></div>
     <div class="card"><div class="n">${totJ}</div><div class="l">Justificadas</div></div>
   </div>
-  <table><tr><th>#</th><th>Atleta</th><th>Jogos</th><th>Treinos</th><th>Presenças</th><th>Atrasos</th><th>Faltas</th><th>Justificadas</th><th>Frequência</th></tr>
-  ${rank.map((r,i)=>`<tr><td style="text-align:center">${i+1}º</td><td>${esc(r.a.nome)}</td><td>${r.jg}</td><td>${r.tr}</td><td>${r.jg+r.tr}</td><td>${r.at_}</td><td>${r.f}${db.config.limiteFaltas>0&&r.f>=db.config.limiteFaltas?' ⚠️':''}</td><td>${r.j}</td><td class="pct" style="color:${corPct(r.pct)}">${r.pct}%</td></tr>`).join('')}
-  </table>
-  ${db.config.limiteFaltas>0?`<p class="rod">⚠️ = atingiu o limite de ${db.config.limiteFaltas} faltas · Presenças e atrasos contam como comparecimento</p>`:'<p class="rod">Presenças e atrasos contam como comparecimento</p>'}
-  <script>window.onload=()=>window.print()<\/script>
-  </body></html>`;
-  const w=window.open('','_blank');
-  if(!w){toast('Libere pop-ups para gerar o PDF');return;}
-  w.document.write(html); w.document.close();
-  toast('📄 Na janela que abriu, escolha "Salvar como PDF"');
+  <h2>🏅 Ranking de participação</h2>
+  <table><tr><th>#</th><th>Atleta</th><th>Jogos</th><th>Treinos</th><th>Presenças</th><th>Atrasos</th><th>Faltas</th><th>Justif.</th><th>Frequência</th></tr>
+  ${rank.map((r,i)=>`<tr><td>${i+1}º</td><td><strong>${esc(r.a.nome)}</strong></td><td>${r.jg}</td><td>${r.tr}</td><td>${r.jg+r.tr}</td><td>${r.at}</td><td>${r.f}${db.config.limiteFaltas>0&&r.f>=db.config.limiteFaltas?' ⚠️':''}</td><td>${r.j}</td><td class="${corPct(r.pct)}"><strong>${r.pct}%</strong></td></tr>`).join('')}</table>
+  <p style="font-size:11.5px;color:#8a8f99">${db.config.limiteFaltas>0?`⚠️ = atingiu o limite de ${db.config.limiteFaltas} faltas · `:''}Presenças e atrasos contam como comparecimento.</p>`,`Frequência — ${db.config.time}`);
 }
 
 /* ================= FINANCEIRO ================= */
@@ -3791,6 +3737,14 @@ function gerarPDFFinanceiroGo(){
     meses.push({i,pf,rec,men,des,saldo,acum});
   }
   const recT=meses.reduce((s,m)=>s+m.rec,0), menT=meses.reduce((s,m)=>s+m.men,0), desT=meses.reduce((s,m)=>s+m.des,0);
+  const mMov=meses.filter(m=>m.rec+m.men+m.des>0).length||1;
+  const medias=`<h2>📐 Médias mensais — para planejamento</h2>
+  <div class="cards">
+    <div class="card"><div class="n ok">${brl((recT+menT)/mMov)}</div><div class="l">Receita média/mês</div></div>
+    <div class="card"><div class="n bad">${brl(desT/mMov)}</div><div class="l">Despesa média/mês</div></div>
+    <div class="card"><div class="n ${(recT+menT-desT)>=0?'ok':'bad'}">${brl((recT+menT-desT)/mMov)}</div><div class="l">Resultado médio/mês</div></div>
+  </div>
+  <p style="font-size:11.5px;color:#8a8f99;text-align:center;margin-top:-10px">Calculada sobre ${mMov} m${mMov>1?'eses':'ês'} com movimento — referência do quanto entra e sai num mês típico.</p>`;
   // Gráfico de barras (evolução do saldo acumulado)
   const maxAbs=Math.max(1,...meses.map(m=>Math.abs(m.acum)));
   const grafico=`<h2>📈 Evolução do saldo em caixa</h2>
@@ -3841,6 +3795,7 @@ function gerarPDFFinanceiroGo(){
   ${meses.map(m=>`<tr><td><strong>${MESES_NOME[m.i]}</strong></td><td class="ok">${brl(m.rec)}</td><td class="ok">${brl(m.men)}</td><td class="bad">${brl(m.des)}</td><td class="${m.saldo>=0?'ok':'bad'}"><strong>${brl(m.saldo)}</strong></td><td class="${m.acum>=0?'ok':'bad'}"><strong>${brl(m.acum)}</strong></td></tr>`).join('')}
   <tr class="tot"><td>Total</td><td>${brl(recT)}</td><td>${brl(menT)}</td><td>${brl(desT)}</td><td colspan="2" class="${(recT+menT-desT)>=0?'ok':'bad'}">${brl(recT+menT-desT)}</td></tr>
   </table>
+  ${medias}
   ${grafico}
   ${secCat}
   ${seccoes||'<p style="color:#999">Nenhum lançamento no período.</p>'}`,`Financeiro ${periodo} — ${db.config.time}`);
@@ -3928,37 +3883,26 @@ function pdfMensalidades(){
 function gerarPDFMes(){
   const mes=subState.finMesFilter||hoje().slice(0,7);
   const [ano,mesNum]=mes.split('-');
-  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const mesNome=meses[Number(mesNum)-1];
-
-  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Relatório ${mesNome}/${ano}</title>
-  <style>body{font-family:Arial;margin:20px;color:#333}h1{text-align:center;color:#c41e3a}
-  table{width:100%;border-collapse:collapse;margin:12px 0}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#c41e3a;color:white}
-  .stat{background:#f0f0f0;padding:10px;margin:10px 0}.ok{color:#28a745}.bad{color:#c41e3a}</style></head><body>
-  <h1>Relatório Financeiro - ${mesNome}/${ano}</h1>
-
-  <div class="stat">Receitas: <span class="ok">${brl(db.balanco.filter(r=>r.data.startsWith(mes)).reduce((s,r)=>s+Number(r.valor),0))}</span></div>
-  <div class="stat">Mensalidades: <span class="ok">${brl(db.cobrancas.filter(c=>c.venc.startsWith(mes)&&c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0))}</span></div>
-  <div class="stat">Despesas: <span class="bad">${brl(db.despesas.filter(d=>d.data.startsWith(mes)).reduce((s,d)=>s+Number(d.valor),0))}</span></div>
-
-  <h2>Lançamentos do Mês</h2>
-  <table><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Status</th></tr>
-  ${(() => {
-    const itens = [];
-    db.balanco.filter(r=>r.data.startsWith(mes)).forEach(r=>itens.push({data:r.data,desc:r.descricao,tipo:'Receita',valor:r.valor,status:r.pago?'Pago':'Pendente'}));
-    db.cobrancas.filter(c=>c.venc.startsWith(mes)).forEach(c=>itens.push({data:c.venc,desc:'Mensalidade',tipo:'Receita',valor:valorDe(c),status:c.status}));
-    db.despesas.filter(d=>d.data.startsWith(mes)).forEach(d=>itens.push({data:d.data,desc:d.item,tipo:'Despesa',valor:d.valor,status:'Registrada'}));
-    return itens.sort((a,b)=>b.data.localeCompare(a.data)).map(i=>`<tr><td>${dbr(i.data)}</td><td>${esc(i.desc)}</td><td>${i.tipo}</td><td>${brl(i.valor)}</td><td>${i.status}</td></tr>`).join('');
-  })()}
-  </table>
-  </body></html>`;
-  const blob=new Blob([html],{type:'text/html'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.download=`financeiro-${mes}.html`;
-  a.click();
-  toast('✅ Relatório do mês gerado');
+  const mesNome=MESES_NOME[Number(mesNum)-1];
+  const rec=db.balanco.filter(r=>r.data.startsWith(mes)&&r.pago).reduce((s,r)=>s+Number(r.valor),0);
+  const men=db.cobrancas.filter(c=>c.venc.startsWith(mes)&&c.status==='pago').reduce((s,c)=>s+Number(valorDe(c)),0);
+  const des=db.despesas.filter(d=>d.data.startsWith(mes)&&d.pago).reduce((s,d)=>s+Number(d.valor),0);
+  const itens=[];
+  db.balanco.filter(r=>r.data.startsWith(mes)).forEach(r=>itens.push({data:r.data,desc:r.descricao+(r.pessoa?' · '+r.pessoa:''),tipo:'💵 Receita',valor:Number(r.valor),pago:r.pago,ent:true}));
+  db.cobrancas.filter(c=>c.venc.startsWith(mes)).forEach(c=>itens.push({data:c.venc,desc:c.desc+' — '+(c.atletaId?pnome(nomeAt(c.atletaId)):(c.convidado||'')),tipo:'💳 Mensalidade',valor:Number(valorDe(c)),pago:c.status==='pago',ent:true}));
+  db.despesas.filter(d=>d.data.startsWith(mes)).forEach(d=>itens.push({data:d.data,desc:d.item+(d.categoria?' · '+d.categoria:'')+(d.fornecedor?' · 🏭 '+d.fornecedor:''),tipo:'🧾 Despesa',valor:Number(d.valor),pago:d.pago,ent:false}));
+  itens.sort((a,b)=>a.data.localeCompare(b.data));
+  abreRelatorio(`<h1>📅 Relatório do Mês — ${mesNome}/${ano}</h1>
+  <p class="sub">${esc(db.config.time)} · totais consideram apenas lançamentos pagos</p>
+  <div class="cards">
+    <div class="card"><div class="n ok">${brl(rec)}</div><div class="l">Receitas</div></div>
+    <div class="card"><div class="n ok">${brl(men)}</div><div class="l">Mensalidades</div></div>
+    <div class="card"><div class="n bad">${brl(des)}</div><div class="l">Despesas</div></div>
+    <div class="card"><div class="n ${(rec+men-des)>=0?'ok':'bad'}">${brl(rec+men-des)}</div><div class="l">Resultado do mês</div></div>
+  </div>
+  <h2>Lançamentos do mês</h2>
+  <table><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Situação</th></tr>
+  ${itens.length?itens.map(x=>`<tr><td>${dbr(x.data)}</td><td>${esc(x.desc)}</td><td>${x.tipo}</td><td class="${x.ent?'ok':'bad'}">${x.ent?'+':'−'} ${brl(x.valor)}</td><td>${x.pago?'<span class="ok">✔ Pago</span>':'<span class="warn">Pendente</span>'}</td></tr>`).join(''):'<tr><td colspan="5">Nenhum lançamento.</td></tr>'}</table>`,`Mês ${mesNome}/${ano} — ${db.config.time}`);
 }
 function exportarExcelFinanceiro(){
   let csv='Data,Descrição,Tipo,Valor,Status\n';
