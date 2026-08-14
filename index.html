@@ -3693,6 +3693,7 @@ function tFinRelatorios(){
   <div class="row" style="margin-bottom:16px;gap:8px;flex-wrap:wrap">
     <button class="gold" onclick="gerarPDFFinanceiro()">📊 PDF - Financeiro Detalhado (mês a mês)</button>
     <button class="gold" onclick="pdfMensalidades()">💳 PDF - Mensalidades</button>
+    <button class="gold" onclick="relatorioFornecedor()">🏭 PDF - Por fornecedor</button>
     <button class="gold" onclick="gerarPDFMes()">📅 PDF - Mês Atual</button>
     <button class="sec" onclick="exportarExcelFinanceiro()">📈 Excel - Financeiro</button>
     <button class="sec" onclick="exportarExcelMensalidades()">📈 Excel - Mensalidades</button>
@@ -3789,6 +3790,44 @@ function gerarPDFFinanceiro(){
   ${linhasAno.map(m=>`<tr><td><strong>${MESES_NOME[m.i]}</strong></td><td class="ok">${brl(m.rec)}</td><td class="ok">${brl(m.men)}</td><td class="bad">${brl(m.des)}</td><td class="${m.saldo>=0?'ok':'bad'}"><strong>${brl(m.saldo)}</strong></td><td class="${m.acum>=0?'ok':'bad'}"><strong>${brl(m.acum)}</strong></td></tr>`).join('')}
   </table>
   ${seccoes||'<p style="color:#999">Nenhum lançamento no ano.</p>'}`,`Financeiro ${ano} — ${db.config.time}`);
+}
+function relatorioFornecedor(){
+  const nomes=[...new Set([...db.despesas.map(d=>(d.fornecedor||'').trim()),...db.balanco.map(r=>(r.pessoa||'').trim())].filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  if(!nomes.length){toast('Nenhum fornecedor (despesas) ou pessoa (receitas) informado ainda');return;}
+  modal(`<h2>🏭 Relatório por fornecedor</h2>
+  <p class="mut">Agrupa <strong>despesas</strong> pelo campo "fornecedor" e <strong>receitas</strong> pelo campo "pessoa".</p>
+  <label>Fornecedor / pessoa</label><select id="rf_nome"><option value="">🌐 Todos (${nomes.length})</option>${nomes.map(n=>`<option>${esc(n)}</option>`).join('')}</select>
+  <div class="row" style="margin-top:14px"><button onclick="pdfFornecedor()">📄 Gerar PDF</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+function pdfFornecedor(){
+  const alvo=fval('rf_nome'); const norm=s=>(s||'').trim();
+  const nomes=alvo?[alvo]:[...new Set([...db.despesas.map(d=>norm(d.fornecedor)),...db.balanco.map(r=>norm(r.pessoa))].filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const blocos=nomes.map(n=>{
+    const recs=db.balanco.filter(r=>norm(r.pessoa)===n);
+    const desp=db.despesas.filter(d=>norm(d.fornecedor)===n);
+    if(!recs.length&&!desp.length)return null;
+    const itens=[...recs.map(r=>({data:r.data,desc:r.descricao,tipo:'💵 Receita',valor:Number(r.valor),pago:r.pago,ent:true})),
+                 ...desp.map(d=>({data:d.data,desc:d.item+(d.categoria?' · '+d.categoria:''),tipo:'🧾 Despesa',valor:Number(d.valor),pago:d.pago,ent:false}))].sort((a,b)=>a.data.localeCompare(b.data));
+    return {n,itens,tRec:recs.reduce((s,r)=>s+Number(r.valor),0),tDes:desp.reduce((s,d)=>s+Number(d.valor),0)};
+  }).filter(Boolean);
+  if(!blocos.length){toast('Nenhum lançamento encontrado');return;}
+  const totRec=blocos.reduce((s,b)=>s+b.tRec,0), totDes=blocos.reduce((s,b)=>s+b.tDes,0);
+  fecha();
+  abreRelatorio(`<h1>🏭 Relatório por Fornecedor</h1>
+  <p class="sub">${esc(db.config.time)}${alvo?' — '+esc(alvo):' — todos os fornecedores e pessoas'}</p>
+  <div class="cards">
+    <div class="card"><div class="n">${blocos.length}</div><div class="l">Fornecedor${blocos.length>1?'es':''}</div></div>
+    <div class="card"><div class="n ok">${brl(totRec)}</div><div class="l">Receitas</div></div>
+    <div class="card"><div class="n bad">${brl(totDes)}</div><div class="l">Despesas</div></div>
+  </div>
+  ${!alvo&&blocos.length>1?`<h2>📊 Resumo geral</h2>
+  <table><tr><th>Fornecedor / pessoa</th><th>Lançamentos</th><th>Receitas</th><th>Despesas</th></tr>
+  ${blocos.map(b=>`<tr><td><strong>${esc(b.n)}</strong></td><td>${b.itens.length}</td><td class="ok">${b.tRec?brl(b.tRec):'—'}</td><td class="bad">${b.tDes?brl(b.tDes):'—'}</td></tr>`).join('')}</table>`:''}
+  ${blocos.map(b=>`<div class="mes"><h2>${esc(b.n)}</h2>
+  <table><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Situação</th></tr>
+  ${b.itens.map(x=>`<tr><td>${dbr(x.data)}</td><td>${esc(x.desc)}</td><td>${x.tipo}</td><td class="${x.ent?'ok':'bad'}">${x.ent?'+':'−'} ${brl(x.valor)}</td><td>${x.pago?'<span class="ok">✔ Pago</span>':'<span class="warn">Pendente</span>'}</td></tr>`).join('')}
+  <tr class="tot"><td colspan="3">Totais</td><td colspan="2">${b.tRec?'+ '+brl(b.tRec):''}${b.tRec&&b.tDes?' · ':''}${b.tDes?'− '+brl(b.tDes):''}</td></tr>
+  </table></div>`).join('')}`,`Fornecedores — ${db.config.time}`);
 }
 function pdfMensalidades(){
   const ano=String(new Date().getFullYear());
