@@ -226,7 +226,24 @@ const hoje=()=>new Date().toISOString().slice(0,10);
 const agora=()=>new Date().toLocaleString('pt-BR');
 const fdt=t=>t?new Date(t).toLocaleString('pt-BR'):'';
 const ini=n=>n.trim().split(/\s+/).map(p=>p[0]).slice(0,2).join('').toUpperCase();
-const pnome=n=>{const p=n.trim().split(/\s+/).filter(w=>!/^(dr\.?|dra\.?|prof\.?|profa\.?)$/i.test(w));return p[0]||n;};
+const pnome=n=>{
+  if(!n)return '';
+  const limpa=x=>String(x).trim().split(/\s+/).filter(w=>!/^(dr\.?|dra\.?|prof\.?|profa\.?)$/i.test(w));
+  const p=limpa(n);
+  const primeiro=p[0]||String(n).trim();
+  // Desambiguação: se outro membro tem o mesmo primeiro nome, acrescenta o sobrenome
+  try{
+    if(db&&db.atletas&&p[1]){
+      const iguais=db.atletas.filter(a=>a&&!a.pendente&&a.nome&&(limpa(a.nome)[0]||'').toLowerCase()===primeiro.toLowerCase());
+      if(iguais.length>1){
+        const ini=p[1][0].toUpperCase();
+        const conflitoInicial=iguais.filter(a=>{const q=limpa(a.nome);return q[1]&&q[1][0].toUpperCase()===ini;}).length>1;
+        return conflitoInicial?primeiro+' '+p[1]:primeiro+' '+ini+'.';
+      }
+    }
+  }catch(_){}
+  return primeiro;
+};
 const byId=(arr,id)=>arr.find(x=>x.id===id);
 const at=id=>byId(db.atletas,id);
 const elenco=()=>db.atletas.filter(a=>a.ativo&&!a.pendente&&(a.role==='atleta'||a.role==='diretoria'));
