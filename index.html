@@ -287,7 +287,7 @@ function log(tipo,texto){ sb.from('logs').insert({tipo,texto,quem:me?me.nome:'si
 function mapAtleta(r){ return {id:r.id,nome:r.nome,apelido:r.apelido||'',fone:r.fone,email:r.email,oab:r.oab,posicao:r.posicao,role:r.role,ativo:r.ativo,pendente:!r.aprovado,fundador:!!r.fundador,cargo:r.cargo||'',cadastroManual:!!r.cadastro_manual,isentoMens:!!r.isento_mensalidade,fotoUrl:r.foto_url||'',
   consent:{aceito:r.consent_status==='aceito',recusado:r.consent_status==='recusado',revogado:r.consent_status==='revogado',quando:fdt(r.consent_quando),versao:r.consent_versao||TERMO_LGPD_V},saude:{}}; }
 async function carregaTudo(){
-  const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist,craquevotos]=await Promise.all([
+  const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist,craquevotos,craquetotais]=await Promise.all([
     q(sb.from('perfis').select('*').order('nome')),
     q(sb.from('saude').select('*')),
     q(sb.from('eventos').select('*').order('data')),
@@ -307,13 +307,15 @@ async function carregaTudo(){
     sb.from('import_lotes').select('*').order('data_import',{ascending:false}).then(r=>r.data||[]),
     sb.from('balanco_receitas').select('*').order('data',{ascending:false}).then(r=>r.data||[]),
     sb.from('uniforme_numeros_historico').select('*').order('quando',{ascending:false}).then(r=>r.data||[]),
-    sb.from('craque_votos').select('*').then(r=>r.data||[])
+    sb.from('craque_votos').select('*').then(r=>r.data||[]),
+    sb.rpc('contagem_craque_todos').then(r=>r.data||[])
   ]);
   db={};
   db.atletas=perfis.map(mapAtleta);
   saude.forEach(s=>{ const a=at(s.atleta_id); if(a)a.saude={sangue:s.sangue,plano:s.plano,alergias:s.alergias,medicamentos:s.medicamentos,condicoes:s.condicoes,emergencia:s.emergencia,lesoes:s.lesoes,obs:s.obs,lesoesLista:s.lesoes_lista||[],obsLista:s.obs_lista||[]}; });
   db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),dataFim:e.data_fim?String(e.data_fim):'',hora:e.hora,horaFim:e.hora_fim||'',local:e.local,obs:e.obs,adversario:e.adversario||'',placarNos:e.placar_nos??null,placarDeles:e.placar_deles??null,statsTime:e.stats_time||{}}));
   db.craqueVotos=(craquevotos||[]).map(v=>({id:v.id,eventoId:v.evento_id,votanteId:v.votante_id,votoId:v.voto_id}));
+  db.craqueTotais=(craquetotais||[]).map(t=>({eventoId:t.evento_id,votoId:t.voto_id,votos:Number(t.votos)||0}));
   db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,convidado:p.convidado||null,status:p.status}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,forma:c.forma_pagamento||'',pagamentos:c.pagamentos||[],origem:c.origem||'',lote:c.origem_lote||''}));
@@ -898,6 +900,7 @@ function tPainel(){
   const meusPend=db.uniformes.filter(u=>u.atletaId===me.id&&u.status==='pendente');
   return `${bannerNotif()}
   ${meusPend.map(u=>`<div class="alertline al-warn sect">👕 Você recebeu <strong>${esc(u.descricao)} nº ${esc(u.numero)}</strong> — <button class="mini gold" onclick="aceitarUniforme('${u.id}')">Ler e aceitar o termo de responsabilidade</button></div>`).join('')}
+  ${cardVotacaoCraque()}
   <div class="grid g4 sect">
     <div class="card stat ${me.role==='diretoria'?'clickable':''}" ${me.role==='diretoria'?`onclick="vai('atletas')"`:''}><div class="n">${elenco().length}</div><div class="l">Jogadores ativos</div></div>
     <div class="card stat clickable" onclick="vai('agenda')"><div class="n">${prox.length?dbr(prox[0].data):'—'}</div><div class="l">Próximo compromisso →</div></div>
@@ -1761,11 +1764,21 @@ async function bumpTime(evId,k,delta){
   e.statsTime=st; renderTab();
 }
 function craqueDo(evId){
-  const vs=(db.craqueVotos||[]).filter(v=>v.eventoId===evId);
-  if(!vs.length)return null;
-  const cont={}; vs.forEach(v=>{cont[v.votoId]=(cont[v.votoId]||0)+1;});
-  const ord=Object.entries(cont).sort((a,b)=>b[1]-a[1]||nomeAt(a[0]).localeCompare(nomeAt(b[0])));
-  return {id:ord[0][0],votos:ord[0][1],total:vs.length,ranking:ord};
+  // Contagem vem de função sigilosa do banco — ninguém vê o voto individual dos outros
+  const ts=(db.craqueTotais||[]).filter(t=>t.eventoId===evId);
+  if(!ts.length)return null;
+  const ord=[...ts].sort((a,b)=>b.votos-a.votos||nomeAt(a.votoId).localeCompare(nomeAt(b.votoId)));
+  const total=ts.reduce((x,t)=>x+t.votos,0);
+  return {id:ord[0].votoId,votos:ord[0].votos,total,ranking:ord.map(t=>[t.votoId,t.votos])};
+}
+function cardVotacaoCraque(){
+  const jv=db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.data<=hoje()).sort((a,b)=>b.data.localeCompare(a.data)).slice(0,3);
+  if(!jv.length)return '';
+  return `<div class="card sect" style="border-color:var(--gold)"><h2>🌟 Craque do Jogo — vote! <span class="pill p-mut">🔒 voto secreto</span></h2>
+  ${jv.map(e=>{const c=craqueDo(e.id); const meu=(db.craqueVotos||[]).find(v=>v.eventoId===e.id&&v.votanteId===me.id);
+    return `<div class="alertline" style="background:var(--bg)"><div style="flex:1"><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong>
+    <div class="mut">${dbr(e.data)}${c?` · 🏆 liderando: ${esc(pnome(nomeAt(c.id)))} (${c.votos}/${c.total})`:' · ainda sem votos'}${meu?` · seu voto: ${esc(pnome(nomeAt(meu.votoId)))}`:''}</div></div>
+    <button class="mini ${meu?'sec':'gold'}" onclick="modalVotarCraque('${e.id}')">${meu?'🔁 Trocar':'🗳️ Votar'}</button></div>`;}).join('')}</div>`;
 }
 async function votarCraque(evId,atId){
   const {error}=await sb.from('craque_votos').upsert({evento_id:evId,votante_id:me.id,voto_id:atId},{onConflict:'evento_id,votante_id'});
@@ -1787,7 +1800,7 @@ function painelCraque(evId){
   const e=byId(db.eventos,evId); if(!e||!ehJogoTipo(e.tipo))return '';
   const c=craqueDo(evId);
   const meuVoto=(db.craqueVotos||[]).find(v=>v.eventoId===evId&&v.votanteId===me.id);
-  return `<div class="card sect" style="border-color:var(--gold)"><div class="spread"><h2 style="margin:0">🌟 Craque do Jogo</h2>
+  return `<div class="card sect" style="border-color:var(--gold)"><div class="spread"><h2 style="margin:0">🌟 Craque do Jogo <span class="pill p-mut" style="font-size:10px">🔒 voto secreto</span></h2>
   <button class="mini gold" onclick="modalVotarCraque('${evId}')">${meuVoto?'🔁 Trocar meu voto':'🗳️ Votar'}</button></div>
   ${c?`<div class="alertline" style="background:var(--gold-soft);margin-top:10px">🏆 <strong>${esc(pnome(nomeAt(c.id)))}</strong> — ${c.votos} de ${c.total} voto${c.total>1?'s':''}</div>
   ${c.ranking.length>1?`<p class="mut" style="margin-top:6px;font-size:12.5px">${c.ranking.slice(1,4).map(([id,n],i)=>`${['🥈','🥉','4º'][i]} ${esc(pnome(nomeAt(id)))} (${n})`).join(' · ')}</p>`:''}`
@@ -5787,12 +5800,7 @@ function tMeu(){
   ${prox.length?prox.map(e=>`<div class="alertline" style="background:var(--blue-soft)"><div style="flex:1"><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong><div class="mut">${dbr(e.data)}${e.dataFim?' até '+dbr(e.dataFim):''} às ${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''} — ${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener">📍 ${esc(e.local)}</a>`:''}${e.obs?' · '+esc(e.obs):''}</div></div>
     <button class="mini" onclick="modalCal('${e.id}')">📅 Pôr no calendário</button></div>`).join(''):'<p class="mut">Nada agendado por enquanto.</p>'}
   ${prox.length?`<button class="sec mini" onclick="baixarICS(db.eventos.filter(e=>e.data>=hoje()),'agenda-oabmaster.ics')">📅 Agenda completa (.ics)</button>`:''}</div>
-  ${(()=>{const jv=db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.data<=hoje()).sort((a,b)=>b.data.localeCompare(a.data)).slice(0,3);
-  return jv.length?`<div class="card sect" style="border-color:var(--gold)"><h2>🌟 Craque do Jogo — sua vez de votar!</h2>
-  ${jv.map(e=>{const c=craqueDo(e.id); const meu=(db.craqueVotos||[]).find(v=>v.eventoId===e.id&&v.votanteId===me.id);
-    return `<div class="alertline" style="background:var(--bg)"><div style="flex:1"><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong>
-    <div class="mut">${dbr(e.data)}${c?` · 🏆 liderando: ${esc(pnome(nomeAt(c.id)))} (${c.votos}/${c.total})`:' · ainda sem votos'}${meu?` · seu voto: ${esc(pnome(nomeAt(meu.votoId)))}`:''}</div></div>
-    <button class="mini ${meu?'sec':'gold'}" onclick="modalVotarCraque('${e.id}')">${meu?'🔁 Trocar':'🗳️ Votar'}</button></div>`;}).join('')}</div>`:'';})()}
+  ${cardVotacaoCraque()}
   <div class="grid g5 sect">
     <div class="card stat clickable" onclick="vai('presencas')"><div class="n">${pct===null?'—':pct+'%'}</div><div class="l">Minha frequência →</div></div>
     <div class="card stat clickable" onclick="vai('desempenho')"><div class="n">${gols}⚽ ${asst}🅰️</div><div class="l">Gols / Assist. →</div></div>
