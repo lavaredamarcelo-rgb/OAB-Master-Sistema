@@ -1981,11 +1981,11 @@ function tDesemp(){
     .map((r,i)=>`<div class="alertline" style="background:var(--bg)"><span class="medal">${['🥇','🥈','🥉','4º','5º'][i]}</span><span style="flex:1">${esc(nomeAt(r.id))}</span><strong>${fmt?fmt(r.v):r.v}</strong></div>`).join('')||'<p class="mut">Sem registros.</p>';
   let lanc='<p class="mut">Cadastre um jogo na Agenda para lançar estatísticas.</p>';
   if(sel){
-    lanc=`<div class="tblwrap"><table><tr><th>Atleta</th><th>⚽</th><th>🅰️</th><th>🟨</th><th>🟥</th><th>🛡️</th><th>⚔️</th><th>🦅</th><th>🧠</th><th>🎯</th><th>🧤</th><th>❌</th><th>Nota</th>${podeEditar?'<th></th>':''}</tr>
+    lanc=`<div class="tblwrap"><table><tr><th>Atleta</th><th>⚽</th><th>🅰️</th><th>🟨</th><th>🟥</th><th>🛡️</th><th>⚔️</th><th>💔</th><th>🦅</th><th>🧠</th><th>🎯</th><th>🧤</th><th>❌</th><th>🔄</th><th>🚫</th><th>Nota</th>${podeEditar?'<th></th>':''}</tr>
     ${ats.map(a=>{ const s=statDe(sel,a.id)||{};
-      return `<tr><td>${esc(a.nome)}</td><td>${s.gols??'—'}</td><td>${s.assist??'—'}</td><td>${s.amarelos??'—'}</td><td>${s.vermelho?'1':'—'}</td><td>${s.desarmes??'—'}</td><td>${s.duelos??'—'}</td><td>${s.duelosAereos||'—'}</td><td>${s.antecipacao||'—'}</td><td>${s.chutesGol||'—'}</td><td>${s.defesas||'—'}</td><td>${s.passesErrados||'—'}</td><td>${s.id?(s.nota?`<strong>${(+s.nota).toFixed(1)}</strong> ✔`:`<strong>${notaAuto(s).toFixed(1)}</strong> 🤖`):'—'}</td>
+      return `<tr><td>${esc(a.nome)}</td><td>${s.gols??'—'}</td><td>${s.assist??'—'}</td><td>${s.amarelos??'—'}</td><td>${s.vermelho?'1':'—'}</td><td>${s.desarmes??'—'}</td><td>${s.duelos??'—'}</td><td>${s.duelosPerdidos||'—'}</td><td>${s.duelosAereos||'—'}</td><td>${s.antecipacao||'—'}</td><td>${s.chutesGol||'—'}</td><td>${s.defesas||'—'}</td><td>${s.passesErrados||'—'}</td><td>${s.bolasPerdidas||'—'}</td><td>${s.faltasCometidas||'—'}</td><td>${s.id?(s.nota?`<strong>${(+s.nota).toFixed(1)}</strong> ✔`:`<strong>${notaAuto(s).toFixed(1)}</strong> 🤖`):'—'}</td>
       ${podeEditar?`<td><button class="mini sec" onclick="formStat('${sel}','${a.id}')">✏️ Lançar</button></td>`:''}</tr>`; }).join('')}</table></div>
-    <p class="mut" style="margin-top:6px;font-size:12px">Legenda: ⚽ gols · 🅰️ assistências · 🛡️ desarmes · ⚔️ duelos · 🦅 duelos aéreos · 🧠 antecipações · 🎯 chutes no gol · 🧤 defesas · ❌ passes errados</p>`;
+    <p class="mut" style="margin-top:6px;font-size:12px">Legenda: ⚽ gols · 🅰️ assistências · 🛡️ desarmes · ⚔️ duelos ganhos · 💔 duelos perdidos · 🦅 aéreos · 🧠 antecipações · 🎯 chutes no gol · 🧤 defesas · ❌ passes errados · 🔄 bolas perdidas · 🚫 faltas cometidas · 🤖 nota do sistema / ✔ confirmada</p>`;
   }
   return `<div class="card sect"><div class="spread"><label style="margin-top:0">Jogo / amistoso / treino</label><div style="gap:8px;display:flex">${podeEditar?`<button class="mini ${modeLancAV?'on':'gold'}" onclick="subState.modeLancAV=!subState.modeLancAV;renderTab()">⚡ Rápido</button><button class="mini sec" onclick="pdfFichaJogo()">🖨️ Ficha</button>`:''}<button class="mini gold" onclick="artePosJogo()">🎨 Arte pós-jogo</button></div></div>
   <select onchange="subState.despEv=this.value;renderTab()">${jogos.length?jogos.map(j=>`<option value="${j.id}" ${j.id===sel?'selected':''}>${tipoEvIco(j.tipo)} ${dbr(j.data)} — ${esc(j.titulo)}</option>`).join(''):'<option value="">— nenhum jogo cadastrado —</option>'}</select>
@@ -2642,7 +2642,8 @@ function tAgenda(){
     <button class="mini sec" onclick="convocar('${e.id}')">📣 Convocar</button>
     <button class="mini sec" onclick="delEvento('${e.id}')">✕</button>`:''}</td></tr>`).join(''):'<tr><td colspan="5" class="mut">Nenhum compromisso.</td></tr>'}</table></div>
   ${jogosPlacar.length?`<div class="card" style="margin-top:14px"><div class="spread"><h2>🏆 Retrospecto de jogos</h2>
-  <select onchange="subState.retroAdv=this.value;renderTab()" style="max-width:230px"><option value="">🌐 Todos os adversários</option>${advs.map(a=>`<option value="${esc(a)}" ${a===advSel?'selected':''}>${esc(a)}</option>`).join('')}</select></div>
+  <div class="row" style="gap:6px"><select onchange="subState.retroAdv=this.value;renderTab()" style="max-width:210px"><option value="">🌐 Todos os adversários</option>${advs.map(a=>`<option value="${esc(a)}" ${a===advSel?'selected':''}>${esc(a)}</option>`).join('')}</select>
+  <button class="mini gold" onclick="pdfRetrospecto()">📄 PDF</button></div></div>
   <div class="grid g4" style="margin:10px 0">
     <div class="card stat"><div class="n">${retroLista.length}</div><div class="l">Jogos</div></div>
     <div class="card stat"><div class="n">${rV}V · ${rE}E · ${rD}D</div><div class="l">Resultados</div></div>
@@ -2700,6 +2701,37 @@ async function salvaEvento(id){
   fecha(); await recarrega();
 }
 function delEvento(id){ const e=byId(db.eventos,id); confirma(`Excluir o compromisso "${esc(e?e.titulo:'')}" (${e?dbr(e.data):''})? As presenças e estatísticas ligadas a ele também serão excluídas.`,async()=>{ await q(sb.from('eventos').delete().eq('id',id)); await recarrega(); toast('Compromisso excluído'); }); }
+function pdfRetrospecto(){
+  const jogosPlacar=db.eventos.filter(e=>['jogo','amistoso'].includes(e.tipo)&&e.placarNos!=null&&e.placarDeles!=null).sort((a,b)=>b.data.localeCompare(a.data));
+  if(!jogosPlacar.length){toast('Nenhum placar registrado ainda — use o botão ⚽ Placar na Agenda');return;}
+  const advSel=subState.retroAdv||'';
+  const lista=advSel?jogosPlacar.filter(e=>e.adversario===advSel):jogosPlacar;
+  if(!lista.length){toast('Nenhum jogo contra esse adversário');return;}
+  const rV=lista.filter(e=>e.placarNos>e.placarDeles).length;
+  const rE=lista.filter(e=>e.placarNos===e.placarDeles).length;
+  const rD=lista.filter(e=>e.placarNos<e.placarDeles).length;
+  const gp=lista.reduce((s,e)=>s+e.placarNos,0), gc=lista.reduce((s,e)=>s+e.placarDeles,0);
+  const statsBits=e=>{const st=e.statsTime||{};const bits=STATS_DEFS.filter(([k])=>k!=='g'&&Number(st[k])>0).map(([k,ic])=>ic+st[k]).join(' ');return bits||'—';};
+  abreRelatorio(`<h1>🏆 Retrospecto de Jogos</h1>
+  <p class="sub">${esc(db.config.time)} — ${advSel?'contra '+esc(advSel):'todos os adversários'}</p>
+  <div class="cards">
+    <div class="card"><div class="n">${lista.length}</div><div class="l">Jogos</div></div>
+    <div class="card"><div class="n">${rV}V · ${rE}E · ${rD}D</div><div class="l">Resultados</div></div>
+    <div class="card"><div class="n">${gp} × ${gc}</div><div class="l">Gols pró × contra</div></div>
+    <div class="card"><div class="n ${lista.length&&rV/lista.length>=.5?'ok':'warn'}">${Math.round(rV/lista.length*100)}%</div><div class="l">Aproveitamento</div></div>
+  </div>
+  <h2>📋 Jogo a jogo</h2>
+  <table><tr><th>Data</th><th>Tipo</th><th>Adversário</th><th>Placar</th><th>Resultado</th><th>Time todo</th><th>🌟 Craque (votos)</th></tr>
+  ${lista.map(e=>{const c=craqueDo(e.id);
+    return `<tr><td>${dbr(e.data)}</td><td>${tipoEvLbl(e.tipo)}</td><td><strong>${esc(e.adversario||'—')}</strong></td>
+    <td><strong>${e.placarNos}×${e.placarDeles}</strong></td>
+    <td>${e.placarNos>e.placarDeles?'<span class="ok">✅ Vitória</span>':e.placarNos===e.placarDeles?'<span class="warn">🤝 Empate</span>':'<span class="bad">❌ Derrota</span>'}</td>
+    <td style="font-size:11.5px">${statsBits(e)}</td>
+    <td>${c?esc(pnome(nomeAt(c.id)))+' ('+c.votos+')':'—'}</td></tr>`;}).join('')}
+  </table>
+  <p style="font-size:11.5px;color:#8a8f99">Time todo: ${STATS_DEFS.filter(([k])=>k!=='g').map(([k,ic,lb])=>ic+' '+lb.toLowerCase()).join(' · ')}</p>`,
+  `Retrospecto${advSel?' vs '+advSel:''} — ${db.config.time}`);
+}
 function formPlacar(id){
   const e=byId(db.eventos,id); if(!e)return;
   const advSugerido=e.adversario||(e.titulo||'').replace(/^.*?[×x]\s*/i,'').trim();
