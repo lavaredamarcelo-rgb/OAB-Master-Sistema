@@ -1802,7 +1802,11 @@ function craqueDo(evId){
   return {id:ord[0].votoId,votos:ord[0].votos,total,ranking:ord.map(t=>[t.votoId,t.votos])};
 }
 function cardVotacaoCraque(){
-  const jv=db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.data<=hoje()).sort((a,b)=>b.data.localeCompare(a.data)).slice(0,3);
+  // Depois de votar, o jogo sai da tela inicial (fica até 1 dia após a data do jogo
+  // para quem quiser trocar o voto); no painel do jogo, em Desempenho, fica sempre
+  const ontem=new Date(Date.now()-864e5).toISOString().slice(0,10);
+  const jv=db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.data<=hoje()).sort((a,b)=>b.data.localeCompare(a.data)).slice(0,3)
+    .filter(e=>{const meu=(db.craqueVotos||[]).find(v=>v.eventoId===e.id&&v.votanteId===me.id); return !meu||e.data>=ontem;});
   if(!jv.length)return '';
   return `<div class="card sect" style="border-color:var(--gold)"><h2>🌟 Craque do Jogo — vote! <span class="pill p-mut">🔒 voto secreto</span></h2>
   ${jv.map(e=>{const c=craqueDo(e.id); const meu=(db.craqueVotos||[]).find(v=>v.eventoId===e.id&&v.votanteId===me.id);
