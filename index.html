@@ -309,7 +309,7 @@ async function carregaTudo(){
   db={};
   db.atletas=perfis.map(mapAtleta);
   saude.forEach(s=>{ const a=at(s.atleta_id); if(a)a.saude={sangue:s.sangue,plano:s.plano,alergias:s.alergias,medicamentos:s.medicamentos,condicoes:s.condicoes,emergencia:s.emergencia,lesoes:s.lesoes,obs:s.obs,lesoesLista:s.lesoes_lista||[],obsLista:s.obs_lista||[]}; });
-  db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),dataFim:e.data_fim?String(e.data_fim):'',hora:e.hora,horaFim:e.hora_fim||'',local:e.local,obs:e.obs,adversario:e.adversario||'',placarNos:e.placar_nos??null,placarDeles:e.placar_deles??null}));
+  db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),dataFim:e.data_fim?String(e.data_fim):'',hora:e.hora,horaFim:e.hora_fim||'',local:e.local,obs:e.obs,adversario:e.adversario||'',placarNos:e.placar_nos??null,placarDeles:e.placar_deles??null,statsTime:e.stats_time||{}}));
   db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,convidado:p.convidado||null,status:p.status}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,forma:c.forma_pagamento||'',pagamentos:c.pagamentos||[],origem:c.origem||'',lote:c.origem_lote||''}));
@@ -1723,6 +1723,36 @@ function decStat(evId,atId,campo){
   t[campo]=Math.max(0,(Number(t[campo])||0)-1);
   renderTab();
 }
+const STATS_DEFS=[['g','⚽','Gols'],['as','🅰️','Assist.'],['due','⚔️','Duelos'],['da','🦅','Aéreos'],['ant','🧠','Antecip.'],['ch','🎯','Chutes'],['df','🧤','Defesas'],['pe','❌','P. err.']];
+const STATS_MAPA={g:'gols',as:'assist',due:'duelos',da:'duelosAereos',ant:'antecipacao',ch:'chutesGol',df:'defesas',pe:'passesErrados'};
+async function bumpTime(evId,k,delta){
+  const e=byId(db.eventos,evId); if(!e)return;
+  const st={...(e.statsTime||{})};
+  st[k]=Math.max(0,(Number(st[k])||0)+delta);
+  if(!st[k])delete st[k];
+  const {error}=await sb.from('eventos').update({stats_time:st}).eq('id',evId);
+  if(error){toast('⚠️ '+(/stats_time/.test(error.message||'')?'Rode o SQL v14 no Supabase para ativar as estatísticas do time':error.message));return;}
+  e.statsTime=st; renderTab();
+}
+function painelTimeTodo(sel,podeEditar){
+  const e=byId(db.eventos,sel); if(!e)return '';
+  const st=e.statsTime||{};
+  const somaAtl=k=>db.stats.filter(s=>s.eventoId===sel).reduce((x,s)=>x+(Number(s[STATS_MAPA[k]])||0),0);
+  const comValor=STATS_DEFS.filter(([k])=>Number(st[k])>0);
+  const pend=comValor.map(([k,ic])=>({ic,time:Number(st[k]),atr:somaAtl(k)})).filter(x=>x.atr<x.time);
+  return `<div class="card sect"><div class="spread"><h2 style="margin:0">📋 Time todo — estatísticas do jogo</h2>${podeEditar?'<span class="mut" style="font-size:12px">toque para +1 · − corrige</span>':''}</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin-top:10px">
+  ${STATS_DEFS.map(([k,ic,lb])=>`<div style="background:${Number(st[k])>0?'var(--ok-soft)':'var(--bg2)'};border:1px solid var(--line);border-radius:10px;padding:8px 4px;text-align:center;${podeEditar?'cursor:pointer;':''}user-select:none" ${podeEditar?`onclick="bumpTime('${sel}','${k}',1)"`:''}>
+    <div style="font-size:15px;line-height:1">${ic}</div>
+    <div style="font-size:20px;font-weight:800;line-height:1.4">${Number(st[k])||0}</div>
+    <div class="mut" style="font-size:9.5px;text-transform:uppercase">${lb}</div>
+    ${podeEditar?`<button class="mini sec" style="padding:2px 12px;margin-top:4px" onclick="event.stopPropagation();bumpTime('${sel}','${k}',-1)">−</button>`:''}
+  </div>`).join('')}</div>
+  ${pend.length?`<div class="alertline al-warn" style="margin-top:10px">⚠️ <strong>Falta distribuir aos atletas:</strong> ${pend.map(x=>`${x.ic} ${x.atr} de ${x.time}`).join(' · ')} — atribua no ⚡ Rápido</div>`
+    :comValor.length?'<div class="alertline al-ok" style="margin-top:10px">✅ Tudo que o time fez já está distribuído aos atletas!</div>'
+    :`<p class="mut" style="margin-top:8px;font-size:12.5px">Registre aqui os totais do time durante o jogo, sem se preocupar com quem fez — a atribuição individual pode vir depois, no ⚡ Rápido.</p>`}
+  </div>`;
+}
 function pdfFichaJogo(){
   const ev=byId(db.eventos,subState.despEv);
   const ats=[...elenco()].sort((a,b)=>a.nome.localeCompare(b.nome));
@@ -1739,6 +1769,7 @@ function pdfFichaJogo(){
   </div>
   <h2>Marque com risquinhos (𝍷) durante o jogo</h2>
   <table><tr><th>Atleta</th>${cols.map(([ic,lb])=>`<th style="text-align:center">${ic}<br><span style="font-size:9px">${lb}</span></th>`).join('')}</tr>
+  <tr><td style="height:32px;background:#f3e3c8"><strong>📋 TIME TODO</strong></td>${cols.map(()=>'<td style="background:#f3e3c8"></td>').join('')}</tr>
   ${ats.map(a=>linhaVazia('<strong>'+esc(pnome(a.nome))+'</strong>')).join('')}
   ${linhaVazia('🎟️ ____________')}${linhaVazia('🎟️ ____________')}${linhaVazia('🎟️ ____________')}
   </table>
@@ -1830,6 +1861,7 @@ function tDesemp(){
   return `<div class="card sect"><div class="spread"><label style="margin-top:0">Jogo / amistoso / treino</label><div style="gap:8px;display:flex">${podeEditar?`<button class="mini ${modeLancAV?'on':'gold'}" onclick="subState.modeLancAV=!subState.modeLancAV;renderTab()">⚡ Rápido</button><button class="mini sec" onclick="pdfFichaJogo()">🖨️ Ficha</button>`:''}<button class="mini gold" onclick="artePosJogo()">🎨 Arte pós-jogo</button></div></div>
   <select onchange="subState.despEv=this.value;renderTab()">${jogos.length?jogos.map(j=>`<option value="${j.id}" ${j.id===sel?'selected':''}>${tipoEvIco(j.tipo)} ${dbr(j.data)} — ${esc(j.titulo)}</option>`).join(''):'<option value="">— nenhum jogo cadastrado —</option>'}</select>
   <div style="margin-top:14px">${modeLancAV&&sel?lancAoVivo(sel):lanc}</div></div>
+  ${sel?painelTimeTodo(sel,podeEditar):''}
   ${filtroCat}
   <div class="grid g2 sect">
     <div class="card"><h2>⚽ Artilharia</h2>${rank(a=>a.g)}</div>
@@ -2479,7 +2511,7 @@ function tAgenda(){
     <div class="card stat"><div class="n" style="color:${retroLista.length&&rV/retroLista.length>=.5?'var(--ok)':'var(--warn)'}">${retroLista.length?Math.round(rV/retroLista.length*100):0}%</div><div class="l">Aproveitamento</div></div>
   </div>
   <div class="tblwrap"><table class="cardz"><tr><th>Data</th><th>Tipo</th><th>Adversário</th><th>Placar</th><th>Resultado</th></tr>
-  ${retroLista.map(e=>`<tr><td data-l="Data">${dbr(e.data)}</td><td data-l="Tipo">${tipoEvLbl(e.tipo)}</td><td data-l="Adversário"><strong>${esc(e.adversario||'—')}</strong></td><td data-l="Placar"><strong>${e.placarNos}×${e.placarDeles}</strong></td><td data-l="Resultado">${e.placarNos>e.placarDeles?'<span class="pill p-ok">✅ Vitória</span>':e.placarNos===e.placarDeles?'<span class="pill p-warn">🤝 Empate</span>':'<span class="pill p-bad">❌ Derrota</span>'}</td></tr>`).join('')}</table></div></div>`:''}`;
+  ${retroLista.map(e=>`<tr><td data-l="Data">${dbr(e.data)}</td><td data-l="Tipo">${tipoEvLbl(e.tipo)}</td><td data-l="Adversário"><strong>${esc(e.adversario||'—')}</strong></td><td data-l="Placar"><strong>${e.placarNos}×${e.placarDeles}</strong>${(()=>{const st=e.statsTime||{};const bits=STATS_DEFS.filter(([k])=>k!=='g'&&Number(st[k])>0).map(([k,ic])=>ic+st[k]).join(' ');return bits?`<div class="mut" style="font-size:11px">${bits}</div>`:'';})()}</td><td data-l="Resultado">${e.placarNos>e.placarDeles?'<span class="pill p-ok">✅ Vitória</span>':e.placarNos===e.placarDeles?'<span class="pill p-warn">🤝 Empate</span>':'<span class="pill p-bad">❌ Derrota</span>'}</td></tr>`).join('')}</table></div></div>`:''}`;
 }
 
 function formEvento(id){
