@@ -217,8 +217,10 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const brl=v=>(Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const ehMensal=c=>/Mensalidade/i.test(c.desc||'');
 const mapsLink=l=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(l);
-const tipoEvIco=t=>t==='jogo'?'⚽':t==='amistoso'?'🤝':t==='treino'?'🏃':t==='campeonato'?'🏆':'📌';
-const tipoEvLbl=t=>t==='jogo'?'⚽ Jogo':t==='amistoso'?'🤝 Amistoso':t==='treino'?'🏃 Treino':t==='campeonato'?'🏆 Campeonato':'📌 Compromisso';
+const ehJogoTipo=t=>['jogo','amistoso','treino_amistoso'].includes(t);
+const ehTreinoTipo=t=>['treino','treino_amistoso'].includes(t);
+const tipoEvIco=t=>t==='jogo'?'⚽':t==='amistoso'?'🤝':t==='treino_amistoso'?'🏃🤝':t==='treino'?'🏃':t==='campeonato'?'🏆':'📌';
+const tipoEvLbl=t=>t==='jogo'?'⚽ Jogo':t==='amistoso'?'🤝 Amistoso':t==='treino_amistoso'?'🏃🤝 Treino + Amistoso':t==='treino'?'🏃 Treino':t==='campeonato'?'🏆 Campeonato':'📌 Compromisso';
 const nomeCob=c=>c.atletaId?nomeAt(c.atletaId):('🎟️ '+(c.convidado||'Convidado'));
 const valorDe=c=>(ehMensal(c)&&c.status==='atrasado')?(db.config.mensApos||c.valor):c.valor;
 const dbr=d=>{ if(!d)return '—'; const[a,m,dd]=String(d).slice(0,10).split('-'); return `${dd}/${m}/${a}`; };
@@ -252,13 +254,13 @@ function freqAtleta(atId){
   db.presencas.filter(p=>p.atletaId===atId).forEach(p=>{
     const e=byId(db.eventos,p.eventoId); if(!e)return;
     const d=porDia[e.data];
-    const ehJogo=['jogo','amistoso'].includes(e.tipo);
-    if(!d||peso[p.status]<peso[d.status]) porDia[e.data]={status:p.status,jogo:ehJogo||(d?d.jogo:false)};
-    else if(ehJogo) d.jogo=true;
+    const j=ehJogoTipo(e.tipo), t=ehTreinoTipo(e.tipo);
+    if(!d||peso[p.status]<peso[d.status]) porDia[e.data]={status:p.status,jogo:j||(d?d.jogo:false),treino:t||(d?d.treino:false)};
+    else {if(j)d.jogo=true; if(t)d.treino=true;}
   });
   const dias=Object.values(porDia);
   const cmp=dias.filter(x=>['presente','atraso'].includes(x.status));
-  return {tot:dias.length,cmp:cmp.length,jg:cmp.filter(x=>x.jogo).length,tr:cmp.filter(x=>!x.jogo).length,
+  return {tot:dias.length,cmp:cmp.length,jg:cmp.filter(x=>x.jogo).length,tr:cmp.filter(x=>x.treino).length,
     f:dias.filter(x=>x.status==='falta').length,at:dias.filter(x=>x.status==='atraso').length,
     j:dias.filter(x=>x.status==='justificada').length,
     pct:dias.length?Math.round(cmp.length/dias.length*100):null};
@@ -317,7 +319,7 @@ async function carregaTudo(){
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,forma:c.forma_pagamento||'',pagamentos:c.pagamentos||[],origem:c.origem||'',lote:c.origem_lote||''}));
   db.avaliacoes=avaliacoes.map(v=>({id:v.id,atletaId:v.atleta_id,data:String(v.data),peso:v.peso,altura:v.altura,gordura:v.gordura,vo2:v.vo2,notas:v.notas}));
   db.metas=metas.map(m=>({id:m.id,atletaId:m.atleta_id,desc:m.descricao,prazo:m.prazo?String(m.prazo):'',status:m.status}));
-  db.stats=stats.map(s=>({id:s.id,eventoId:s.evento_id,atletaId:s.atleta_id,minutos:s.minutos,gols:s.gols,assist:s.assist,amarelos:s.amarelos,vermelho:s.vermelho,desarmes:s.desarmes,duelos:s.duelos,passes:s.passes,antecipacao:s.antecipacao||0,duelosAereos:s.duelos_aereos||0,chutesGol:s.chutes_gol||0,defesas:s.defesas||0,passesErrados:s.passes_errados||0,duelosPerdidos:s.duelos_perdidos||0,bolasPerdidas:s.bolas_perdidas||0,faltasCometidas:s.faltas_cometidas||0,nota:s.nota,obs:s.obs}));
+  db.stats=stats.map(s=>({id:s.id,eventoId:s.evento_id,atletaId:s.atleta_id,minutos:s.minutos,gols:s.gols,assist:s.assist,amarelos:s.amarelos,vermelho:s.vermelho,desarmes:s.desarmes,duelos:s.duelos,passes:s.passes,antecipacao:s.antecipacao||0,duelosAereos:s.duelos_aereos||0,chutesGol:s.chutes_gol||0,defesas:s.defesas||0,passesErrados:s.passes_errados||0,duelosPerdidos:s.duelos_perdidos||0,bolasPerdidas:s.bolas_perdidas||0,faltasCometidas:s.faltas_cometidas||0,chutesErrados:s.chutes_errados||0,golsSofridos:s.gols_sofridos||0,penaltisPerdidos:s.penaltis_perdidos||0,penaltisCometidos:s.penaltis_cometidos||0,golsContra:s.gols_contra||0,nota:s.nota,obs:s.obs}));
   db.uniformes=uniformes.map(u=>({id:u.id,descricao:u.descricao,numero:u.numero,tamanho:u.tamanho,status:u.status,atletaId:u.atleta_id,entregueEm:u.entregue_em,aceitoEm:u.aceito_em,pecas:u.pecas||{camisa:'estoque',short:'estoque',meiao:'estoque'},fornecedor:u.fornecedor||'',convidado:u.convidado||'',convFone:u.convidado_fone||'',goleiro:!!u.goleiro,cor:u.cor||''}));
   db.inventario=inventario.map(i=>({id:i.id,nome:i.nome,cat:i.cat,qtd:i.qtd,marca:i.marca||'',cor:i.cor||'',material:i.material||'',obs:i.obs||'',fotoUrl:i.foto_url||'',emprestimos:i.emprestimos||[]}));
   const mapDoc=d=>({id:d.id,atletaId:d.atleta_id,categoria:d.categoria,nome:d.nome,path:d.path,mime:d.mime,tam:d.tam,quem:d.quem,quando:fdt(d.quando)});
@@ -377,7 +379,7 @@ function icsData(d,h){ return d.replace(/-/g,'')+'T'+((h||'00:00').replace(':','
 function icsEvento(ev){
   const dt=icsData(ev.data,ev.hora);
   return ['BEGIN:VEVENT','UID:'+ev.id+'@oabmaster','DTSTART:'+dt,...(ev.dataFim?['DTEND:'+icsData(ev.dataFim,ev.horaFim||'22:00')]:ev.horaFim?['DTEND:'+icsData(ev.data,ev.horaFim)]:[]),
-    'SUMMARY:'+(ev.tipo==='jogo'?'⚽ ':ev.tipo==='amistoso'?'🤝 ':'')+ev.titulo,
+    'SUMMARY:'+(ev.tipo==='jogo'?'⚽ ':ev.tipo==='amistoso'?'🤝 ':ev.tipo==='treino_amistoso'?'🏃🤝 ':'')+ev.titulo,
     'LOCATION:'+(ev.local||''),'DESCRIPTION:'+db.config.time+' — '+(ev.obs||ev.tipo),
     'BEGIN:VALARM','TRIGGER:-PT3H','ACTION:DISPLAY','DESCRIPTION:Lembrete: '+ev.titulo,'END:VALARM',
     'BEGIN:VALARM','TRIGGER:-P1D','ACTION:DISPLAY','DESCRIPTION:Amanhã: '+ev.titulo,'END:VALARM','END:VEVENT'].join('\r\n');
@@ -1698,7 +1700,8 @@ function lancAoVivo(evId){
   <div style="background:var(--bg2);padding:10px 12px;border-radius:10px;border:1px solid var(--line)">
     <div class="mut" style="font-size:12px;margin-bottom:6px">1️⃣ Escolha o lance:</div>
     <div class="row" style="gap:5px;flex-wrap:wrap">
-      ${DEFS.map(([k,ic,lb])=>`<button class="mini ${stat===k?'':'sec'}" style="padding:7px 10px" onclick="subState.statAtivo='${k}';renderTab()">${ic} ${lb}</button>`).join('')}
+      ${DEFS.filter(([k])=>!STATS_RAROS.includes(k)||subState.maisLances||STATS_RAROS.includes(stat)).map(([k,ic,lb])=>`<button class="mini ${stat===k?'':'sec'}" style="padding:7px 10px" onclick="subState.statAtivo='${k}';renderTab()">${ic} ${lb}</button>`).join('')}
+      <button class="mini sec" style="padding:7px 10px" onclick="subState.maisLances=!subState.maisLances;renderTab()">${subState.maisLances?'− Menos':'➕ Mais lances'}</button>
     </div>
     <div class="mut" style="font-size:12px;margin-top:8px">2️⃣ Toque no atleta para somar <strong>+1 ${defAtivo[1]} ${defAtivo[2]}</strong> · use − para corrigir</div>
   </div>
@@ -1736,12 +1739,13 @@ function decStat(evId,atId,campo){
 function notaAuto(x){
   const v=k=>Number(x&&x[k])||0;
   let n=6+0.8*v('gols')+0.5*v('assist')+0.3*v('defesas')+0.2*v('antecipacao')+0.2*v('desarmes')+0.15*v('duelos')+0.15*v('duelosAereos')+0.1*v('chutesGol')
-       -0.15*v('duelosPerdidos')-0.2*v('bolasPerdidas')-0.1*v('passesErrados')-0.1*v('faltasCometidas')-0.3*v('amarelos')-(x&&x.vermelho?1:0);
+       -0.15*v('duelosPerdidos')-0.2*v('bolasPerdidas')-0.1*v('passesErrados')-0.1*v('faltasCometidas')-0.05*v('chutesErrados')-0.2*v('golsSofridos')-0.5*v('penaltisPerdidos')-0.4*v('penaltisCometidos')-0.7*v('golsContra')-0.3*v('amarelos')-(x&&x.vermelho?1:0);
   return Math.max(1,Math.min(10,Math.round(n*10)/10));
 }
 const notaDe=x=>x.nota?{v:+x.nota,auto:false}:{v:notaAuto(x),auto:true};
-const STATS_DEFS=[['g','⚽','Gols'],['as','🅰️','Assist.'],['due','⚔️','Duelos'],['da','🦅','Aéreos'],['ant','🧠','Antecip.'],['ch','🎯','Chutes'],['df','🧤','Defesas'],['pe','❌','P. err.'],['dp','💔','D. perd.'],['bp','🔄','B. perd.'],['fc','🚫','Faltas']];
-const STATS_MAPA={g:'gols',as:'assist',due:'duelos',da:'duelosAereos',ant:'antecipacao',ch:'chutesGol',df:'defesas',pe:'passesErrados',dp:'duelosPerdidos',bp:'bolasPerdidas',fc:'faltasCometidas'};
+const STATS_DEFS=[['g','⚽','Gols'],['as','🅰️','Assist.'],['due','⚔️','Duelos'],['da','🦅','Aéreos'],['ant','🧠','Antecip.'],['ch','🎯','Chutes'],['ce','💨','Ch. errado'],['df','🧤','Defesas'],['gs','🚨','Gols sofr.'],['pe','❌','P. err.'],['dp','💔','D. perd.'],['bp','🔄','B. perd.'],['fc','🚫','Faltas'],['pp','😖','Pên. perdido'],['pc','🎁','Pên. cometido'],['gco','🔴','Gol contra']];
+const STATS_RAROS=['pp','pc','gco'];
+const STATS_MAPA={g:'gols',as:'assist',due:'duelos',da:'duelosAereos',ant:'antecipacao',ch:'chutesGol',df:'defesas',pe:'passesErrados',dp:'duelosPerdidos',bp:'bolasPerdidas',fc:'faltasCometidas',ce:'chutesErrados',gs:'golsSofridos',pp:'penaltisPerdidos',pc:'penaltisCometidos',gco:'golsContra'};
 async function bumpTime(evId,k,delta){
   const e=byId(db.eventos,evId); if(!e)return;
   const st={...(e.statsTime||{})};
@@ -1775,7 +1779,7 @@ function modalVotarCraque(evId){
   <div class="row" style="margin-top:14px"><button class="sec" onclick="fecha()">Fechar</button></div>`);
 }
 function painelCraque(evId){
-  const e=byId(db.eventos,evId); if(!e||!['jogo','amistoso'].includes(e.tipo))return '';
+  const e=byId(db.eventos,evId); if(!e||!ehJogoTipo(e.tipo))return '';
   const c=craqueDo(evId);
   const meuVoto=(db.craqueVotos||[]).find(v=>v.eventoId===evId&&v.votanteId===me.id);
   return `<div class="card sect" style="border-color:var(--gold)"><div class="spread"><h2 style="margin:0">🌟 Craque do Jogo</h2>
@@ -1826,7 +1830,7 @@ function comparaGo(){
     db.stats.filter(x=>x.atletaId===id).forEach(x=>{STATS_DEFS.forEach(([k])=>o[k]+=Number(x[STATS_MAPA[k]])||0); o.j++; o.notas.push(notaDe(x).v);});
     o.nm=o.notas.length?o.notas.reduce((x,y)=>x+y,0)/o.notas.length:0; return o;};
   const A=soma(ida), B=soma(idb);
-  const NEG=['pe','dp','bp','fc'];
+  const NEG=['pe','dp','bp','fc','ce','gs','pp','pc','gco'];
   const linhas=[['Partidas',A.j,B.j,false],['🌟 Nota média',A.nm.toFixed(1),B.nm.toFixed(1),false],
     ...STATS_DEFS.map(([k,ic,lb])=>[ic+' '+lb,A[k],B[k],NEG.includes(k)])];
   $('cmp_out').innerHTML=`<div class="tblwrap"><table>
@@ -1841,7 +1845,7 @@ function resumoMes(){
   const mes=hoje().slice(0,7);
   const evIds=new Set(db.eventos.filter(e=>e.data.startsWith(mes)).map(e=>e.id));
   const sts=db.stats.filter(x=>x.atletaId&&evIds.has(x.eventoId));
-  const jogosMes=db.eventos.filter(e=>e.data.startsWith(mes)&&['jogo','amistoso'].includes(e.tipo)&&e.placarNos!=null);
+  const jogosMes=db.eventos.filter(e=>e.data.startsWith(mes)&&ehJogoTipo(e.tipo)&&e.placarNos!=null);
   if(!sts.length&&!jogosMes.length){toast('Nenhuma estatística ou placar lançado neste mês');return;}
   const agg={}; sts.forEach(x=>{const a=agg[x.atletaId]??={g:0,as:0,df:0,notas:[]};a.g+=+x.gols||0;a.as+=+x.assist||0;a.df+=+x.defesas||0;a.notas.push(notaDe(x).v);});
   const L=Object.entries(agg);
@@ -1886,7 +1890,7 @@ function pdfFichaJogo(){
   const ev=byId(db.eventos,subState.despEv);
   const ats=[...elenco()].sort((a,b)=>a.nome.localeCompare(b.nome));
   if(!ats.length){toast('Nenhum jogador no elenco');return;}
-  const cols=[['⚽','Gols'],['🅰️','Assist.'],['⚔️','Duelos'],['💔','D. perd.'],['🦅','Aéreos'],['🧠','Antecip.'],['🎯','Chutes'],['🧤','Defesas'],['❌','P. err.'],['🔄','B. perd.'],['🚫','Faltas'],['⭐','Nota']];
+  const cols=[['⚽','Gols'],['🅰️','Assist.'],['⚔️','Duelos'],['💔','D. perd.'],['🦅','Aéreos'],['🧠','Antecip.'],['🎯','Chutes'],['💨','Ch. err.'],['🧤','Defesas'],['🚨','G. sofr.'],['❌','P. err.'],['🔄','B. perd.'],['🚫','Faltas'],['⭐','Nota']];
   const linhaVazia=n=>`<tr><td style="height:30px">${n||''}</td>${cols.map(()=>'<td></td>').join('')}</tr>`;
   abreRelatorio(`<h1>📝 Ficha de Jogo — Súmula de Estatísticas</h1>
   <p class="sub">${esc(db.config.time)}${ev?` — ${tipoEvIco(ev.tipo)} ${esc(ev.titulo)} · ${dbr(ev.data)}${ev.local?' · '+esc(ev.local):''}`:''}</p>
@@ -1909,13 +1913,13 @@ function pdfTotaisTemporada(){
   const tipoDe=id=>{const e=byId(db.eventos,id);return e?e.tipo:'';};
   const secoes=cats.map(c=>{
     const agg={};
-    db.stats.filter(s=>s.atletaId&&(c.k==='todos'||tipoDe(s.eventoId)===c.k)).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,j:0,notas:[]};
-      a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.dp+=+s.duelosPerdidos||0; a.bp+=+s.bolasPerdidas||0; a.fc+=+s.faltasCometidas||0; a.j++; a.notas.push(notaDe(s).v); });
+    db.stats.filter(s=>s.atletaId&&(c.k==='todos'||tipoDe(s.eventoId)===c.k)).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,ce:0,gs:0,pp:0,pc:0,gco:0,j:0,notas:[]};
+      a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.dp+=+s.duelosPerdidos||0; a.bp+=+s.bolasPerdidas||0; a.fc+=+s.faltasCometidas||0; a.ce+=+s.chutesErrados||0; a.gs+=+s.golsSofridos||0; a.pp+=+s.penaltisPerdidos||0; a.pc+=+s.penaltisCometidos||0; a.gco+=+s.golsContra||0; a.j++; a.notas.push(notaDe(s).v); });
     const linhas=Object.entries(agg).sort((x,y)=>y[1].g-x[1].g||y[1].as-x[1].as||nomeAt(x[0]).localeCompare(nomeAt(y[0])));
     if(!linhas.length)return '';
     return `<div class="mes"><h2>${c.t}</h2>
-    <table><tr><th>Atleta</th><th>Partidas</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>🦅</th><th>🧠</th><th>🎯</th><th>🧤</th><th>❌</th><th>💔</th><th>🔄</th><th>🚫</th><th>Nota média</th></tr>
-    ${linhas.map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td>${a.j}</td><td>${a.g}</td><td>${a.as}</td><td>${a.ca}</td><td>${a.cv}</td><td>${a.des}</td><td>${a.due}</td><td>${a.da}</td><td>${a.ant}</td><td>${a.ch}</td><td>${a.df}</td><td>${a.pe}</td><td>${a.dp}</td><td>${a.bp}</td><td>${a.fc}</td><td>${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join('')}</table></div>`;
+    <table><tr><th>Atleta</th><th>Partidas</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>🦅</th><th>🧠</th><th>🎯</th><th>💨</th><th>🧤</th><th>🚨</th><th>❌</th><th>💔</th><th>🔄</th><th>🚫</th><th>😖</th><th>🎁</th><th>🔴</th><th>Nota média</th></tr>
+    ${linhas.map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td>${a.j}</td><td>${a.g}</td><td>${a.as}</td><td>${a.ca}</td><td>${a.cv}</td><td>${a.des}</td><td>${a.due}</td><td>${a.da}</td><td>${a.ant}</td><td>${a.ch}</td><td>${a.ce}</td><td>${a.df}</td><td>${a.gs}</td><td>${a.pe}</td><td>${a.dp}</td><td>${a.bp}</td><td>${a.fc}</td><td>${a.pp}</td><td>${a.pc}</td><td>${a.gco}</td><td>${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join('')}</table></div>`;
   }).join('');
   if(!secoes){toast('Nenhuma estatística lançada ainda');return;}
   abreRelatorio(`<h1>📊 Totais da Temporada</h1>
@@ -1940,9 +1944,9 @@ function adicionaConvidadoDesemp(){
 async function salvaStatsAoVivo(evId){
   const temp=subState.statsTemp?.[evId]||{};
   if(!Object.keys(temp).length){toast('Nenhuma estatística para salvar');return;}
-  const NOVOS=['antecipacao','duelos_aereos','chutes_gol','defesas','passes_errados','duelos_perdidos','bolas_perdidas','faltas_cometidas'];
+  const NOVOS=['antecipacao','duelos_aereos','chutes_gol','defesas','passes_errados','duelos_perdidos','bolas_perdidas','faltas_cometidas','chutes_errados','gols_sofridos','penaltis_perdidos','penaltis_cometidos','gols_contra'];
   let semNovos=false;
-  const monta=st=>{ const d={gols:st.g||0,assist:st.as||0,duelos:st.due||0,antecipacao:st.ant||0,duelos_aereos:st.da||0,chutes_gol:st.ch||0,defesas:st.df||0,passes_errados:st.pe||0,duelos_perdidos:st.dp||0,bolas_perdidas:st.bp||0,faltas_cometidas:st.fc||0};
+  const monta=st=>{ const d={gols:st.g||0,assist:st.as||0,duelos:st.due||0,antecipacao:st.ant||0,duelos_aereos:st.da||0,chutes_gol:st.ch||0,defesas:st.df||0,passes_errados:st.pe||0,duelos_perdidos:st.dp||0,bolas_perdidas:st.bp||0,faltas_cometidas:st.fc||0,chutes_errados:st.ce||0,gols_sofridos:st.gs||0,penaltis_perdidos:st.pp||0,penaltis_cometidos:st.pc||0,gols_contra:st.gco||0};
     if(semNovos)NOVOS.forEach(k=>delete d[k]); return d; };
   const grava=async(atId,st)=>{
     const dados=monta(st);
@@ -1950,7 +1954,7 @@ async function salvaStatsAoVivo(evId){
       ?sb.from('stats').insert({evento_id:evId,atleta_id:null,convidado:subState.convidadosDesemp?.[Number(atId.split('_')[1])],...dados})
       :sb.from('stats').upsert({evento_id:evId,atleta_id:atId,...dados},{onConflict:'evento_id,atleta_id'});
     let {error}=await op();
-    if(error&&/antecipacao|duelos_aereos|chutes_gol|defesas|passes_errados|duelos_perdidos|bolas_perdidas|faltas_cometidas/.test(error.message||'')){
+    if(error&&/antecipacao|duelos_aereos|chutes_gol|defesas|passes_errados|duelos_perdidos|bolas_perdidas|faltas_cometidas|chutes_errados|gols_sofridos|penaltis_perdidos|penaltis_cometidos|gols_contra/.test(error.message||'')){
       semNovos=true;
       const {error:e2}=await grava(atId,st)||{}; if(e2)throw e2; return;
     }
@@ -1964,16 +1968,16 @@ async function salvaStatsAoVivo(evId){
   toast(semNovos?'⚠️ Salvo sem os itens novos — rode o SQL v11 no Supabase':'✅ Estatísticas salvas ao vivo!');
 }
 function tDesemp(){
-  const jogos=db.eventos.filter(e=>['jogo','amistoso','treino'].includes(e.tipo)).sort((a,b)=>b.data.localeCompare(a.data));
+  const jogos=db.eventos.filter(e=>['jogo','amistoso','treino','treino_amistoso'].includes(e.tipo)).sort((a,b)=>b.data.localeCompare(a.data));
   const podeEditar=gestor();
   const sel=subState.despEv||(jogos[0]&&jogos[0].id)||'';
   const ats=elenco();
   const modeLancAV=subState.modeLancAV||false;
   const cat=subState.despCat||'todos';
-  const catDe=evId=>{const e=byId(db.eventos,evId);return e?e.tipo:'';};
+  const catDe=evId=>{const e=byId(db.eventos,evId);return e?(e.tipo==='treino_amistoso'?'amistoso':e.tipo):'';};
   const agg={};
-  db.stats.filter(s=>cat==='todos'||catDe(s.eventoId)===cat).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,j:0,notas:[]};
-    a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.dp+=+s.duelosPerdidos||0; a.bp+=+s.bolasPerdidas||0; a.fc+=+s.faltasCometidas||0; a.j++; a.notas.push(notaDe(s).v); });
+  db.stats.filter(s=>cat==='todos'||catDe(s.eventoId)===cat).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,ce:0,gs:0,pp:0,pc:0,gco:0,j:0,notas:[]};
+    a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.dp+=+s.duelosPerdidos||0; a.bp+=+s.bolasPerdidas||0; a.fc+=+s.faltasCometidas||0; a.ce+=+s.chutesErrados||0; a.gs+=+s.golsSofridos||0; a.pp+=+s.penaltisPerdidos||0; a.pc+=+s.penaltisCometidos||0; a.gco+=+s.golsContra||0; a.j++; a.notas.push(notaDe(s).v); });
   const catBtn=(v,lbl)=>`<button class="mini ${cat===v?'':'sec'}" onclick="subState.despCat='${v}';renderTab()">${lbl}</button>`;
   const filtroCat=`<div class="row sect" style="gap:6px;flex-wrap:wrap"><span class="mut" style="font-size:12px;align-self:center">Estatísticas de:</span>
     ${catBtn('todos','🌐 Tudo')}${catBtn('jogo','🏆 Oficiais')}${catBtn('amistoso','🤝 Amistosos')}${catBtn('treino','🏃 Treinos')}</div>`;
@@ -2014,7 +2018,7 @@ function tDesemp(){
   ${Object.keys(agg).length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:10px;margin-top:10px">
   ${Object.entries(agg).sort((x,y)=>y[1].g-x[1].g||y[1].as-x[1].as).map(([id,a])=>{
     const nota=a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):null;
-    const chips=[['⚽','Gols',a.g],['🅰️','Assist.',a.as],['🎯','Chutes',a.ch],['🛡️','Desarmes',a.des],['⚔️','Duelos',a.due],['🦅','Aéreos',a.da],['🧠','Antecip.',a.ant],['🧤','Defesas',a.df],['❌','P. err.',a.pe],['💔','D. perd.',a.dp],['🔄','B. perd.',a.bp],['🚫','Faltas',a.fc],['🟨','Cartões',a.ca+a.cv]];
+    const chips=[['⚽','Gols',a.g],['🅰️','Assist.',a.as],['🎯','Chutes',a.ch],['🛡️','Desarmes',a.des],['⚔️','Duelos',a.due],['🦅','Aéreos',a.da],['🧠','Antecip.',a.ant],['🧤','Defesas',a.df],['❌','P. err.',a.pe],['💔','D. perd.',a.dp],['🔄','B. perd.',a.bp],['🚫','Faltas',a.fc],['💨','Ch. err.',a.ce],['🚨','G. sofr.',a.gs],['😖','Pên. perd.',a.pp],['🎁','Pên. com.',a.pc],['🔴','G. contra',a.gco],['🟨','Cartões',a.ca+a.cv]];
     return `<div style="background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px">
       <div class="spread" style="margin-bottom:8px;gap:6px"><strong>${esc(pnome(nomeAt(id)))}</strong>
         <span style="white-space:nowrap">${nota?`<span class="pill p-gold">⭐ ${nota}</span> `:''}<span class="pill p-mut">${a.j} part.</span></span></div>
@@ -2042,6 +2046,11 @@ function formStat(evId,atId){
   <div><label>💔 Duelos perdidos</label><input id="st_dp" type="number" value="${s.duelosPerdidos??''}"></div>
   <div><label>🔄 Bolas perdidas</label><input id="st_bp" type="number" value="${s.bolasPerdidas??''}"></div>
   <div><label>🚫 Faltas cometidas</label><input id="st_fc" type="number" value="${s.faltasCometidas??''}"></div>
+  <div><label>💨 Chutes errados</label><input id="st_ce" type="number" value="${s.chutesErrados??''}"></div>
+  <div><label>🚨 Gols sofridos (goleiro)</label><input id="st_gs" type="number" value="${s.golsSofridos??''}"></div>
+  <div><label>😖 Pênaltis perdidos</label><input id="st_pp" type="number" value="${s.penaltisPerdidos??''}"></div>
+  <div><label>🎁 Pênaltis cometidos</label><input id="st_pc" type="number" value="${s.penaltisCometidos??''}"></div>
+  <div><label>🔴 Gols contra</label><input id="st_gco" type="number" value="${s.golsContra??''}"></div>
   <div><label>Nota (vazio = usa a do sistema 🤖)</label><input id="st_n" type="number" step="0.1" min="0" max="10" value="${s.nota??''}" placeholder="🤖 ${s.eventoId?notaAuto(s):'6.0'}"></div>
   </div>
   <div class="alertline al-ok" style="margin-top:8px">🤖 <strong>Nota sugerida pelo sistema: ${notaAuto(s).toFixed(1)}</strong> (recalcula ao salvar os lances) <button class="mini gold" onclick="$('st_n').value='${notaAuto(s).toFixed(1)}'">✔ Confirmar sugestão</button></div>
@@ -2051,10 +2060,10 @@ function formStat(evId,atId){
 }
 async function salvaStat(evId,atId){
   const n=v=>v===''?null:Number(v);
-  let dados={evento_id:evId,atleta_id:atId,minutos:n(fval('st_min')),gols:n(fval('st_g'))||0,assist:n(fval('st_a'))||0,amarelos:Number(fval('st_ca'))||0,vermelho:$('st_cv').checked,desarmes:n(fval('st_d'))||0,duelos:n(fval('st_du'))||0,antecipacao:n(fval('st_ant'))||0,duelos_aereos:n(fval('st_da'))||0,chutes_gol:n(fval('st_ch'))||0,defesas:n(fval('st_df'))||0,passes_errados:n(fval('st_pe'))||0,duelos_perdidos:n(fval('st_dp'))||0,bolas_perdidas:n(fval('st_bp'))||0,faltas_cometidas:n(fval('st_fc'))||0,nota:n(fval('st_n')),obs:fval('st_obs')};
+  let dados={evento_id:evId,atleta_id:atId,minutos:n(fval('st_min')),gols:n(fval('st_g'))||0,assist:n(fval('st_a'))||0,amarelos:Number(fval('st_ca'))||0,vermelho:$('st_cv').checked,desarmes:n(fval('st_d'))||0,duelos:n(fval('st_du'))||0,antecipacao:n(fval('st_ant'))||0,duelos_aereos:n(fval('st_da'))||0,chutes_gol:n(fval('st_ch'))||0,defesas:n(fval('st_df'))||0,passes_errados:n(fval('st_pe'))||0,duelos_perdidos:n(fval('st_dp'))||0,bolas_perdidas:n(fval('st_bp'))||0,faltas_cometidas:n(fval('st_fc'))||0,chutes_errados:n(fval('st_ce'))||0,gols_sofridos:n(fval('st_gs'))||0,penaltis_perdidos:n(fval('st_pp'))||0,penaltis_cometidos:n(fval('st_pc'))||0,gols_contra:n(fval('st_gco'))||0,nota:n(fval('st_n')),obs:fval('st_obs')};
   let {error}=await sb.from('stats').upsert(dados,{onConflict:'evento_id,atleta_id'});
-  if(error&&/antecipacao|duelos_aereos|chutes_gol|defesas|passes_errados|duelos_perdidos|bolas_perdidas|faltas_cometidas/.test(error.message||'')){
-    ['antecipacao','duelos_aereos','chutes_gol','defesas','passes_errados','duelos_perdidos','bolas_perdidas','faltas_cometidas'].forEach(k=>delete dados[k]);
+  if(error&&/antecipacao|duelos_aereos|chutes_gol|defesas|passes_errados|duelos_perdidos|bolas_perdidas|faltas_cometidas|chutes_errados|gols_sofridos|penaltis_perdidos|penaltis_cometidos|gols_contra/.test(error.message||'')){
+    ['antecipacao','duelos_aereos','chutes_gol','defesas','passes_errados','duelos_perdidos','bolas_perdidas','faltas_cometidas','chutes_errados','gols_sofridos','penaltis_perdidos','penaltis_cometidos','gols_contra'].forEach(k=>delete dados[k]);
     const {error:e2}=await sb.from('stats').upsert(dados,{onConflict:'evento_id,atleta_id'});
     if(e2){toast('⚠️ '+e2.message);return;}
     toast('⚠️ Salvo sem os itens novos — rode o SQL v11 no Supabase para ativá-los');
@@ -2063,7 +2072,7 @@ async function salvaStat(evId,atId){
   fecha(); await recarrega(); toast('Estatísticas salvas');
 }
 function artePosJogo(){
-  const jogos=db.eventos.filter(e=>e.tipo==='jogo'||e.tipo==='amistoso').sort((a,b)=>b.data.localeCompare(a.data));
+  const jogos=db.eventos.filter(e=>ehJogoTipo(e.tipo)).sort((a,b)=>b.data.localeCompare(a.data));
   if(!jogos.length){toast('Cadastre um jogo na Agenda primeiro');return;}
   modal(`<h2>🎨 Arte pós-jogo</h2>
   <p class="mut">Gera uma imagem pronta para o grupo e o Instagram, com o escudo, o placar e as logos dos patrocinadores.</p>
@@ -2107,8 +2116,8 @@ async function geraArte(){
   cv.toBlob(bl=>{ baixar('arte-pos-jogo-'+String(ev.data)+'.png',bl,'image/png'); b.disabled=false; fecha(); toast('🎨 Arte gerada! Está nos downloads — compartilhe no grupo'); },'image/png');
 }
 function csvStats(){
-  const linhas=[['Atleta','Jogo','Data','Minutos','Gols','Assistências','Amarelos','Vermelho','Desarmes','Duelos','Duelos aéreos','Antecipações','Chutes no gol','Defesas','Passes errados','Duelos perdidos','Bolas perdidas','Faltas cometidas','Nota','Obs']];
-  db.stats.forEach(s=>{ const e=byId(db.eventos,s.eventoId); linhas.push([nomeAt(s.atletaId),e?e.titulo:'',e?dbr(e.data):'',s.minutos,s.gols,s.assist,s.amarelos,s.vermelho?'sim':'',s.desarmes,s.duelos,s.duelosAereos,s.antecipacao,s.chutesGol,s.defesas,s.passesErrados,s.duelosPerdidos,s.bolasPerdidas,s.faltasCometidas,notaDe(s).v,s.obs]); });
+  const linhas=[['Atleta','Jogo','Data','Minutos','Gols','Assistências','Amarelos','Vermelho','Desarmes','Duelos','Duelos aéreos','Antecipações','Chutes no gol','Defesas','Passes errados','Duelos perdidos','Bolas perdidas','Faltas cometidas','Chutes errados','Gols sofridos','Pênaltis perdidos','Pênaltis cometidos','Gols contra','Nota','Obs']];
+  db.stats.forEach(s=>{ const e=byId(db.eventos,s.eventoId); linhas.push([nomeAt(s.atletaId),e?e.titulo:'',e?dbr(e.data):'',s.minutos,s.gols,s.assist,s.amarelos,s.vermelho?'sim':'',s.desarmes,s.duelos,s.duelosAereos,s.antecipacao,s.chutesGol,s.defesas,s.passesErrados,s.duelosPerdidos,s.bolasPerdidas,s.faltasCometidas,s.chutesErrados,s.golsSofridos,s.penaltisPerdidos,s.penaltisCometidos,s.golsContra,notaDe(s).v,s.obs]); });
   csv('desempenho-time.csv',linhas);
 }
 
@@ -2619,7 +2628,7 @@ function abrirGestorImportacoes(){
 function tAgenda(){
   const evs=[...db.eventos].sort((a,b)=>a.data.localeCompare(b.data));
   const podeEditar=gestor();
-  const jogosPlacar=db.eventos.filter(e=>['jogo','amistoso'].includes(e.tipo)&&e.placarNos!=null&&e.placarDeles!=null).sort((a,b)=>b.data.localeCompare(a.data));
+  const jogosPlacar=db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.placarNos!=null&&e.placarDeles!=null).sort((a,b)=>b.data.localeCompare(a.data));
   const advs=[...new Set(jogosPlacar.map(e=>e.adversario).filter(Boolean))].sort();
   const advSel=subState.retroAdv||'';
   const retroLista=advSel?jogosPlacar.filter(e=>e.adversario===advSel):jogosPlacar;
@@ -2637,7 +2646,7 @@ function tAgenda(){
     <td><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong>${e.tipo==='campeonato'?' <span class="pill p-gold">campeonato</span>':''}${e.placarNos!=null?` <span class="pill ${e.placarNos>e.placarDeles?'p-ok':e.placarNos===e.placarDeles?'p-warn':'p-bad'}">${e.placarNos}×${e.placarDeles}${e.adversario?' '+esc(e.adversario):''}</span>`:''}${e.obs?`<div class="mut" style="white-space:pre-wrap">${esc(e.obs)}</div>`:''}</td>
     <td data-l="Local">${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener" title="Abrir no Google Maps">📍 ${esc(e.local)}</a>`:'—'}</td>
     <td class="row"><button class="mini sec" onclick="modalCal('${e.id}')">📅</button>
-    ${podeEditar?`${['jogo','amistoso'].includes(e.tipo)?`<button class="mini ${e.placarNos!=null?'sec':'gold'}" onclick="formPlacar('${e.id}')">⚽ Placar</button>`:''}
+    ${podeEditar?`${ehJogoTipo(e.tipo)?`<button class="mini ${e.placarNos!=null?'sec':'gold'}" onclick="formPlacar('${e.id}')">⚽ Placar</button>`:''}
     <button class="mini sec" onclick="formEvento('${e.id}')">✏️ Editar</button>
     <button class="mini sec" onclick="convocar('${e.id}')">📣 Convocar</button>
     <button class="mini sec" onclick="delEvento('${e.id}')">✕</button>`:''}</td></tr>`).join(''):'<tr><td colspan="5" class="mut">Nenhum compromisso.</td></tr>'}</table></div>
@@ -2659,7 +2668,7 @@ function formEvento(id){
   if(id){ const ev=byId(db.eventos,id); if(ev) e={...ev,data:ev.data,hora:ev.hora||'19:00'}; }
   modal(`<h2>${id?'Editar':'Novo'} compromisso</h2>
   <div class="grid g2">
-  <div><label>Tipo</label><select id="e_tipo" onchange="$('e_dicalbl').textContent=this.value==='campeonato'?'Dicas: hotéis indicados, local do campeonato, transporte…':'Observações'"><option value="jogo" ${e.tipo==='jogo'?'selected':''}>⚽ Jogo oficial</option><option value="amistoso" ${e.tipo==='amistoso'?'selected':''}>🤝 Jogo amistoso</option><option value="treino" ${e.tipo==='treino'?'selected':''}>🏃 Treino</option><option value="campeonato" ${e.tipo==='campeonato'?'selected':''}>🏆 Campeonato</option><option value="reuniao" ${e.tipo==='reuniao'?'selected':''}>Reunião</option><option value="viagem" ${e.tipo==='viagem'?'selected':''}>Viagem</option></select></div>
+  <div><label>Tipo</label><select id="e_tipo" onchange="$('e_dicalbl').textContent=this.value==='campeonato'?'Dicas: hotéis indicados, local do campeonato, transporte…':'Observações'"><option value="jogo" ${e.tipo==='jogo'?'selected':''}>⚽ Jogo oficial</option><option value="amistoso" ${e.tipo==='amistoso'?'selected':''}>🤝 Jogo amistoso</option><option value="treino_amistoso" ${e.tipo==='treino_amistoso'?'selected':''}>🏃🤝 Treino + Amistoso</option><option value="treino" ${e.tipo==='treino'?'selected':''}>🏃 Treino</option><option value="campeonato" ${e.tipo==='campeonato'?'selected':''}>🏆 Campeonato</option><option value="reuniao" ${e.tipo==='reuniao'?'selected':''}>Reunião</option><option value="viagem" ${e.tipo==='viagem'?'selected':''}>Viagem</option></select></div>
   <div><label>Título</label><input id="e_tit" value="${esc(e.titulo)}" placeholder="Ex.: Campeonato Nacional OAB — Salvador"></div>
   <div><label>Data ${e.dataFim?'de início':''}</label><input id="e_data" type="date" value="${e.data}"></div>
   <div><label>Data de término (campeonatos/viagens)</label><input id="e_datafim" type="date" value="${e.dataFim||''}"></div>
@@ -2702,7 +2711,7 @@ async function salvaEvento(id){
 }
 function delEvento(id){ const e=byId(db.eventos,id); confirma(`Excluir o compromisso "${esc(e?e.titulo:'')}" (${e?dbr(e.data):''})? As presenças e estatísticas ligadas a ele também serão excluídas.`,async()=>{ await q(sb.from('eventos').delete().eq('id',id)); await recarrega(); toast('Compromisso excluído'); }); }
 function pdfRetrospecto(){
-  const jogosPlacar=db.eventos.filter(e=>['jogo','amistoso'].includes(e.tipo)&&e.placarNos!=null&&e.placarDeles!=null).sort((a,b)=>b.data.localeCompare(a.data));
+  const jogosPlacar=db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.placarNos!=null&&e.placarDeles!=null).sort((a,b)=>b.data.localeCompare(a.data));
   if(!jogosPlacar.length){toast('Nenhum placar registrado ainda — use o botão ⚽ Placar na Agenda');return;}
   const advSel=subState.retroAdv||'';
   const lista=advSel?jogosPlacar.filter(e=>e.adversario===advSel):jogosPlacar;
@@ -2921,8 +2930,8 @@ function pdfFrequencia(){
   const rank=ats.map(a=>{const q=freqAtleta(a.id);return {a,...q};}).filter(r=>r.tot>0).sort((x,y)=>(y.pct-x.pct)||(y.jg+y.tr)-(x.jg+x.tr));
   if(!rank.length){toast('Nenhuma chamada registrada ainda');return;}
   const evsComChamada=[...new Set(db.presencas.map(p=>p.eventoId))].map(id=>byId(db.eventos,id)).filter(Boolean);
-  const diasJogo=new Set(evsComChamada.filter(e=>e.tipo==='jogo'||e.tipo==='amistoso').map(e=>e.data));
-  const nJogos=diasJogo.size, nTreinos=new Set(evsComChamada.filter(e=>e.tipo==='treino').map(e=>e.data).filter(d=>!diasJogo.has(d))).size;
+  const diasJogo=new Set(evsComChamada.filter(e=>ehJogoTipo(e.tipo)).map(e=>e.data));
+  const nJogos=diasJogo.size, nTreinos=new Set(evsComChamada.filter(e=>ehTreinoTipo(e.tipo)).map(e=>e.data)).size;
   const totF=rank.reduce((s,r)=>s+r.f,0), totAt=rank.reduce((s,r)=>s+r.at,0), totJ=rank.reduce((s,r)=>s+r.j,0);
   const pctMedia=Math.round(rank.reduce((s,r)=>s+r.pct,0)/rank.length);
   const corPct=v=>v>=75?'ok':v>=50?'warn':'bad';
@@ -5478,7 +5487,7 @@ async function arteRodapePats(){
 }
 function pdfRelatorioPats(){
   const c=db.config, membros=db.atletas.filter(a=>a.ativo&&!a.pendente).length;
-  const nJogos=db.eventos.filter(e=>['jogo','amistoso','campeonato'].includes(e.tipo)).length;
+  const nJogos=db.eventos.filter(e=>ehJogoTipo(e.tipo)||e.tipo==='campeonato').length;
   const linhas=[`Data: ${agora()}`,'',
   `Membros ativos com acesso ao sistema: ${membros} (atletas, diretoria e comissão técnica)`,
   `Compromissos esportivos registrados na temporada: ${nJogos} (jogos, amistosos e campeonatos)`,'',
@@ -5762,7 +5771,7 @@ function tMeu(){
   ${prox.length?prox.map(e=>`<div class="alertline" style="background:var(--blue-soft)"><div style="flex:1"><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong><div class="mut">${dbr(e.data)}${e.dataFim?' até '+dbr(e.dataFim):''} às ${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''} — ${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener">📍 ${esc(e.local)}</a>`:''}${e.obs?' · '+esc(e.obs):''}</div></div>
     <button class="mini" onclick="modalCal('${e.id}')">📅 Pôr no calendário</button></div>`).join(''):'<p class="mut">Nada agendado por enquanto.</p>'}
   ${prox.length?`<button class="sec mini" onclick="baixarICS(db.eventos.filter(e=>e.data>=hoje()),'agenda-oabmaster.ics')">📅 Agenda completa (.ics)</button>`:''}</div>
-  ${(()=>{const jv=db.eventos.filter(e=>['jogo','amistoso'].includes(e.tipo)&&e.data<=hoje()).sort((a,b)=>b.data.localeCompare(a.data)).slice(0,3);
+  ${(()=>{const jv=db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.data<=hoje()).sort((a,b)=>b.data.localeCompare(a.data)).slice(0,3);
   return jv.length?`<div class="card sect" style="border-color:var(--gold)"><h2>🌟 Craque do Jogo — sua vez de votar!</h2>
   ${jv.map(e=>{const c=craqueDo(e.id); const meu=(db.craqueVotos||[]).find(v=>v.eventoId===e.id&&v.votanteId===me.id);
     return `<div class="alertline" style="background:var(--bg)"><div style="flex:1"><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong>
