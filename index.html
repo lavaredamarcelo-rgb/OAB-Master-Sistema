@@ -1961,25 +1961,71 @@ function pdfFichaJogo(){
   <p style="font-size:11.5px;color:#8a8f99">Depois do jogo, transcreva para o sistema em Desempenho → ⚡ Rápido. As três últimas linhas são para convidados.</p>`,`Ficha de jogo — ${db.config.time}`);
 }
 function pdfTotaisTemporada(){
-  const cats=[{k:'todos',t:'🌐 Geral — tudo somado'},{k:'jogo',t:'🏆 Jogos oficiais'},{k:'amistoso',t:'🤝 Amistosos'},{k:'treino',t:'🏃 Treinos'}];
-  const tipoDe=id=>{const e=byId(db.eventos,id);return e?e.tipo:'';};
-  const secoes=cats.map(c=>{
-    const agg={};
-    db.stats.filter(s=>s.atletaId&&(c.k==='todos'||tipoDe(s.eventoId)===c.k)).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,ce:0,gs:0,pp:0,pc:0,gco:0,j:0,notas:[]};
-      a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.dp+=+s.duelosPerdidos||0; a.bp+=+s.bolasPerdidas||0; a.fc+=+s.faltasCometidas||0; a.ce+=+s.chutesErrados||0; a.gs+=+s.golsSofridos||0; a.pp+=+s.penaltisPerdidos||0; a.pc+=+s.penaltisCometidos||0; a.gco+=+s.golsContra||0; a.j++; a.notas.push(notaDe(s).v); });
-    elenco().forEach(at2=>{ const ext=presencasSemStats(at2.id,c.k).length;
-      if(ext){ const g=agg[at2.id]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,ce:0,gs:0,pp:0,pc:0,gco:0,j:0,notas:[]}; g.j+=ext; for(let i=0;i<ext;i++)g.notas.push(6); } });
-    const linhas=Object.entries(agg).sort((x,y)=>y[1].g-x[1].g||y[1].as-x[1].as||nomeAt(x[0]).localeCompare(nomeAt(y[0])));
-    if(!linhas.length)return '';
-    return `<div class="mes"><h2>${c.t}</h2>
-    <table><tr><th>Atleta</th><th>Partidas</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>🦅</th><th>🧠</th><th>🎯</th><th>💨</th><th>🧤</th><th>🚨</th><th>❌</th><th>💔</th><th>🔄</th><th>🚫</th><th>😖</th><th>🎁</th><th>🔴</th><th>🧱</th><th>Nota média</th></tr>
-    ${linhas.map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td>${a.j}</td><td>${a.g}</td><td>${a.as}</td><td>${a.ca}</td><td>${a.cv}</td><td>${a.des}</td><td>${a.due}</td><td>${a.da}</td><td>${a.ant}</td><td>${a.ch}</td><td>${a.ce}</td><td>${a.df}</td><td>${a.gs}</td><td>${a.pe}</td><td>${a.dp}</td><td>${a.bp}</td><td>${a.fc}</td><td>${a.pp}</td><td>${a.pc}</td><td>${a.gco}</td><td>${jogosSemSofrer(id,c.k)}</td><td>${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join('')}</table></div>`;
+  const tipoDe=id=>{const e=byId(db.eventos,id);return e?(e.tipo==='treino_amistoso'?'amistoso':e.tipo):'';};
+  const zera=()=>({g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,ce:0,gs:0,pp:0,pc:0,gco:0,j:0,notas:[]});
+  const aggCat=cat=>{ const agg={};
+    db.stats.filter(x=>x.atletaId&&(cat==='todos'||tipoDe(x.eventoId)===cat)).forEach(x=>{ const a=agg[x.atletaId]??=zera();
+      STATS_DEFS.forEach(([k])=>a[k]+=Number(x[STATS_MAPA[k]])||0);
+      a.ca+=+x.amarelos||0; a.cv+=x.vermelho?1:0; a.j++; a.notas.push(notaDe(x).v); });
+    elenco().forEach(a2=>{ const ext=presencasSemStats(a2.id,cat).length;
+      if(ext){ const g=agg[a2.id]??=zera(); g.j+=ext; for(let i2=0;i2<ext;i2++)g.notas.push(6); } });
+    return agg; };
+  const G=aggCat('todos');
+  if(!Object.keys(G).length){toast('Nenhuma estatística ou presença lançada ainda');return;}
+  const media=a=>a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length):0;
+  const ordena=(agg,f)=>Object.entries(agg).sort((x,y)=>f(y[1])-f(x[1])||media(y[1])-media(x[1])||nomeAt(x[0]).localeCompare(nomeAt(y[0])));
+  const barra=(lb,v,max,cor)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div style="width:120px;font-size:11px;text-align:right">${lb}</div><div style="flex:1;background:#f0f0f0;border-radius:4px;height:16px"><div style="width:${max?Math.max(2,Math.round(v/max*100)):2}%;height:100%;background:${cor};border-radius:4px"></div></div><div style="width:44px;font-size:11.5px;font-weight:bold">${v}</div></div>`;
+  // ===== O TIME =====
+  const jp=db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.placarNos!=null&&e.placarDeles!=null);
+  const V=jp.filter(e=>e.placarNos>e.placarDeles).length, E=jp.filter(e=>e.placarNos===e.placarDeles).length, D=jp.filter(e=>e.placarNos<e.placarDeles).length;
+  const GP=jp.reduce((x,e)=>x+e.placarNos,0), GC=jp.reduce((x,e)=>x+e.placarDeles,0);
+  const golsCat=[['jogo','🏆 Oficiais'],['amistoso','🤝 Amistosos']].map(([t,lb])=>{
+    const l=jp.filter(e=>(e.tipo==='treino_amistoso'?'amistoso':e.tipo)===t);
+    return {lb,n:l.length,gp:l.reduce((x,e)=>x+e.placarNos,0),gc:l.reduce((x,e)=>x+e.placarDeles,0),
+      v:l.filter(e=>e.placarNos>e.placarDeles).length,em:l.filter(e=>e.placarNos===e.placarDeles).length,d:l.filter(e=>e.placarNos<e.placarDeles).length};
+  }).filter(x=>x.n);
+  const timeTot={}; db.eventos.forEach(e=>{const st=e.statsTime||{};STATS_DEFS.forEach(([k])=>{if(Number(st[k]))timeTot[k]=(timeTot[k]||0)+Number(st[k]);});});
+  const ttKeys=STATS_DEFS.filter(([k])=>timeTot[k]);
+  const ttMax=Math.max(1,...ttKeys.map(([k])=>timeTot[k]));
+  // ===== Jogadores: tabelas temáticas =====
+  const L=ordena(G,a=>a.g);
+  const maxG=Math.max(1,...L.map(([,a])=>a.g));
+  const golsChart=L.filter(([,a])=>a.g>0).slice(0,8).map(([id,a])=>barra(esc(pnome(nomeAt(id))),a.g,maxG,'#2E7D4F')).join('');
+  const tabAtaque=`<table><tr><th>Atleta</th><th>Part.</th><th>⚽ Gols</th><th>🅰️ Assist.</th><th>🎯 Chutes gol</th><th>💨 Ch. errados</th><th>⭐ Nota média</th></tr>
+  ${L.map(([id,a])=>`<tr><td><strong>${esc(pnome(nomeAt(id)))}</strong></td><td>${a.j}</td><td><strong>${a.g}</strong></td><td>${a.as}</td><td>${a.ch}</td><td>${a.ce}</td><td><strong>${media(a).toFixed(1)}</strong></td></tr>`).join('')}</table>`;
+  const LD=ordena(G,a=>a.des+a.due+a.df);
+  const tabDefesa=`<table><tr><th>Atleta</th><th>🛡️ Desarmes</th><th>⚔️ Duelos G</th><th>💔 Duelos P</th><th>🦅 Aéreos</th><th>🧠 Antecip.</th><th>🧤 Defesas</th><th>🚨 G. sofridos</th><th>🧱 S/ sofrer</th></tr>
+  ${LD.map(([id,a])=>`<tr><td><strong>${esc(pnome(nomeAt(id)))}</strong></td><td>${a.des}</td><td>${a.due}</td><td>${a.dp}</td><td>${a.da}</td><td>${a.ant}</td><td>${a.df}</td><td>${a.gs}</td><td><strong>${jogosSemSofrer(id)}</strong></td></tr>`).join('')}</table>`;
+  const LE=ordena(G,a=>a.pe+a.bp+a.fc+a.ca*2+a.cv*5);
+  const tabDisciplina=`<table><tr><th>Atleta</th><th>❌ P. errados</th><th>🔄 B. perdidas</th><th>🚫 Faltas</th><th>🟨</th><th>🟥</th><th>😖 Pên. perd.</th><th>🎁 Pên. com.</th><th>🔴 G. contra</th></tr>
+  ${LE.map(([id,a])=>`<tr><td><strong>${esc(pnome(nomeAt(id)))}</strong></td><td>${a.pe}</td><td>${a.bp}</td><td>${a.fc}</td><td>${a.ca}</td><td>${a.cv}</td><td>${a.pp}</td><td>${a.pc}</td><td>${a.gco}</td></tr>`).join('')}</table>`;
+  // ===== Por categoria (resumo compacto) =====
+  const catSec=[['jogo','🏆 Jogos oficiais'],['amistoso','🤝 Amistosos'],['treino','🏃 Treinos']].map(([cat,tit])=>{
+    const A=aggCat(cat); const l=ordena(A,a=>a.g); if(!l.length)return '';
+    return `<div class="mes"><h2>${tit}</h2><table><tr><th>Atleta</th><th>Part.</th><th>⚽</th><th>🅰️</th><th>🛡️</th><th>🧤</th><th>⭐ Nota</th></tr>
+    ${l.map(([id,a])=>`<tr><td><strong>${esc(pnome(nomeAt(id)))}</strong></td><td>${a.j}</td><td>${a.g}</td><td>${a.as}</td><td>${a.des}</td><td>${a.df}</td><td><strong>${media(a).toFixed(1)}</strong></td></tr>`).join('')}</table></div>`;
   }).join('');
-  if(!secoes){toast('Nenhuma estatística lançada ainda');return;}
   abreRelatorio(`<h1>📊 Totais da Temporada</h1>
-  <p class="sub">${esc(db.config.time)} — visão geral e separada por categoria · ordenado por gols e assistências</p>
-  ${secoes}`,`Totais da temporada — ${db.config.time}`);
+  <p class="sub">${esc(db.config.time)} — o time primeiro, depois cada jogador · notas 🤖 do sistema quando não confirmadas</p>
+  <h2>📋 O Time — campanha</h2>
+  <div class="cards">
+    <div class="card"><div class="n">${jp.length}</div><div class="l">Jogos c/ placar</div></div>
+    <div class="card"><div class="n">${V}V · ${E}E · ${D}D</div><div class="l">Resultados</div></div>
+    <div class="card"><div class="n ok">${GP}</div><div class="l">Gols marcados</div></div>
+    <div class="card"><div class="n bad">${GC}</div><div class="l">Gols sofridos</div></div>
+    <div class="card"><div class="n ${jp.length&&V/jp.length>=.5?'ok':'warn'}">${jp.length?Math.round(V/jp.length*100):0}%</div><div class="l">Aproveitamento</div></div>
+  </div>
+  ${golsCat.length?`<table><tr><th>Categoria</th><th>Jogos</th><th>V · E · D</th><th>Gols marcados</th><th>Gols sofridos</th><th>Saldo</th></tr>
+  ${golsCat.map(c=>`<tr><td><strong>${c.lb}</strong></td><td>${c.n}</td><td>${c.v}V · ${c.em}E · ${c.d}D</td><td class="ok">${c.gp}</td><td class="bad">${c.gc}</td><td class="${c.gp-c.gc>=0?'ok':'bad'}"><strong>${c.gp-c.gc>=0?'+':''}${c.gp-c.gc}</strong></td></tr>`).join('')}</table>`:''}
+  ${ttKeys.length?`<h2>📊 O Time — estatísticas coletivas registradas</h2>
+  <div style="margin:8px 0">${ttKeys.map(([k,ic,lb])=>barra(ic+' '+lb,timeTot[k],ttMax,'#8a1f2f')).join('')}</div>`:''}
+  ${golsChart?`<h2>⚽ Artilharia — quem balançou a rede</h2><div style="margin:8px 0">${golsChart}</div>`:''}
+  <div class="mes"><h2>⚽ Ataque & criação — todos os jogadores</h2>${tabAtaque}</div>
+  <div class="mes"><h2>🛡️ Defesa</h2>${tabDefesa}</div>
+  <div class="mes"><h2>⚠️ Disciplina & bolas perdidas</h2>${tabDisciplina}</div>
+  ${catSec}`,`Totais da temporada — ${db.config.time}`);
 }
+
 function bumpStat(evId,atId,campo){
   subState.statsTemp??={};
   const ev=subState.statsTemp[evId]??={};
