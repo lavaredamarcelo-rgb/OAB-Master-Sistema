@@ -285,7 +285,7 @@ function log(tipo,texto){ sb.from('logs').insert({tipo,texto,quem:me?me.nome:'si
 function mapAtleta(r){ return {id:r.id,nome:r.nome,apelido:r.apelido||'',fone:r.fone,email:r.email,oab:r.oab,posicao:r.posicao,role:r.role,ativo:r.ativo,pendente:!r.aprovado,fundador:!!r.fundador,cargo:r.cargo||'',cadastroManual:!!r.cadastro_manual,isentoMens:!!r.isento_mensalidade,fotoUrl:r.foto_url||'',
   consent:{aceito:r.consent_status==='aceito',recusado:r.consent_status==='recusado',revogado:r.consent_status==='revogado',quando:fdt(r.consent_quando),versao:r.consent_versao||TERMO_LGPD_V},saude:{}}; }
 async function carregaTudo(){
-  const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist]=await Promise.all([
+  const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist,craquevotos]=await Promise.all([
     q(sb.from('perfis').select('*').order('nome')),
     q(sb.from('saude').select('*')),
     q(sb.from('eventos').select('*').order('data')),
@@ -304,18 +304,20 @@ async function carregaTudo(){
     q(sb.from('config').select('*').eq('id',1).single()),
     sb.from('import_lotes').select('*').order('data_import',{ascending:false}).then(r=>r.data||[]),
     sb.from('balanco_receitas').select('*').order('data',{ascending:false}).then(r=>r.data||[]),
-    sb.from('uniforme_numeros_historico').select('*').order('quando',{ascending:false}).then(r=>r.data||[])
+    sb.from('uniforme_numeros_historico').select('*').order('quando',{ascending:false}).then(r=>r.data||[]),
+    sb.from('craque_votos').select('*').then(r=>r.data||[])
   ]);
   db={};
   db.atletas=perfis.map(mapAtleta);
   saude.forEach(s=>{ const a=at(s.atleta_id); if(a)a.saude={sangue:s.sangue,plano:s.plano,alergias:s.alergias,medicamentos:s.medicamentos,condicoes:s.condicoes,emergencia:s.emergencia,lesoes:s.lesoes,obs:s.obs,lesoesLista:s.lesoes_lista||[],obsLista:s.obs_lista||[]}; });
   db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),dataFim:e.data_fim?String(e.data_fim):'',hora:e.hora,horaFim:e.hora_fim||'',local:e.local,obs:e.obs,adversario:e.adversario||'',placarNos:e.placar_nos??null,placarDeles:e.placar_deles??null,statsTime:e.stats_time||{}}));
+  db.craqueVotos=(craquevotos||[]).map(v=>({id:v.id,eventoId:v.evento_id,votanteId:v.votante_id,votoId:v.voto_id}));
   db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,convidado:p.convidado||null,status:p.status}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,forma:c.forma_pagamento||'',pagamentos:c.pagamentos||[],origem:c.origem||'',lote:c.origem_lote||''}));
   db.avaliacoes=avaliacoes.map(v=>({id:v.id,atletaId:v.atleta_id,data:String(v.data),peso:v.peso,altura:v.altura,gordura:v.gordura,vo2:v.vo2,notas:v.notas}));
   db.metas=metas.map(m=>({id:m.id,atletaId:m.atleta_id,desc:m.descricao,prazo:m.prazo?String(m.prazo):'',status:m.status}));
-  db.stats=stats.map(s=>({id:s.id,eventoId:s.evento_id,atletaId:s.atleta_id,minutos:s.minutos,gols:s.gols,assist:s.assist,amarelos:s.amarelos,vermelho:s.vermelho,desarmes:s.desarmes,duelos:s.duelos,passes:s.passes,antecipacao:s.antecipacao||0,duelosAereos:s.duelos_aereos||0,chutesGol:s.chutes_gol||0,defesas:s.defesas||0,passesErrados:s.passes_errados||0,nota:s.nota,obs:s.obs}));
+  db.stats=stats.map(s=>({id:s.id,eventoId:s.evento_id,atletaId:s.atleta_id,minutos:s.minutos,gols:s.gols,assist:s.assist,amarelos:s.amarelos,vermelho:s.vermelho,desarmes:s.desarmes,duelos:s.duelos,passes:s.passes,antecipacao:s.antecipacao||0,duelosAereos:s.duelos_aereos||0,chutesGol:s.chutes_gol||0,defesas:s.defesas||0,passesErrados:s.passes_errados||0,duelosPerdidos:s.duelos_perdidos||0,bolasPerdidas:s.bolas_perdidas||0,faltasCometidas:s.faltas_cometidas||0,nota:s.nota,obs:s.obs}));
   db.uniformes=uniformes.map(u=>({id:u.id,descricao:u.descricao,numero:u.numero,tamanho:u.tamanho,status:u.status,atletaId:u.atleta_id,entregueEm:u.entregue_em,aceitoEm:u.aceito_em,pecas:u.pecas||{camisa:'estoque',short:'estoque',meiao:'estoque'},fornecedor:u.fornecedor||'',convidado:u.convidado||'',convFone:u.convidado_fone||'',goleiro:!!u.goleiro,cor:u.cor||''}));
   db.inventario=inventario.map(i=>({id:i.id,nome:i.nome,cat:i.cat,qtd:i.qtd,marca:i.marca||'',cor:i.cor||'',material:i.material||'',obs:i.obs||'',fotoUrl:i.foto_url||'',emprestimos:i.emprestimos||[]}));
   const mapDoc=d=>({id:d.id,atletaId:d.atleta_id,categoria:d.categoria,nome:d.nome,path:d.path,mime:d.mime,tam:d.tam,quem:d.quem,quando:fdt(d.quando)});
@@ -1111,6 +1113,14 @@ function verCardJogador(id){
     <button class="mini ${est==='clube'?'':'sec'}" onclick="subState.cardEstilo='clube';verCardJogador('${id}')">🛡️ Cores do clube</button>
   </div>
   <div style="display:flex;justify-content:center">${cardJogador(a,est)}</div>
+  ${(()=>{const jn=db.stats.filter(x=>x.atletaId===id).map(x=>({e:byId(db.eventos,x.eventoId),s:x})).filter(x=>x.e).sort((x,y)=>x.e.data.localeCompare(y.e.data)).slice(-10);
+  return jn.length?`<div style="margin-top:14px"><label>📈 Evolução da nota — últimos ${jn.length} jogos (🤖 = nota do sistema)</label>
+  <div style="display:flex;gap:5px;align-items:flex-end;height:96px;margin-top:6px">
+  ${jn.map(x=>{const nd=notaDe(x.s); const h=Math.round(nd.v/10*72)+8;
+    return `<div style="flex:1;text-align:center;min-width:0"><div style="font-size:10.5px;font-weight:700">${nd.v.toFixed(1)}${nd.auto?'🤖':'✔'}</div>
+    <div style="height:${h}px;background:${nd.v>=7?'var(--ok)':nd.v>=5?'#e9bc2a':'var(--bad)'};border-radius:5px 5px 0 0"></div>
+    <div class="mut" style="font-size:9px">${dbr(x.e.data).slice(0,5)}</div></div>`;}).join('')}
+  </div></div>`:'';})()}
   <div class="row" style="justify-content:center;margin-top:14px">
   ${podeFoto?`<label class="mini sec" style="cursor:pointer;padding:9px 14px;border:1px solid var(--line);border-radius:10px;display:inline-flex;align-items:center;gap:6px">📸 ${a.fotoUrl?'Trocar foto':'Enviar foto'}<input type="file" accept="image/*" style="display:none" onchange="enviaFotoCard('${id}',this)"></label>`:''}
   <button class="sec" onclick="fecha()">Fechar</button></div>`);
@@ -1680,7 +1690,7 @@ function lancAoVivo(evId){
   const temp=subState.statsTemp[evId];
   const convidados=subState.convidadosDesemp;
   const todosAtletas=[...ats,...convidados.map((n,i)=>({id:'conv_'+i,nome:n}))];
-  const DEFS=[['g','⚽','Gol'],['as','🅰️','Assist'],['due','⚔️','Duelo'],['da','🦅','Aéreo'],['ant','🧠','Antecip.'],['ch','🎯','Chute'],['df','🧤','Defesa'],['pe','❌','P. err.']];
+  const DEFS=STATS_DEFS;
   const stat=subState.statAtivo||'g';
   const defAtivo=DEFS.find(d=>d[0]===stat)||DEFS[0];
   const totalLanc=Object.values(temp).reduce((s,t)=>s+Object.values(t).reduce((x,v)=>x+(Number(v)||0),0),0);
@@ -1723,8 +1733,15 @@ function decStat(evId,atId,campo){
   t[campo]=Math.max(0,(Number(t[campo])||0)-1);
   renderTab();
 }
-const STATS_DEFS=[['g','⚽','Gols'],['as','🅰️','Assist.'],['due','⚔️','Duelos'],['da','🦅','Aéreos'],['ant','🧠','Antecip.'],['ch','🎯','Chutes'],['df','🧤','Defesas'],['pe','❌','P. err.']];
-const STATS_MAPA={g:'gols',as:'assist',due:'duelos',da:'duelosAereos',ant:'antecipacao',ch:'chutesGol',df:'defesas',pe:'passesErrados'};
+function notaAuto(x){
+  const v=k=>Number(x&&x[k])||0;
+  let n=6+0.8*v('gols')+0.5*v('assist')+0.3*v('defesas')+0.2*v('antecipacao')+0.2*v('desarmes')+0.15*v('duelos')+0.15*v('duelosAereos')+0.1*v('chutesGol')
+       -0.15*v('duelosPerdidos')-0.2*v('bolasPerdidas')-0.1*v('passesErrados')-0.1*v('faltasCometidas')-0.3*v('amarelos')-(x&&x.vermelho?1:0);
+  return Math.max(1,Math.min(10,Math.round(n*10)/10));
+}
+const notaDe=x=>x.nota?{v:+x.nota,auto:false}:{v:notaAuto(x),auto:true};
+const STATS_DEFS=[['g','⚽','Gols'],['as','🅰️','Assist.'],['due','⚔️','Duelos'],['da','🦅','Aéreos'],['ant','🧠','Antecip.'],['ch','🎯','Chutes'],['df','🧤','Defesas'],['pe','❌','P. err.'],['dp','💔','D. perd.'],['bp','🔄','B. perd.'],['fc','🚫','Faltas']];
+const STATS_MAPA={g:'gols',as:'assist',due:'duelos',da:'duelosAereos',ant:'antecipacao',ch:'chutesGol',df:'defesas',pe:'passesErrados',dp:'duelosPerdidos',bp:'bolasPerdidas',fc:'faltasCometidas'};
 async function bumpTime(evId,k,delta){
   const e=byId(db.eventos,evId); if(!e)return;
   const st={...(e.statsTime||{})};
@@ -1733,6 +1750,118 @@ async function bumpTime(evId,k,delta){
   const {error}=await sb.from('eventos').update({stats_time:st}).eq('id',evId);
   if(error){toast('⚠️ '+(/stats_time/.test(error.message||'')?'Rode o SQL v14 no Supabase para ativar as estatísticas do time':error.message));return;}
   e.statsTime=st; renderTab();
+}
+function craqueDo(evId){
+  const vs=(db.craqueVotos||[]).filter(v=>v.eventoId===evId);
+  if(!vs.length)return null;
+  const cont={}; vs.forEach(v=>{cont[v.votoId]=(cont[v.votoId]||0)+1;});
+  const ord=Object.entries(cont).sort((a,b)=>b[1]-a[1]||nomeAt(a[0]).localeCompare(nomeAt(b[0])));
+  return {id:ord[0][0],votos:ord[0][1],total:vs.length,ranking:ord};
+}
+async function votarCraque(evId,atId){
+  const {error}=await sb.from('craque_votos').upsert({evento_id:evId,votante_id:me.id,voto_id:atId},{onConflict:'evento_id,votante_id'});
+  if(error){toast('⚠️ '+(/craque_votos|relation|schema/.test(error.message||'')?'Rode o SQL v15 no Supabase para ativar a votação':error.message));return;}
+  log('desempenho',`Voto de craque registrado por ${me.nome}`);
+  fecha(); await recarrega(); toast('🌟 Voto registrado!');
+}
+function modalVotarCraque(evId){
+  const e=byId(db.eventos,evId); if(!e)return;
+  const meuVoto=(db.craqueVotos||[]).find(v=>v.eventoId===evId&&v.votanteId===me.id);
+  modal(`<h2>🌟 Craque do Jogo — vote!</h2>
+  <p class="mut">${tipoEvIco(e.tipo)} ${esc(e.titulo)} — ${dbr(e.data)}${meuVoto?`<br>Seu voto atual: <strong>${esc(pnome(nomeAt(meuVoto.votoId)))}</strong> — toque em outro para trocar.`:''}</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px">
+  ${elenco().map(a=>`<button class="${meuVoto&&meuVoto.votoId===a.id?'gold':'sec'}" style="justify-content:flex-start" onclick="votarCraque('${evId}','${a.id}')">${meuVoto&&meuVoto.votoId===a.id?'⭐ ':''}${esc(pnome(a.nome))}</button>`).join('')}
+  </div>
+  <div class="row" style="margin-top:14px"><button class="sec" onclick="fecha()">Fechar</button></div>`);
+}
+function painelCraque(evId){
+  const e=byId(db.eventos,evId); if(!e||!['jogo','amistoso'].includes(e.tipo))return '';
+  const c=craqueDo(evId);
+  const meuVoto=(db.craqueVotos||[]).find(v=>v.eventoId===evId&&v.votanteId===me.id);
+  return `<div class="card sect" style="border-color:var(--gold)"><div class="spread"><h2 style="margin:0">🌟 Craque do Jogo</h2>
+  <button class="mini gold" onclick="modalVotarCraque('${evId}')">${meuVoto?'🔁 Trocar meu voto':'🗳️ Votar'}</button></div>
+  ${c?`<div class="alertline" style="background:var(--gold-soft);margin-top:10px">🏆 <strong>${esc(pnome(nomeAt(c.id)))}</strong> — ${c.votos} de ${c.total} voto${c.total>1?'s':''}</div>
+  ${c.ranking.length>1?`<p class="mut" style="margin-top:6px;font-size:12.5px">${c.ranking.slice(1,4).map(([id,n],i)=>`${['🥈','🥉','4º'][i]} ${esc(pnome(nomeAt(id)))} (${n})`).join(' · ')}</p>`:''}`
+  :'<p class="mut" style="margin-top:8px">Ninguém votou ainda — o elenco vota no Meu espaço. 🗳️</p>'}</div>`;
+}
+function pdfPremios(){
+  const agg={}; db.stats.filter(x=>x.atletaId).forEach(x=>{const a=agg[x.atletaId]??={g:0,as:0,df:0,des:0,fc:0,ca:0,cv:0,j:0,notas:[]};
+    a.g+=+x.gols||0;a.as+=+x.assist||0;a.df+=+x.defesas||0;a.des+=+x.desarmes||0;a.fc+=+x.faltasCometidas||0;a.ca+=+x.amarelos||0;a.cv+=x.vermelho?1:0;a.j++;a.notas.push(notaDe(x).v);});
+  const L=Object.entries(agg); if(!L.length){toast('Nenhuma estatística ainda');return;}
+  const media=a=>a.notas.length?a.notas.reduce((x,y)=>x+y,0)/a.notas.length:0;
+  const top=f=>[...L].sort((x,y)=>f(y[1])-f(x[1]))[0];
+  const minJ=Math.min(3,Math.max(...L.map(([,a])=>a.j)));
+  const eleg=[...L].filter(([,a])=>a.j>=minJ);
+  const craque=[...eleg].sort((x,y)=>media(y[1])-media(x[1]))[0];
+  const fair=[...eleg].sort((x,y)=>(x[1].fc+x[1].ca*2+x[1].cv*5)-(y[1].fc+y[1].ca*2+y[1].cv*5)||y[1].j-x[1].j)[0];
+  const linha=(tit,ent,val)=>ent&&ent[1]?`<tr><td><strong>${tit}</strong></td><td><strong>${esc(nomeAt(ent[0]))}</strong></td><td>${val(ent[1])}</td></tr>`:'';
+  abreRelatorio(`<h1>🏅 Prêmios da Temporada</h1>
+  <p class="sub">${esc(db.config.time)} — ${new Date().getFullYear()} · notas não confirmadas usam a sugestão do sistema 🤖</p>
+  <table><tr><th>Prêmio</th><th>Atleta</th><th>Números</th></tr>
+  ${linha('⚽ Artilheiro',top(a=>a.g),a=>a.g+' gols')}
+  ${linha('🅰️ Garçom',top(a=>a.as),a=>a.as+' assistências')}
+  ${linha('🧤 Luva de Ouro',top(a=>a.df),a=>a.df+' defesas')}
+  ${linha('🛡️ Xerife',top(a=>a.des),a=>a.des+' desarmes')}
+  ${linha('🤝 Fair Play',fair,a=>`${a.fc} falta${a.fc===1?'':'s'} · ${a.ca}🟨 ${a.cv}🟥`)}
+  ${linha('🌟 Craque da Temporada',craque,a=>'nota média '+media(a).toFixed(2)+' em '+a.j+' partida'+(a.j>1?'s':''))}
+  </table>
+  <p style="font-size:11.5px;color:#8a8f99">Craque e Fair Play exigem pelo menos ${minJ} partida(s) com estatística lançada.</p>`,`Prêmios — ${db.config.time}`);
+}
+function modalComparar(){
+  const ats=elenco();
+  if(ats.length<2){toast('Precisa de pelo menos 2 jogadores');return;}
+  modal(`<h2>⚖️ Comparar atletas</h2>
+  <div class="grid g2">
+  <div><label>Atleta A</label><select id="cmp_a">${ats.map(a=>`<option value="${a.id}">${esc(pnome(a.nome))}</option>`).join('')}</select></div>
+  <div><label>Atleta B</label><select id="cmp_b">${ats.map((a,i)=>`<option value="${a.id}" ${i===1?'selected':''}>${esc(pnome(a.nome))}</option>`).join('')}</select></div>
+  </div>
+  <div class="row" style="margin-top:12px"><button onclick="comparaGo()">⚖️ Comparar</button><button class="sec" onclick="fecha()">Fechar</button></div>
+  <div id="cmp_out" style="margin-top:12px"></div>`);
+  comparaGo();
+}
+function comparaGo(){
+  const ida=fval('cmp_a'), idb=fval('cmp_b');
+  if(!ida||!idb)return;
+  const soma=id=>{const o={j:0,notas:[]}; STATS_DEFS.forEach(([k])=>o[k]=0);
+    db.stats.filter(x=>x.atletaId===id).forEach(x=>{STATS_DEFS.forEach(([k])=>o[k]+=Number(x[STATS_MAPA[k]])||0); o.j++; o.notas.push(notaDe(x).v);});
+    o.nm=o.notas.length?o.notas.reduce((x,y)=>x+y,0)/o.notas.length:0; return o;};
+  const A=soma(ida), B=soma(idb);
+  const NEG=['pe','dp','bp','fc'];
+  const linhas=[['Partidas',A.j,B.j,false],['🌟 Nota média',A.nm.toFixed(1),B.nm.toFixed(1),false],
+    ...STATS_DEFS.map(([k,ic,lb])=>[ic+' '+lb,A[k],B[k],NEG.includes(k)])];
+  $('cmp_out').innerHTML=`<div class="tblwrap"><table>
+  <tr><th style="text-align:right">${esc(pnome(nomeAt(ida)))}</th><th style="text-align:center">⚖️</th><th>${esc(pnome(nomeAt(idb)))}</th></tr>
+  ${linhas.map(([lb,va,vb,inv])=>`<tr>
+    <td style="text-align:right;${(inv?Number(va)<Number(vb):Number(va)>Number(vb))?'font-weight:800;color:var(--ok)':''}">${va}</td>
+    <td style="text-align:center;font-size:12px" class="mut">${lb}</td>
+    <td style="${(inv?Number(vb)<Number(va):Number(vb)>Number(va))?'font-weight:800;color:var(--ok)':''}">${vb}</td></tr>`).join('')}
+  </table></div><p class="mut" style="font-size:11.5px;margin-top:6px">Verde = melhor no quesito (nas negativas 💔🔄❌🚫, menor é melhor).</p>`;
+}
+function resumoMes(){
+  const mes=hoje().slice(0,7);
+  const evIds=new Set(db.eventos.filter(e=>e.data.startsWith(mes)).map(e=>e.id));
+  const sts=db.stats.filter(x=>x.atletaId&&evIds.has(x.eventoId));
+  const jogosMes=db.eventos.filter(e=>e.data.startsWith(mes)&&['jogo','amistoso'].includes(e.tipo)&&e.placarNos!=null);
+  if(!sts.length&&!jogosMes.length){toast('Nenhuma estatística ou placar lançado neste mês');return;}
+  const agg={}; sts.forEach(x=>{const a=agg[x.atletaId]??={g:0,as:0,df:0,notas:[]};a.g+=+x.gols||0;a.as+=+x.assist||0;a.df+=+x.defesas||0;a.notas.push(notaDe(x).v);});
+  const L=Object.entries(agg);
+  const nm=a=>a.notas.reduce((x,y)=>x+y,0)/a.notas.length;
+  const topG=[...L].sort((x,y)=>y[1].g-x[1].g)[0], topA=[...L].sort((x,y)=>y[1].as-x[1].as)[0], topN=[...L].sort((x,y)=>nm(y[1])-nm(x[1]))[0];
+  const v=jogosMes.filter(e=>e.placarNos>e.placarDeles).length, emp=jogosMes.filter(e=>e.placarNos===e.placarDeles).length, dd=jogosMes.filter(e=>e.placarNos<e.placarDeles).length;
+  const msg=`📊 *${db.config.time} — Destaques de ${MESES_NOME[Number(mes.slice(5))-1]}*
+
+`
+    +(jogosMes.length?`🏆 Campanha do mês: ${v}V · ${emp}E · ${dd}D
+`:'')
+    +(topG&&topG[1].g?`⚽ Artilheiro: ${pnome(nomeAt(topG[0]))} (${topG[1].g} gol${topG[1].g>1?'s':''})
+`:'')
+    +(topA&&topA[1].as?`🅰️ Garçom: ${pnome(nomeAt(topA[0]))} (${topA[1].as})
+`:'')
+    +(topN?`🌟 Melhor nota: ${pnome(nomeAt(topN[0]))} (${nm(topN[1]).toFixed(1)})
+`:'')
+    +`
+Sigam firmes, ${'@'}todos! 💪⚽`;
+  modalWhats('Destaques do mês',msg);
 }
 function painelTimeTodo(sel,podeEditar){
   const e=byId(db.eventos,sel); if(!e)return '';
@@ -1757,7 +1886,7 @@ function pdfFichaJogo(){
   const ev=byId(db.eventos,subState.despEv);
   const ats=[...elenco()].sort((a,b)=>a.nome.localeCompare(b.nome));
   if(!ats.length){toast('Nenhum jogador no elenco');return;}
-  const cols=[['⚽','Gols'],['🅰️','Assist.'],['⚔️','Duelos'],['🦅','Aéreos'],['🧠','Antecip.'],['🎯','Chutes'],['🧤','Defesas'],['❌','P. err.'],['⭐','Nota']];
+  const cols=[['⚽','Gols'],['🅰️','Assist.'],['⚔️','Duelos'],['💔','D. perd.'],['🦅','Aéreos'],['🧠','Antecip.'],['🎯','Chutes'],['🧤','Defesas'],['❌','P. err.'],['🔄','B. perd.'],['🚫','Faltas'],['⭐','Nota']];
   const linhaVazia=n=>`<tr><td style="height:30px">${n||''}</td>${cols.map(()=>'<td></td>').join('')}</tr>`;
   abreRelatorio(`<h1>📝 Ficha de Jogo — Súmula de Estatísticas</h1>
   <p class="sub">${esc(db.config.time)}${ev?` — ${tipoEvIco(ev.tipo)} ${esc(ev.titulo)} · ${dbr(ev.data)}${ev.local?' · '+esc(ev.local):''}`:''}</p>
@@ -1780,13 +1909,13 @@ function pdfTotaisTemporada(){
   const tipoDe=id=>{const e=byId(db.eventos,id);return e?e.tipo:'';};
   const secoes=cats.map(c=>{
     const agg={};
-    db.stats.filter(s=>s.atletaId&&(c.k==='todos'||tipoDe(s.eventoId)===c.k)).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,j:0,notas:[]};
-      a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.j++; if(s.nota)a.notas.push(+s.nota); });
+    db.stats.filter(s=>s.atletaId&&(c.k==='todos'||tipoDe(s.eventoId)===c.k)).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,j:0,notas:[]};
+      a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.dp+=+s.duelosPerdidos||0; a.bp+=+s.bolasPerdidas||0; a.fc+=+s.faltasCometidas||0; a.j++; a.notas.push(notaDe(s).v); });
     const linhas=Object.entries(agg).sort((x,y)=>y[1].g-x[1].g||y[1].as-x[1].as||nomeAt(x[0]).localeCompare(nomeAt(y[0])));
     if(!linhas.length)return '';
     return `<div class="mes"><h2>${c.t}</h2>
-    <table><tr><th>Atleta</th><th>Partidas</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>🦅 Aéreos</th><th>🧠 Antecip.</th><th>🎯 Chutes</th><th>🧤 Defesas</th><th>❌ P. errados</th><th>Nota média</th></tr>
-    ${linhas.map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td>${a.j}</td><td>${a.g}</td><td>${a.as}</td><td>${a.ca}</td><td>${a.cv}</td><td>${a.des}</td><td>${a.due}</td><td>${a.da}</td><td>${a.ant}</td><td>${a.ch}</td><td>${a.df}</td><td>${a.pe}</td><td>${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join('')}</table></div>`;
+    <table><tr><th>Atleta</th><th>Partidas</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>🦅</th><th>🧠</th><th>🎯</th><th>🧤</th><th>❌</th><th>💔</th><th>🔄</th><th>🚫</th><th>Nota média</th></tr>
+    ${linhas.map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td>${a.j}</td><td>${a.g}</td><td>${a.as}</td><td>${a.ca}</td><td>${a.cv}</td><td>${a.des}</td><td>${a.due}</td><td>${a.da}</td><td>${a.ant}</td><td>${a.ch}</td><td>${a.df}</td><td>${a.pe}</td><td>${a.dp}</td><td>${a.bp}</td><td>${a.fc}</td><td>${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join('')}</table></div>`;
   }).join('');
   if(!secoes){toast('Nenhuma estatística lançada ainda');return;}
   abreRelatorio(`<h1>📊 Totais da Temporada</h1>
@@ -1811,9 +1940,9 @@ function adicionaConvidadoDesemp(){
 async function salvaStatsAoVivo(evId){
   const temp=subState.statsTemp?.[evId]||{};
   if(!Object.keys(temp).length){toast('Nenhuma estatística para salvar');return;}
-  const NOVOS=['antecipacao','duelos_aereos','chutes_gol','defesas','passes_errados'];
+  const NOVOS=['antecipacao','duelos_aereos','chutes_gol','defesas','passes_errados','duelos_perdidos','bolas_perdidas','faltas_cometidas'];
   let semNovos=false;
-  const monta=st=>{ const d={gols:st.g||0,assist:st.as||0,duelos:st.due||0,antecipacao:st.ant||0,duelos_aereos:st.da||0,chutes_gol:st.ch||0,defesas:st.df||0,passes_errados:st.pe||0};
+  const monta=st=>{ const d={gols:st.g||0,assist:st.as||0,duelos:st.due||0,antecipacao:st.ant||0,duelos_aereos:st.da||0,chutes_gol:st.ch||0,defesas:st.df||0,passes_errados:st.pe||0,duelos_perdidos:st.dp||0,bolas_perdidas:st.bp||0,faltas_cometidas:st.fc||0};
     if(semNovos)NOVOS.forEach(k=>delete d[k]); return d; };
   const grava=async(atId,st)=>{
     const dados=monta(st);
@@ -1821,7 +1950,7 @@ async function salvaStatsAoVivo(evId){
       ?sb.from('stats').insert({evento_id:evId,atleta_id:null,convidado:subState.convidadosDesemp?.[Number(atId.split('_')[1])],...dados})
       :sb.from('stats').upsert({evento_id:evId,atleta_id:atId,...dados},{onConflict:'evento_id,atleta_id'});
     let {error}=await op();
-    if(error&&/antecipacao|duelos_aereos|chutes_gol|defesas|passes_errados/.test(error.message||'')){
+    if(error&&/antecipacao|duelos_aereos|chutes_gol|defesas|passes_errados|duelos_perdidos|bolas_perdidas|faltas_cometidas/.test(error.message||'')){
       semNovos=true;
       const {error:e2}=await grava(atId,st)||{}; if(e2)throw e2; return;
     }
@@ -1843,8 +1972,8 @@ function tDesemp(){
   const cat=subState.despCat||'todos';
   const catDe=evId=>{const e=byId(db.eventos,evId);return e?e.tipo:'';};
   const agg={};
-  db.stats.filter(s=>cat==='todos'||catDe(s.eventoId)===cat).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,j:0,notas:[]};
-    a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.j++; if(s.nota)a.notas.push(+s.nota); });
+  db.stats.filter(s=>cat==='todos'||catDe(s.eventoId)===cat).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,j:0,notas:[]};
+    a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.dp+=+s.duelosPerdidos||0; a.bp+=+s.bolasPerdidas||0; a.fc+=+s.faltasCometidas||0; a.j++; a.notas.push(notaDe(s).v); });
   const catBtn=(v,lbl)=>`<button class="mini ${cat===v?'':'sec'}" onclick="subState.despCat='${v}';renderTab()">${lbl}</button>`;
   const filtroCat=`<div class="row sect" style="gap:6px;flex-wrap:wrap"><span class="mut" style="font-size:12px;align-self:center">Estatísticas de:</span>
     ${catBtn('todos','🌐 Tudo')}${catBtn('jogo','🏆 Oficiais')}${catBtn('amistoso','🤝 Amistosos')}${catBtn('treino','🏃 Treinos')}</div>`;
@@ -1854,7 +1983,7 @@ function tDesemp(){
   if(sel){
     lanc=`<div class="tblwrap"><table><tr><th>Atleta</th><th>⚽</th><th>🅰️</th><th>🟨</th><th>🟥</th><th>🛡️</th><th>⚔️</th><th>🦅</th><th>🧠</th><th>🎯</th><th>🧤</th><th>❌</th><th>Nota</th>${podeEditar?'<th></th>':''}</tr>
     ${ats.map(a=>{ const s=statDe(sel,a.id)||{};
-      return `<tr><td>${esc(a.nome)}</td><td>${s.gols??'—'}</td><td>${s.assist??'—'}</td><td>${s.amarelos??'—'}</td><td>${s.vermelho?'1':'—'}</td><td>${s.desarmes??'—'}</td><td>${s.duelos??'—'}</td><td>${s.duelosAereos||'—'}</td><td>${s.antecipacao||'—'}</td><td>${s.chutesGol||'—'}</td><td>${s.defesas||'—'}</td><td>${s.passesErrados||'—'}</td><td>${s.nota?`<strong>${s.nota}</strong>`:'—'}</td>
+      return `<tr><td>${esc(a.nome)}</td><td>${s.gols??'—'}</td><td>${s.assist??'—'}</td><td>${s.amarelos??'—'}</td><td>${s.vermelho?'1':'—'}</td><td>${s.desarmes??'—'}</td><td>${s.duelos??'—'}</td><td>${s.duelosAereos||'—'}</td><td>${s.antecipacao||'—'}</td><td>${s.chutesGol||'—'}</td><td>${s.defesas||'—'}</td><td>${s.passesErrados||'—'}</td><td>${s.id?(s.nota?`<strong>${(+s.nota).toFixed(1)}</strong> ✔`:`<strong>${notaAuto(s).toFixed(1)}</strong> 🤖`):'—'}</td>
       ${podeEditar?`<td><button class="mini sec" onclick="formStat('${sel}','${a.id}')">✏️ Lançar</button></td>`:''}</tr>`; }).join('')}</table></div>
     <p class="mut" style="margin-top:6px;font-size:12px">Legenda: ⚽ gols · 🅰️ assistências · 🛡️ desarmes · ⚔️ duelos · 🦅 duelos aéreos · 🧠 antecipações · 🎯 chutes no gol · 🧤 defesas · ❌ passes errados</p>`;
   }
@@ -1862,7 +1991,13 @@ function tDesemp(){
   <select onchange="subState.despEv=this.value;renderTab()">${jogos.length?jogos.map(j=>`<option value="${j.id}" ${j.id===sel?'selected':''}>${tipoEvIco(j.tipo)} ${dbr(j.data)} — ${esc(j.titulo)}</option>`).join(''):'<option value="">— nenhum jogo cadastrado —</option>'}</select>
   <div style="margin-top:14px">${modeLancAV&&sel?lancAoVivo(sel):lanc}</div></div>
   ${sel?painelTimeTodo(sel,podeEditar):''}
+  ${sel?painelCraque(sel):''}
   ${filtroCat}
+  <div class="row sect" style="gap:6px;flex-wrap:wrap">
+    <button class="mini sec" onclick="pdfPremios()">🏅 Prêmios da temporada</button>
+    <button class="mini sec" onclick="modalComparar()">⚖️ Comparar atletas</button>
+    <button class="mini sec" onclick="resumoMes()">📊 Destaques do mês (WhatsApp)</button>
+  </div>
   <div class="grid g2 sect">
     <div class="card"><h2>⚽ Artilharia</h2>${rank(a=>a.g)}</div>
     <div class="card"><h2>🅰️ Assistências</h2>${rank(a=>a.as)}</div>
@@ -1879,7 +2014,7 @@ function tDesemp(){
   ${Object.keys(agg).length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:10px;margin-top:10px">
   ${Object.entries(agg).sort((x,y)=>y[1].g-x[1].g||y[1].as-x[1].as).map(([id,a])=>{
     const nota=a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):null;
-    const chips=[['⚽','Gols',a.g],['🅰️','Assist.',a.as],['🎯','Chutes',a.ch],['🛡️','Desarmes',a.des],['⚔️','Duelos',a.due],['🦅','Aéreos',a.da],['🧠','Antecip.',a.ant],['🧤','Defesas',a.df],['❌','P. err.',a.pe],['🟨','Cartões',a.ca+a.cv]];
+    const chips=[['⚽','Gols',a.g],['🅰️','Assist.',a.as],['🎯','Chutes',a.ch],['🛡️','Desarmes',a.des],['⚔️','Duelos',a.due],['🦅','Aéreos',a.da],['🧠','Antecip.',a.ant],['🧤','Defesas',a.df],['❌','P. err.',a.pe],['💔','D. perd.',a.dp],['🔄','B. perd.',a.bp],['🚫','Faltas',a.fc],['🟨','Cartões',a.ca+a.cv]];
     return `<div style="background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px">
       <div class="spread" style="margin-bottom:8px;gap:6px"><strong>${esc(pnome(nomeAt(id)))}</strong>
         <span style="white-space:nowrap">${nota?`<span class="pill p-gold">⭐ ${nota}</span> `:''}<span class="pill p-mut">${a.j} part.</span></span></div>
@@ -1904,18 +2039,22 @@ function formStat(evId,atId){
   <div><label>🎯 Chutes no gol</label><input id="st_ch" type="number" value="${s.chutesGol??''}"></div>
   <div><label>🧤 Defesas (goleiro)</label><input id="st_df" type="number" value="${s.defesas??''}"></div>
   <div><label>❌ Passes errados</label><input id="st_pe" type="number" value="${s.passesErrados??''}"></div>
-  <div><label>Nota (0–10)</label><input id="st_n" type="number" step="0.5" min="0" max="10" value="${s.nota??''}"></div>
+  <div><label>💔 Duelos perdidos</label><input id="st_dp" type="number" value="${s.duelosPerdidos??''}"></div>
+  <div><label>🔄 Bolas perdidas</label><input id="st_bp" type="number" value="${s.bolasPerdidas??''}"></div>
+  <div><label>🚫 Faltas cometidas</label><input id="st_fc" type="number" value="${s.faltasCometidas??''}"></div>
+  <div><label>Nota (vazio = usa a do sistema 🤖)</label><input id="st_n" type="number" step="0.1" min="0" max="10" value="${s.nota??''}" placeholder="🤖 ${s.eventoId?notaAuto(s):'6.0'}"></div>
   </div>
+  <div class="alertline al-ok" style="margin-top:8px">🤖 <strong>Nota sugerida pelo sistema: ${notaAuto(s).toFixed(1)}</strong> (recalcula ao salvar os lances) <button class="mini gold" onclick="$('st_n').value='${notaAuto(s).toFixed(1)}'">✔ Confirmar sugestão</button></div>
   <div class="row" style="margin-top:8px"><input type="checkbox" id="st_cv" ${s.vermelho?'checked':''} style="width:auto"><span>🟥 Expulso (cartão vermelho)</span></div>
   <label>Observações</label><input id="st_obs" value="${esc(s.obs||'')}" placeholder="Ex.: defendeu pênalti">
   <div class="row" style="margin-top:14px"><button onclick="salvaStat('${evId}','${atId}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function salvaStat(evId,atId){
   const n=v=>v===''?null:Number(v);
-  let dados={evento_id:evId,atleta_id:atId,minutos:n(fval('st_min')),gols:n(fval('st_g'))||0,assist:n(fval('st_a'))||0,amarelos:Number(fval('st_ca'))||0,vermelho:$('st_cv').checked,desarmes:n(fval('st_d'))||0,duelos:n(fval('st_du'))||0,antecipacao:n(fval('st_ant'))||0,duelos_aereos:n(fval('st_da'))||0,chutes_gol:n(fval('st_ch'))||0,defesas:n(fval('st_df'))||0,passes_errados:n(fval('st_pe'))||0,nota:n(fval('st_n')),obs:fval('st_obs')};
+  let dados={evento_id:evId,atleta_id:atId,minutos:n(fval('st_min')),gols:n(fval('st_g'))||0,assist:n(fval('st_a'))||0,amarelos:Number(fval('st_ca'))||0,vermelho:$('st_cv').checked,desarmes:n(fval('st_d'))||0,duelos:n(fval('st_du'))||0,antecipacao:n(fval('st_ant'))||0,duelos_aereos:n(fval('st_da'))||0,chutes_gol:n(fval('st_ch'))||0,defesas:n(fval('st_df'))||0,passes_errados:n(fval('st_pe'))||0,duelos_perdidos:n(fval('st_dp'))||0,bolas_perdidas:n(fval('st_bp'))||0,faltas_cometidas:n(fval('st_fc'))||0,nota:n(fval('st_n')),obs:fval('st_obs')};
   let {error}=await sb.from('stats').upsert(dados,{onConflict:'evento_id,atleta_id'});
-  if(error&&/antecipacao|duelos_aereos|chutes_gol|defesas|passes_errados/.test(error.message||'')){
-    ['antecipacao','duelos_aereos','chutes_gol','defesas','passes_errados'].forEach(k=>delete dados[k]);
+  if(error&&/antecipacao|duelos_aereos|chutes_gol|defesas|passes_errados|duelos_perdidos|bolas_perdidas|faltas_cometidas/.test(error.message||'')){
+    ['antecipacao','duelos_aereos','chutes_gol','defesas','passes_errados','duelos_perdidos','bolas_perdidas','faltas_cometidas'].forEach(k=>delete dados[k]);
     const {error:e2}=await sb.from('stats').upsert(dados,{onConflict:'evento_id,atleta_id'});
     if(e2){toast('⚠️ '+e2.message);return;}
     toast('⚠️ Salvo sem os itens novos — rode o SQL v11 no Supabase para ativá-los');
@@ -1930,10 +2069,10 @@ function artePosJogo(){
   <p class="mut">Gera uma imagem pronta para o grupo e o Instagram, com o escudo, o placar e as logos dos patrocinadores.</p>
   <label>Jogo</label><select id="ar_jogo">${jogos.map(j=>`<option value="${j.id}">${dbr(j.data)} — ${esc(j.titulo)}</option>`).join('')}</select>
   <div class="grid g2">
-  <div><label>Nossos gols</label><input id="ar_n" type="number" value="0"></div>
-  <div><label>Gols do adversário</label><input id="ar_e" type="number" value="0"></div>
+  <div><label>Nossos gols</label><input id="ar_n" type="number" value="${jogos[0]&&jogos[0].placarNos!=null?jogos[0].placarNos:0}"></div>
+  <div><label>Gols do adversário</label><input id="ar_e" type="number" value="${jogos[0]&&jogos[0].placarDeles!=null?jogos[0].placarDeles:0}"></div>
   </div>
-  <label>Destaque (opcional)</label><input id="ar_d" placeholder="Ex.: Gols de Ana (2) e Bruno · Defesaça do Rafael">
+  <label>Destaque (opcional)</label><input id="ar_d" value="${(()=>{const c=craqueDo(jogos[0].id);return c?'🌟 Craque do Jogo (voto do elenco): '+pnome(nomeAt(c.id)):'';})()}" placeholder="Ex.: Gols de Ana (2) e Bruno · Defesaça do Rafael">
   <div class="row" style="margin-top:14px"><button id="btn_ar" onclick="geraArte()">Gerar imagem</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 function carrImg(src,cors){ return new Promise(res=>{ const i=new Image(); if(cors)i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>res(null); i.src=src; }); }
@@ -1968,8 +2107,8 @@ async function geraArte(){
   cv.toBlob(bl=>{ baixar('arte-pos-jogo-'+String(ev.data)+'.png',bl,'image/png'); b.disabled=false; fecha(); toast('🎨 Arte gerada! Está nos downloads — compartilhe no grupo'); },'image/png');
 }
 function csvStats(){
-  const linhas=[['Atleta','Jogo','Data','Minutos','Gols','Assistências','Amarelos','Vermelho','Desarmes','Duelos','Duelos aéreos','Antecipações','Chutes no gol','Defesas','Passes errados','Nota','Obs']];
-  db.stats.forEach(s=>{ const e=byId(db.eventos,s.eventoId); linhas.push([nomeAt(s.atletaId),e?e.titulo:'',e?dbr(e.data):'',s.minutos,s.gols,s.assist,s.amarelos,s.vermelho?'sim':'',s.desarmes,s.duelos,s.duelosAereos,s.antecipacao,s.chutesGol,s.defesas,s.passesErrados,s.nota,s.obs]); });
+  const linhas=[['Atleta','Jogo','Data','Minutos','Gols','Assistências','Amarelos','Vermelho','Desarmes','Duelos','Duelos aéreos','Antecipações','Chutes no gol','Defesas','Passes errados','Duelos perdidos','Bolas perdidas','Faltas cometidas','Nota','Obs']];
+  db.stats.forEach(s=>{ const e=byId(db.eventos,s.eventoId); linhas.push([nomeAt(s.atletaId),e?e.titulo:'',e?dbr(e.data):'',s.minutos,s.gols,s.assist,s.amarelos,s.vermelho?'sim':'',s.desarmes,s.duelos,s.duelosAereos,s.antecipacao,s.chutesGol,s.defesas,s.passesErrados,s.duelosPerdidos,s.bolasPerdidas,s.faltasCometidas,notaDe(s).v,s.obs]); });
   csv('desempenho-time.csv',linhas);
 }
 
@@ -5591,6 +5730,12 @@ function tMeu(){
   ${prox.length?prox.map(e=>`<div class="alertline" style="background:var(--blue-soft)"><div style="flex:1"><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong><div class="mut">${dbr(e.data)}${e.dataFim?' até '+dbr(e.dataFim):''} às ${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''} — ${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener">📍 ${esc(e.local)}</a>`:''}${e.obs?' · '+esc(e.obs):''}</div></div>
     <button class="mini" onclick="modalCal('${e.id}')">📅 Pôr no calendário</button></div>`).join(''):'<p class="mut">Nada agendado por enquanto.</p>'}
   ${prox.length?`<button class="sec mini" onclick="baixarICS(db.eventos.filter(e=>e.data>=hoje()),'agenda-oabmaster.ics')">📅 Agenda completa (.ics)</button>`:''}</div>
+  ${(()=>{const jv=db.eventos.filter(e=>['jogo','amistoso'].includes(e.tipo)&&e.data<=hoje()).sort((a,b)=>b.data.localeCompare(a.data)).slice(0,3);
+  return jv.length?`<div class="card sect" style="border-color:var(--gold)"><h2>🌟 Craque do Jogo — sua vez de votar!</h2>
+  ${jv.map(e=>{const c=craqueDo(e.id); const meu=(db.craqueVotos||[]).find(v=>v.eventoId===e.id&&v.votanteId===me.id);
+    return `<div class="alertline" style="background:var(--bg)"><div style="flex:1"><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong>
+    <div class="mut">${dbr(e.data)}${c?` · 🏆 liderando: ${esc(pnome(nomeAt(c.id)))} (${c.votos}/${c.total})`:' · ainda sem votos'}${meu?` · seu voto: ${esc(pnome(nomeAt(meu.votoId)))}`:''}</div></div>
+    <button class="mini ${meu?'sec':'gold'}" onclick="modalVotarCraque('${e.id}')">${meu?'🔁 Trocar':'🗳️ Votar'}</button></div>`;}).join('')}</div>`:'';})()}
   <div class="grid g5 sect">
     <div class="card stat clickable" onclick="vai('presencas')"><div class="n">${pct===null?'—':pct+'%'}</div><div class="l">Minha frequência →</div></div>
     <div class="card stat clickable" onclick="vai('desempenho')"><div class="n">${gols}⚽ ${asst}🅰️</div><div class="l">Gols / Assist. →</div></div>
