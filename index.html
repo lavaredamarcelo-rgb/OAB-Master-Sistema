@@ -1130,7 +1130,8 @@ function verCardJogador(id){
     <button class="mini ${est==='clube'?'':'sec'}" onclick="subState.cardEstilo='clube';verCardJogador('${id}')">🛡️ Cores do clube</button>
   </div>
   <div style="display:flex;justify-content:center">${cardJogador(a,est)}</div>
-  ${(()=>{const jn=db.stats.filter(x=>x.atletaId===id).map(x=>({e:byId(db.eventos,x.eventoId),s:x})).filter(x=>x.e).sort((x,y)=>x.e.data.localeCompare(y.e.data)).slice(-10);
+  ${(()=>{const jn=[...db.stats.filter(x=>x.atletaId===id).map(x=>({e:byId(db.eventos,x.eventoId),s:x})),
+    ...presencasSemStats(id).map(pz=>({e:byId(db.eventos,pz.eventoId),s:{}}))].filter(x=>x.e).sort((x,y)=>x.e.data.localeCompare(y.e.data)).slice(-10);
   return jn.length?`<div style="margin-top:14px"><label>📈 Evolução da nota — últimos ${jn.length} jogos (🤖 = nota do sistema)</label>
   <div style="display:flex;gap:5px;align-items:flex-end;height:96px;margin-top:6px">
   ${jn.map(x=>{const nd=notaDe(x.s); const h=Math.round(nd.v/10*72)+8;
@@ -1775,6 +1776,16 @@ async function bumpTime(evId,k,delta){
   if(error){toast('⚠️ '+(/stats_time/.test(error.message||'')?'Rode o SQL v14 no Supabase para ativar as estatísticas do time':error.message));return;}
   e.statsTime=st; renderTab();
 }
+function presencasSemStats(atId,cat){
+  cat=cat||'todos';
+  return db.presencas.filter(p=>p.atletaId===atId&&['presente','atraso'].includes(p.status)).filter(p=>{
+    const e=byId(db.eventos,p.eventoId); if(!e)return false;
+    const t=e.tipo==='treino_amistoso'?'amistoso':e.tipo;
+    if(!['jogo','amistoso','treino'].includes(t))return false;
+    if(cat!=='todos'&&t!==cat)return false;
+    return !db.stats.some(x=>x.eventoId===p.eventoId&&x.atletaId===atId);
+  });
+}
 function jogosSemSofrer(atId,cat){
   cat=cat||'todos';
   return db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.placarNos!=null&&Number(e.placarDeles)===0)
@@ -1828,6 +1839,8 @@ function painelCraque(evId){
 function pdfPremios(){
   const agg={}; db.stats.filter(x=>x.atletaId).forEach(x=>{const a=agg[x.atletaId]??={g:0,as:0,df:0,des:0,fc:0,ca:0,cv:0,j:0,notas:[]};
     a.g+=+x.gols||0;a.as+=+x.assist||0;a.df+=+x.defesas||0;a.des+=+x.desarmes||0;a.fc+=+x.faltasCometidas||0;a.ca+=+x.amarelos||0;a.cv+=x.vermelho?1:0;a.j++;a.notas.push(notaDe(x).v);});
+  elenco().forEach(at2=>{ const ext=presencasSemStats(at2.id).length;
+    if(ext){ const g=agg[at2.id]??={g:0,as:0,df:0,des:0,fc:0,ca:0,cv:0,j:0,notas:[]}; g.j+=ext; for(let i=0;i<ext;i++)g.notas.push(6); } });
   const L=Object.entries(agg); if(!L.length){toast('Nenhuma estatística ainda');return;}
   const media=a=>a.notas.length?a.notas.reduce((x,y)=>x+y,0)/a.notas.length:0;
   const top=f=>[...L].sort((x,y)=>f(y[1])-f(x[1]))[0];
@@ -1954,6 +1967,8 @@ function pdfTotaisTemporada(){
     const agg={};
     db.stats.filter(s=>s.atletaId&&(c.k==='todos'||tipoDe(s.eventoId)===c.k)).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,ce:0,gs:0,pp:0,pc:0,gco:0,j:0,notas:[]};
       a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.dp+=+s.duelosPerdidos||0; a.bp+=+s.bolasPerdidas||0; a.fc+=+s.faltasCometidas||0; a.ce+=+s.chutesErrados||0; a.gs+=+s.golsSofridos||0; a.pp+=+s.penaltisPerdidos||0; a.pc+=+s.penaltisCometidos||0; a.gco+=+s.golsContra||0; a.j++; a.notas.push(notaDe(s).v); });
+    elenco().forEach(at2=>{ const ext=presencasSemStats(at2.id,c.k).length;
+      if(ext){ const g=agg[at2.id]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,ce:0,gs:0,pp:0,pc:0,gco:0,j:0,notas:[]}; g.j+=ext; for(let i=0;i<ext;i++)g.notas.push(6); } });
     const linhas=Object.entries(agg).sort((x,y)=>y[1].g-x[1].g||y[1].as-x[1].as||nomeAt(x[0]).localeCompare(nomeAt(y[0])));
     if(!linhas.length)return '';
     return `<div class="mes"><h2>${c.t}</h2>
@@ -2017,6 +2032,8 @@ function tDesemp(){
   const agg={};
   db.stats.filter(s=>cat==='todos'||catDe(s.eventoId)===cat).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,ce:0,gs:0,pp:0,pc:0,gco:0,j:0,notas:[]};
     a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.dp+=+s.duelosPerdidos||0; a.bp+=+s.bolasPerdidas||0; a.fc+=+s.faltasCometidas||0; a.ce+=+s.chutesErrados||0; a.gs+=+s.golsSofridos||0; a.pp+=+s.penaltisPerdidos||0; a.pc+=+s.penaltisCometidos||0; a.gco+=+s.golsContra||0; a.j++; a.notas.push(notaDe(s).v); });
+  elenco().forEach(a=>{ const ext=presencasSemStats(a.id,cat).length;
+    if(ext){ const g=agg[a.id]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,ce:0,gs:0,pp:0,pc:0,gco:0,j:0,notas:[]}; g.j+=ext; for(let i=0;i<ext;i++)g.notas.push(6); } });
   const catBtn=(v,lbl)=>`<button class="mini ${cat===v?'':'sec'}" onclick="subState.despCat='${v}';renderTab()">${lbl}</button>`;
   const filtroCat=`<div class="row sect" style="gap:6px;flex-wrap:wrap"><span class="mut" style="font-size:12px;align-self:center">Estatísticas de:</span>
     ${catBtn('todos','🌐 Tudo')}${catBtn('jogo','🏆 Oficiais')}${catBtn('amistoso','🤝 Amistosos')}${catBtn('treino','🏃 Treinos')}</div>`;
@@ -2026,7 +2043,7 @@ function tDesemp(){
   if(sel){
     lanc=`<div class="tblwrap"><table><tr><th>Atleta</th><th>⚽</th><th>🅰️</th><th>🟨</th><th>🟥</th><th>🛡️</th><th>⚔️</th><th>💔</th><th>🦅</th><th>🧠</th><th>🎯</th><th>🧤</th><th>❌</th><th>🔄</th><th>🚫</th><th>Nota</th>${podeEditar?'<th></th>':''}</tr>
     ${ats.map(a=>{ const s=statDe(sel,a.id)||{};
-      return `<tr><td>${esc(a.nome)}</td><td>${s.gols??'—'}</td><td>${s.assist??'—'}</td><td>${s.amarelos??'—'}</td><td>${s.vermelho?'1':'—'}</td><td>${s.desarmes??'—'}</td><td>${s.duelos??'—'}</td><td>${s.duelosPerdidos||'—'}</td><td>${s.duelosAereos||'—'}</td><td>${s.antecipacao||'—'}</td><td>${s.chutesGol||'—'}</td><td>${s.defesas||'—'}</td><td>${s.passesErrados||'—'}</td><td>${s.bolasPerdidas||'—'}</td><td>${s.faltasCometidas||'—'}</td><td>${s.id?(s.nota?`<strong>${(+s.nota).toFixed(1)}</strong> ✔`:`<strong>${notaAuto(s).toFixed(1)}</strong> 🤖`):'—'}</td>
+      return `<tr><td>${esc(a.nome)}</td><td>${s.gols??'—'}</td><td>${s.assist??'—'}</td><td>${s.amarelos??'—'}</td><td>${s.vermelho?'1':'—'}</td><td>${s.desarmes??'—'}</td><td>${s.duelos??'—'}</td><td>${s.duelosPerdidos||'—'}</td><td>${s.duelosAereos||'—'}</td><td>${s.antecipacao||'—'}</td><td>${s.chutesGol||'—'}</td><td>${s.defesas||'—'}</td><td>${s.passesErrados||'—'}</td><td>${s.bolasPerdidas||'—'}</td><td>${s.faltasCometidas||'—'}</td><td>${s.id?(s.nota?`<strong>${(+s.nota).toFixed(1)}</strong> ✔`:`<strong>${notaAuto(s).toFixed(1)}</strong> 🤖`):(db.presencas.some(pz=>pz.eventoId===sel&&pz.atletaId===a.id&&['presente','atraso'].includes(pz.status))?'<strong>6.0</strong> 🤖':'—')}</td>
       ${podeEditar?`<td><button class="mini sec" onclick="formStat('${sel}','${a.id}')">✏️ Lançar</button></td>`:''}</tr>`; }).join('')}</table></div>
     <p class="mut" style="margin-top:6px;font-size:12px">Legenda: ⚽ gols · 🅰️ assistências · 🛡️ desarmes · ⚔️ duelos ganhos · 💔 duelos perdidos · 🦅 aéreos · 🧠 antecipações · 🎯 chutes no gol · 🧤 defesas · ❌ passes errados · 🔄 bolas perdidas · 🚫 faltas cometidas · 🤖 nota do sistema / ✔ confirmada</p>`;
   }
