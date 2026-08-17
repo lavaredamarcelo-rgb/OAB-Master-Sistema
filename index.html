@@ -1693,6 +1693,11 @@ function lancAoVivo(evId){
   const convidados=subState.convidadosDesemp;
   const todosAtletas=[...ats,...convidados.map((n,i)=>({id:'conv_'+i,nome:n}))];
   const DEFS=STATS_DEFS;
+  // Carrega o que já foi salvo no banco — assim dá para corrigir/zerar com o botão −
+  todosAtletas.forEach(a=>{ if(temp[a.id]===undefined&&!String(a.id).startsWith('conv_')){
+    const sv=statDe(evId,a.id);
+    if(sv){ const o={}; STATS_DEFS.forEach(([k])=>{const v=Number(sv[STATS_MAPA[k]])||0; if(v)o[k]=v;}); if(Object.keys(o).length)temp[a.id]=o; }
+  }});
   const stat=subState.statAtivo||'g';
   const defAtivo=DEFS.find(d=>d[0]===stat)||DEFS[0];
   const totalLanc=Object.values(temp).reduce((s,t)=>s+Object.values(t).reduce((x,v)=>x+(Number(v)||0),0),0);
@@ -2056,7 +2061,18 @@ function formStat(evId,atId){
   <div class="alertline al-ok" style="margin-top:8px">🤖 <strong>Nota sugerida pelo sistema: ${notaAuto(s).toFixed(1)}</strong> (recalcula ao salvar os lances) <button class="mini gold" onclick="$('st_n').value='${notaAuto(s).toFixed(1)}'">✔ Confirmar sugestão</button></div>
   <div class="row" style="margin-top:8px"><input type="checkbox" id="st_cv" ${s.vermelho?'checked':''} style="width:auto"><span>🟥 Expulso (cartão vermelho)</span></div>
   <label>Observações</label><input id="st_obs" value="${esc(s.obs||'')}" placeholder="Ex.: defendeu pênalti">
-  <div class="row" style="margin-top:14px"><button onclick="salvaStat('${evId}','${atId}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+  <div class="row" style="margin-top:14px"><button onclick="salvaStat('${evId}','${atId}')">Salvar</button>
+  ${s.id?`<button class="bad" onclick="fecha();delStat('${evId}','${atId}')">🗑 Zerar tudo (excluir lançamento)</button>`:''}
+  <button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+function delStat(evId,atId){
+  const e=byId(db.eventos,evId);
+  confirma(`Zerar TODAS as marcações de <strong>${esc(pnome(nomeAt(atId)))}</strong> neste compromisso (${esc(e?e.titulo:'')})? O lançamento é excluído por completo.`,async()=>{
+    await q(sb.from('stats').delete().eq('evento_id',evId).eq('atleta_id',atId));
+    if(subState.statsTemp&&subState.statsTemp[evId])delete subState.statsTemp[evId][atId];
+    log('desempenho',`Estatísticas zeradas: ${nomeAt(atId)} (${e?e.titulo:''})`);
+    await recarrega(); toast('🗑 Marcações zeradas');
+  });
 }
 async function salvaStat(evId,atId){
   const n=v=>v===''?null:Number(v);
