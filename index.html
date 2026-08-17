@@ -1775,6 +1775,13 @@ async function bumpTime(evId,k,delta){
   if(error){toast('⚠️ '+(/stats_time/.test(error.message||'')?'Rode o SQL v14 no Supabase para ativar as estatísticas do time':error.message));return;}
   e.statsTime=st; renderTab();
 }
+function jogosSemSofrer(atId,cat){
+  cat=cat||'todos';
+  return db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.placarNos!=null&&Number(e.placarDeles)===0)
+    .filter(e=>cat==='todos'||(e.tipo==='treino_amistoso'?'amistoso':e.tipo)===cat)
+    .filter(e=>db.presencas.some(x=>x.eventoId===e.id&&x.atletaId===atId&&['presente','atraso'].includes(x.status))
+             ||db.stats.some(x=>x.eventoId===e.id&&x.atletaId===atId)).length;
+}
 function craqueDo(evId){
   // Contagem vem de função sigilosa do banco — ninguém vê o voto individual dos outros
   const ts=(db.craqueTotais||[]).filter(t=>t.eventoId===evId);
@@ -1837,6 +1844,8 @@ function pdfPremios(){
   ${linha('🧤 Luva de Ouro',top(a=>a.df),a=>a.df+' defesas')}
   ${linha('🛡️ Xerife',top(a=>a.des),a=>a.des+' desarmes')}
   ${linha('🤝 Fair Play',fair,a=>`${a.fc} falta${a.fc===1?'':'s'} · ${a.ca}🟨 ${a.cv}🟥`)}
+  ${(()=>{const m=elenco().map(a=>({id:a.id,v:jogosSemSofrer(a.id)})).sort((x,y)=>y.v-x.v)[0];
+    return m&&m.v?`<tr><td><strong>🧱 Muralha</strong></td><td><strong>${esc(nomeAt(m.id))}</strong></td><td>${m.v} jogo${m.v>1?'s':''} sem sofrer gol</td></tr>`:'';})()}
   ${linha('🌟 Craque da Temporada',craque,a=>'nota média '+media(a).toFixed(2)+' em '+a.j+' partida'+(a.j>1?'s':''))}
   </table>
   <p style="font-size:11.5px;color:#8a8f99">Craque e Fair Play exigem pelo menos ${minJ} partida(s) com estatística lançada.</p>`,`Prêmios — ${db.config.time}`);
@@ -1948,8 +1957,8 @@ function pdfTotaisTemporada(){
     const linhas=Object.entries(agg).sort((x,y)=>y[1].g-x[1].g||y[1].as-x[1].as||nomeAt(x[0]).localeCompare(nomeAt(y[0])));
     if(!linhas.length)return '';
     return `<div class="mes"><h2>${c.t}</h2>
-    <table><tr><th>Atleta</th><th>Partidas</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>🦅</th><th>🧠</th><th>🎯</th><th>💨</th><th>🧤</th><th>🚨</th><th>❌</th><th>💔</th><th>🔄</th><th>🚫</th><th>😖</th><th>🎁</th><th>🔴</th><th>Nota média</th></tr>
-    ${linhas.map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td>${a.j}</td><td>${a.g}</td><td>${a.as}</td><td>${a.ca}</td><td>${a.cv}</td><td>${a.des}</td><td>${a.due}</td><td>${a.da}</td><td>${a.ant}</td><td>${a.ch}</td><td>${a.ce}</td><td>${a.df}</td><td>${a.gs}</td><td>${a.pe}</td><td>${a.dp}</td><td>${a.bp}</td><td>${a.fc}</td><td>${a.pp}</td><td>${a.pc}</td><td>${a.gco}</td><td>${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join('')}</table></div>`;
+    <table><tr><th>Atleta</th><th>Partidas</th><th>Gols</th><th>Assist.</th><th>🟨</th><th>🟥</th><th>Desarmes</th><th>Duelos</th><th>🦅</th><th>🧠</th><th>🎯</th><th>💨</th><th>🧤</th><th>🚨</th><th>❌</th><th>💔</th><th>🔄</th><th>🚫</th><th>😖</th><th>🎁</th><th>🔴</th><th>🧱</th><th>Nota média</th></tr>
+    ${linhas.map(([id,a])=>`<tr><td><strong>${esc(nomeAt(id))}</strong></td><td>${a.j}</td><td>${a.g}</td><td>${a.as}</td><td>${a.ca}</td><td>${a.cv}</td><td>${a.des}</td><td>${a.due}</td><td>${a.da}</td><td>${a.ant}</td><td>${a.ch}</td><td>${a.ce}</td><td>${a.df}</td><td>${a.gs}</td><td>${a.pe}</td><td>${a.dp}</td><td>${a.bp}</td><td>${a.fc}</td><td>${a.pp}</td><td>${a.pc}</td><td>${a.gco}</td><td>${jogosSemSofrer(id,c.k)}</td><td>${a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):'—'}</td></tr>`).join('')}</table></div>`;
   }).join('');
   if(!secoes){toast('Nenhuma estatística lançada ainda');return;}
   abreRelatorio(`<h1>📊 Totais da Temporada</h1>
@@ -2043,12 +2052,15 @@ function tDesemp(){
     <div class="card"><h2>🧠 Antecipações</h2>${rank(a=>a.ant)}</div>
     <div class="card"><h2>🎯 Chutes no gol</h2>${rank(a=>a.ch)}</div>
     <div class="card"><h2>🧤 Defesas</h2>${rank(a=>a.df)}</div>
+    <div class="card"><h2>🧱 Muralha — jogos sem sofrer gol</h2>${(()=>{
+      const l=elenco().map(a=>({id:a.id,v:jogosSemSofrer(a.id,cat)})).filter(r=>r.v>0).sort((x,y)=>y.v-x.v).slice(0,5);
+      return l.map((r,i)=>`<div class="alertline" style="background:var(--bg)"><span class="medal">${['🥇','🥈','🥉','4º','5º'][i]}</span><span style="flex:1">${esc(pnome(nomeAt(r.id)))}</span><strong>${r.v}</strong></div>`).join('')||'<p class="mut">Sem registros — precisa de placar lançado com 0 sofrido e chamada feita.</p>';})()}</div>
   </div>
   <div class="card"><div class="spread"><h2 style="margin:0">📊 Totais da temporada ${cat==='jogo'?'<span class="pill p-gold">🏆 oficiais</span>':cat==='amistoso'?'<span class="pill p-warn">🤝 amistosos</span>':cat==='treino'?'<span class="pill p-mut">🏃 treinos</span>':''}</h2><button class="mini gold" onclick="pdfTotaisTemporada()">📄 PDF completo</button></div>
   ${Object.keys(agg).length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:10px;margin-top:10px">
   ${Object.entries(agg).sort((x,y)=>y[1].g-x[1].g||y[1].as-x[1].as).map(([id,a])=>{
     const nota=a.notas.length?(a.notas.reduce((x,y)=>x+y,0)/a.notas.length).toFixed(1):null;
-    const chips=[['⚽','Gols',a.g],['🅰️','Assist.',a.as],['🎯','Chutes',a.ch],['🛡️','Desarmes',a.des],['⚔️','Duelos',a.due],['🦅','Aéreos',a.da],['🧠','Antecip.',a.ant],['🧤','Defesas',a.df],['❌','P. err.',a.pe],['💔','D. perd.',a.dp],['🔄','B. perd.',a.bp],['🚫','Faltas',a.fc],['💨','Ch. err.',a.ce],['🚨','G. sofr.',a.gs],['😖','Pên. perd.',a.pp],['🎁','Pên. com.',a.pc],['🔴','G. contra',a.gco],['🟨','Cartões',a.ca+a.cv]];
+    const chips=[['⚽','Gols',a.g],['🅰️','Assist.',a.as],['🎯','Chutes',a.ch],['🛡️','Desarmes',a.des],['⚔️','Duelos',a.due],['🦅','Aéreos',a.da],['🧠','Antecip.',a.ant],['🧤','Defesas',a.df],['❌','P. err.',a.pe],['💔','D. perd.',a.dp],['🔄','B. perd.',a.bp],['🚫','Faltas',a.fc],['💨','Ch. err.',a.ce],['🚨','G. sofr.',a.gs],['😖','Pên. perd.',a.pp],['🎁','Pên. com.',a.pc],['🔴','G. contra',a.gco],['🧱','S/ sofrer',jogosSemSofrer(id,cat)],['🟨','Cartões',a.ca+a.cv]];
     return `<div style="background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px">
       <div class="spread" style="margin-bottom:8px;gap:6px"><strong>${esc(pnome(nomeAt(id)))}</strong>
         <span style="white-space:nowrap">${nota?`<span class="pill p-gold">⭐ ${nota}</span> `:''}<span class="pill p-mut">${a.j} part.</span></span></div>
