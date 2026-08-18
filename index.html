@@ -803,6 +803,17 @@ function vai(t,push=true){ if(!NAV[me.role].includes(t))return; if(push&&t!==tab
   document.querySelectorAll('.navb').forEach(b=>b.classList.toggle('on',b.textContent.trim()===NAVLBL[t][1]));
   document.querySelectorAll('.bb').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); }
 function voltar(){ if(!navHist.length)return; vai(navHist.pop(),false); }
+async function hidrataVideos(){
+  const vids=[...document.querySelectorAll('video[data-vpath]:not([data-ok])')];
+  for(const v of vids){
+    v.dataset.ok='1';
+    try{
+      const {data,error}=await sb.storage.from('arquivos').createSignedUrl(v.dataset.vpath,3600);
+      if(!error&&data&&data.signedUrl){ v.src=data.signedUrl; }
+      else{ v.outerHTML='<p class="mut" style="color:#fff;padding:20px">⚠️ Não consegui carregar o vídeo — use o botão ⬇ para baixar.</p>'; }
+    }catch(_){}
+  }
+}
 function renderTab(){
   if(!$('pgtitle'))return;
   // Salva quais details estavam abertos
@@ -825,6 +836,7 @@ function renderTab(){
       const summary=d.querySelector('summary')?.textContent?.trim();
       if(summary && detailsAbertos.has(summary)) d.open=true;
     });
+    hidrataVideos();
   },0);
 }
 
@@ -1286,11 +1298,8 @@ function docLinha(d,podeDel,podeEditTat){
   const isVideo=d.nome.match(/\.(mp4|mov|m4v|webm)$/i);
   if(isVideo){
     return `<div style="margin-bottom:16px;background:var(--bg2);border-radius:8px;overflow:hidden">
-      <div style="aspect-ratio:16/9;background:#000">
-        <video controls style="width:100%;height:100%;display:block">
-          <source src="${d.path}" type="video/mp4">
-          Seu navegador não suporta vídeo.
-        </video>
+      <div style="aspect-ratio:16/9;background:#000;position:relative">
+        <video controls preload="metadata" playsinline style="width:100%;height:100%;display:block" data-vpath="${esc(d.path)}"></video>
       </div>
       <div style="padding:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="pill p-ok">🎬 Vídeo</span>
