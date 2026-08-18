@@ -933,6 +933,7 @@ function tPainel(){
   ${meusPend.map(u=>`<div class="alertline al-warn sect">👕 Você recebeu <strong>${esc(u.descricao)} nº ${esc(u.numero)}</strong> — <button class="mini gold" onclick="aceitarUniforme('${u.id}')">Ler e aceitar o termo de responsabilidade</button></div>`).join('')}
   ${cardVotacaoCraque()}
   ${cardNovidadesTaticas()}
+  <div class="row sect"><button class="gold mini" onclick="verCardJogador(me.id)">🪪 Meu card de jogador</button></div>
   <div class="grid g4 sect">
     <div class="card stat ${me.role==='diretoria'?'clickable':''}" ${me.role==='diretoria'?`onclick="vai('atletas')"`:''}><div class="n">${elenco().length}</div><div class="l">Jogadores ativos</div></div>
     <div class="card stat clickable" onclick="vai('agenda')"><div class="n">${prox.length?dbr(prox[0].data):'—'}</div><div class="l">Próximo compromisso →</div></div>
