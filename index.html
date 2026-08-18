@@ -1672,9 +1672,9 @@ function tAval(){
     const avs=db.avaliacoes.filter(v=>v.atletaId===sel).sort((a,b)=>b.data.localeCompare(a.data));
     const mts=db.metas.filter(m=>m.atletaId===sel);
     corpo=`<div class="card sect"><div class="spread"><h2>📈 Avaliações${souAtleta?' — minhas':''}</h2>${podeEditar?`<button class="mini" onclick="formAval('${sel}')">+ Nova avaliação</button>`:''}</div>
-    <div class="tblwrap"><table class="cardz"><tr><th>Data</th><th>Peso (kg)</th><th>Altura (m)</th><th>IMC</th><th>% Gordura</th><th>Peso gordura (kg)</th><th>Peso magro (kg)</th><th>% Massa musc.</th><th>Notas</th></tr>
+    <div class="tblwrap"><table class="cardz"><tr><th>Data</th><th>Peso (kg)</th><th>Altura (m)</th><th>IMC</th><th>% Gordura</th><th>Peso gordura (kg)</th><th>Peso magro (kg)</th><th>% Massa musc.</th><th>Notas</th><th></th></tr>
     ${avs.length?avs.map(v=>{const imc=v.peso&&v.altura?(v.peso/(v.altura*v.altura)).toFixed(1):'—';
-      return `<tr><td data-l="Data"><strong>${dbr(v.data)}</strong></td><td data-l="Peso (kg)">${esc(v.peso)}</td><td data-l="Altura (m)">${esc(v.altura)}</td><td data-l="IMC">${imc}</td><td data-l="% Gordura">${esc(v.gordura||'—')}</td><td data-l="Peso gordura (kg)">${esc(v.pesoGordura||'—')}</td><td data-l="Peso magro (kg)">${esc(v.pesoMagro||'—')}</td><td data-l="% Massa muscular">${esc(v.massaMuscular||'—')}</td><td data-l="Notas">${esc(v.notas||'')}</td></tr>`;}).join(''):'<tr><td colspan="9" class="mut">Sem avaliações.</td></tr>'}</table></div></div>
+      return `<tr><td data-l="Data"><strong>${dbr(v.data)}</strong></td><td data-l="Peso (kg)">${esc(v.peso)}</td><td data-l="Altura (m)">${esc(v.altura)}</td><td data-l="IMC">${imc}</td><td data-l="% Gordura">${esc(v.gordura||'—')}</td><td data-l="Peso gordura (kg)">${esc(v.pesoGordura||'—')}</td><td data-l="Peso magro (kg)">${esc(v.pesoMagro||'—')}</td><td data-l="% Massa muscular">${esc(v.massaMuscular||'—')}</td><td data-l="Notas">${esc(v.notas||'')}</td><td>${podeEditar?`<button class="mini sec" onclick="formAval('${sel}','${v.id}')">✏️</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="10" class="mut">Sem avaliações.</td></tr>'}</table></div></div>
     <div class="card"><div class="spread"><h2>🎯 Metas</h2>${podeEditar?`<button class="mini" onclick="formMeta('${sel}')">+ Nova meta</button>`:''}</div>
     ${mts.length?mts.map(m=>`<div class="alertline" style="background:var(--bg)"><div style="flex:1"><strong>${esc(m.desc)}</strong><div class="mut">Prazo: ${dbr(m.prazo)}</div></div>${statusMeta(m)}
     ${podeEditar&&m.status!=='atingida'?`<button class="mini sec" onclick="metaOk('${m.id}')">Marcar atingida</button>`:''}
@@ -1683,30 +1683,43 @@ function tAval(){
   return `${statusQuadro}${souAtleta?'':`<div class="card sect"><label style="margin-top:0">Atleta</label>
   <select onchange="subState.avalId=this.value;renderTab()"><option value="">— selecionar —</option>${ats.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.nome)}</option>`).join('')}</select></div>`}${corpo}`;
 }
-function formAval(aid){
-  modal(`<h2>Nova avaliação física</h2>
+function formAval(aid,id){
+  const v=id?byId(db.avaliacoes,id):null;
+  modal(`<h2>${v?'✏️ Editar':'Nova'} avaliação física</h2>
   <div class="grid g2">
-  <div><label>Data</label><input id="v_data" type="date" value="${hoje()}"></div>
-  <div><label>Peso (kg)</label><input id="v_peso" type="number" step="0.1"></div>
-  <div><label>Altura (m)</label><input id="v_alt" type="number" step="0.01" placeholder="1.78"></div>
-  <div><label>% Gordura</label><input id="v_gord" type="number" step="0.1"></div>
-  <div><label>Peso de gordura (kg)</label><input id="v_pgord" type="number" step="0.1"></div>
-  <div><label>Peso magro (kg)</label><input id="v_pmagro" type="number" step="0.1"></div>
-  <div><label>% Massa muscular</label><input id="v_mmusc" type="number" step="0.1"></div>
-  </div><label>Notas</label><textarea id="v_notas"></textarea>
-  <div class="row" style="margin-top:14px"><button onclick="salvaAval('${aid}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+  <div><label>Data</label><input id="v_data" type="date" value="${v?String(v.data).slice(0,10):hoje()}"></div>
+  <div><label>Peso (kg)</label><input id="v_peso" type="number" step="0.1" value="${v?esc(v.peso||''):''}"></div>
+  <div><label>Altura (m)</label><input id="v_alt" type="number" step="0.01" placeholder="1.78" value="${v?esc(v.altura||''):''}"></div>
+  <div><label>% Gordura</label><input id="v_gord" type="number" step="0.1" value="${v?esc(v.gordura||''):''}"></div>
+  <div><label>Peso de gordura (kg)</label><input id="v_pgord" type="number" step="0.1" value="${v?esc(v.pesoGordura||''):''}"></div>
+  <div><label>Peso magro (kg)</label><input id="v_pmagro" type="number" step="0.1" value="${v?esc(v.pesoMagro||''):''}"></div>
+  <div><label>% Massa muscular</label><input id="v_mmusc" type="number" step="0.1" value="${v?esc(v.massaMuscular||''):''}"></div>
+  </div><label>Notas</label><textarea id="v_notas">${v?esc(v.notas||''):''}</textarea>
+  <div class="row" style="margin-top:14px"><button onclick="salvaAval('${aid}','${id||''}')">Salvar</button>
+  ${v?`<button class="bad" onclick="delAval('${id}')">🗑 Excluir</button>`:''}
+  <button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
-async function salvaAval(aid){
+async function salvaAval(aid,id){
   let dados={atleta_id:aid,data:fval('v_data')||hoje(),peso:fval('v_peso'),altura:fval('v_alt'),gordura:fval('v_gord'),peso_gordura:fval('v_pgord'),peso_magro:fval('v_pmagro'),massa_muscular:fval('v_mmusc'),notas:fval('v_notas')};
-  let {error}=await sb.from('avaliacoes').insert(dados);
+  const op=d=>id?sb.from('avaliacoes').update(d).eq('id',id).select():sb.from('avaliacoes').insert(d).select();
+  let {data:res,error}=await op(dados);
   if(error&&/peso_gordura|peso_magro|massa_muscular/.test(error.message||'')){
     delete dados.peso_gordura; delete dados.peso_magro; delete dados.massa_muscular;
-    const {error:e2}=await sb.from('avaliacoes').insert(dados);
+    const {data:r2,error:e2}=await op(dados);
     if(e2){toast('⚠️ '+e2.message);return;}
-    toast('⚠️ Salvo sem os campos novos — rode o SQL v19 no Supabase');
+    res=r2; toast('⚠️ Salvo sem os campos novos — rode o SQL v19 no Supabase');
   } else if(error){toast('⚠️ '+error.message);return;}
-  log('avaliacao',`Avaliação física registrada: ${nomeAt(aid)}`);
-  fecha(); await recarrega(); toast('Avaliação registrada');
+  if(id&&(!res||!res.length)){toast('⚠️ O banco recusou a edição — verifique sua permissão');return;}
+  log('avaliacao',`Avaliação física ${id?'editada':'registrada'}: ${nomeAt(aid)}`);
+  fecha(); await recarrega(); toast(id?'✏️ Avaliação atualizada':'Avaliação registrada');
+}
+function delAval(id){
+  const v=byId(db.avaliacoes,id);
+  confirma(`Excluir a avaliação de <strong>${v?dbr(v.data):''}</strong>?`,async()=>{
+    await q(sb.from('avaliacoes').delete().eq('id',id));
+    log('avaliacao',`Avaliação física excluída (${v?dbr(v.data):id})`);
+    await recarrega(); toast('🗑 Avaliação excluída');
+  });
 }
 function formMeta(aid){
   modal(`<h2>Nova meta</h2>
