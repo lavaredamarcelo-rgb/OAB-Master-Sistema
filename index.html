@@ -1671,10 +1671,17 @@ function tAval(){
   if(sel){
     const avs=db.avaliacoes.filter(v=>v.atletaId===sel).sort((a,b)=>b.data.localeCompare(a.data));
     const mts=db.metas.filter(m=>m.atletaId===sel);
-    corpo=`<div class="card sect"><div class="spread"><h2>📈 Avaliações${souAtleta?' — minhas':''}</h2>${podeEditar?`<button class="mini" onclick="formAval('${sel}')">+ Nova avaliação</button>`:''}</div>
+    corpo=`<div class="card sect"><div class="spread"><h2>📈 Avaliações${souAtleta?' — minhas':''}</h2><div class="row" style="gap:6px">${avs.length?`<button class="mini gold" onclick="pdfAvaliacaoAtleta('${sel}')">📄 Relatório</button>`:''}${podeEditar?`<button class="mini" onclick="formAval('${sel}')">+ Nova avaliação</button>`:''}</div></div>
     <div class="tblwrap"><table class="cardz"><tr><th>Data</th><th>Peso (kg)</th><th>Altura (m)</th><th>IMC</th><th>% Gordura</th><th>Peso gordura (kg)</th><th>Peso magro (kg)</th><th>% Massa musc.</th><th>Notas</th><th></th></tr>
     ${avs.length?avs.map(v=>{const imc=v.peso&&v.altura?(v.peso/(v.altura*v.altura)).toFixed(1):'—';
       return `<tr><td data-l="Data"><strong>${dbr(v.data)}</strong></td><td data-l="Peso (kg)">${esc(v.peso)}</td><td data-l="Altura (m)">${esc(v.altura)}</td><td data-l="IMC">${imc}</td><td data-l="% Gordura">${esc(v.gordura||'—')}</td><td data-l="Peso gordura (kg)">${esc(v.pesoGordura||'—')}</td><td data-l="Peso magro (kg)">${esc(v.pesoMagro||'—')}</td><td data-l="% Massa muscular">${esc(v.massaMuscular||'—')}</td><td data-l="Notas">${esc(v.notas||'')}</td><td>${podeEditar?`<button class="mini sec" onclick="formAval('${sel}','${v.id}')">✏️</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="10" class="mut">Sem avaliações.</td></tr>'}</table></div></div>
+    ${avs.length>=2?(()=>{const comp=compareAvs(avs);
+    return `<div class="card sect"><h2>⚖️ Comparativo das avaliações</h2>
+    <p class="mut">Atual (${dbr(avs[0].data)}) comparada com a anterior${avs[1]?' ('+dbr(avs[1].data)+')':''} e com a primeira (${dbr(avs[avs.length-1].data)}).</p>
+    <div class="tblwrap"><table class="cardz"><tr><th>Indicador</th><th>1ª</th><th>Anterior</th><th>Atual</th><th>Δ anterior</th><th>Δ início</th></tr>
+    ${comp.map(m=>`<tr><td><strong>${m.lb}</strong></td><td data-l="1ª avaliação">${m.ini??'—'}</td><td data-l="Anterior">${m.ant??'—'}</td><td data-l="Atual"><strong>${m.atual??'—'}</strong></td>
+      <td data-l="Δ vs anterior">${fmtDelta(m.d1,m.sent,'var(--ok)','var(--bad)','var(--ink2)')}</td><td data-l="Δ desde o início">${fmtDelta(m.d2,m.sent,'var(--ok)','var(--bad)','var(--ink2)')}</td></tr>`).join('')}</table></div>
+    <p class="mut" style="font-size:12px;margin-top:6px">Verde = evolução favorável · vermelho = atenção · peso e IMC são neutros.</p></div>`;})():''}
     <div class="card"><div class="spread"><h2>🎯 Metas</h2>${podeEditar?`<button class="mini" onclick="formMeta('${sel}')">+ Nova meta</button>`:''}</div>
     ${mts.length?mts.map(m=>`<div class="alertline" style="background:var(--bg)"><div style="flex:1"><strong>${esc(m.desc)}</strong><div class="mut">Prazo: ${dbr(m.prazo)}</div></div>${statusMeta(m)}
     ${podeEditar&&m.status!=='atingida'?`<button class="mini sec" onclick="metaOk('${m.id}')">Marcar atingida</button>`:''}
@@ -1682,6 +1689,66 @@ function tAval(){
   }
   return `${statusQuadro}${souAtleta?'':`<div class="card sect"><label style="margin-top:0">Atleta</label>
   <select onchange="subState.avalId=this.value;renderTab()"><option value="">— selecionar —</option>${ats.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.nome)}</option>`).join('')}</select></div>`}${corpo}`;
+}
+function compareAvs(avsDesc){
+  const atual=avsDesc[0], ant=avsDesc[1]||null, prim=avsDesc[avsDesc.length-1];
+  const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isNaN(n)?null:n;};
+  const imcDe=v=>{const p=num(v.peso),a=num(v.altura);return p&&a?+(p/(a*a)).toFixed(1):null;};
+  const M=[['Peso (kg)',v=>num(v.peso),'neutro'],['IMC',imcDe,'neutro'],['% Gordura',v=>num(v.gordura),'down'],
+    ['Peso gordura (kg)',v=>num(v.pesoGordura),'down'],['Peso magro (kg)',v=>num(v.pesoMagro),'up'],['% Massa muscular',v=>num(v.massaMuscular),'up']];
+  return M.map(([lb,f,sent])=>{
+    const a=f(atual), vAnt=ant?f(ant):null, vIni=prim!==atual?f(prim):null;
+    return {lb,atual:a,ant:vAnt,ini:vIni,
+      d1:(a!=null&&vAnt!=null)?+(a-vAnt).toFixed(1):null,
+      d2:(a!=null&&vIni!=null)?+(a-vIni).toFixed(1):null,sent};
+  }).filter(m=>m.atual!=null||m.ini!=null||m.ant!=null);
+}
+function fmtDelta(d,sent,corOk,corBad,corMut){
+  if(d==null)return `<span style="color:${corMut}">—</span>`;
+  const seta=d>0?'▲':d<0?'▼':'•';
+  const bom=sent==='neutro'?null:(sent==='down'?d<0:d>0);
+  const cor=d===0||bom===null?corMut:(bom?corOk:corBad);
+  return `<span style="color:${cor};font-weight:700">${seta} ${d>0?'+':''}${d}</span>`;
+}
+function pdfAvaliacaoAtleta(atId){
+  const a=at(atId); if(!a)return;
+  const avsDesc=db.avaliacoes.filter(v=>v.atletaId===atId).sort((x,y)=>y.data.localeCompare(x.data));
+  if(!avsDesc.length){toast('Nenhuma avaliação lançada para '+pnome(a.nome));return;}
+  const avsAsc=[...avsDesc].reverse();
+  const atual=avsDesc[0];
+  const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isNaN(n)?null:n;};
+  const comp=avsDesc.length>=2?compareAvs(avsDesc):[];
+  const grafico=(titulo,f,cor)=>{
+    const vals=avsAsc.map(v=>({d:v.data,n:num(f(v))})).filter(x=>x.n!=null);
+    if(vals.length<2)return '';
+    const max=Math.max(...vals.map(x=>x.n));
+    return `<h2>${titulo}</h2><div style="margin:8px 0">${vals.map(x=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <div style="width:78px;font-size:11px;text-align:right;font-weight:bold">${dbr(x.d)}</div>
+      <div style="flex:1;background:#f0f0f0;border-radius:4px;height:16px"><div style="width:${Math.max(3,Math.round(x.n/max*100))}%;height:100%;background:${cor};border-radius:4px"></div></div>
+      <div style="width:52px;font-size:11.5px;font-weight:bold">${x.n}</div></div>`).join('')}</div>`;
+  };
+  abreRelatorio(`<h1>📈 Relatório de Avaliação Física</h1>
+  <p class="sub">${esc(a.nome)}${a.oab?' · OAB '+esc(a.oab):''} — ${esc(db.config.time)}</p>
+  <div class="cards">
+    <div class="card"><div class="n">${avsDesc.length}</div><div class="l">Avaliações</div></div>
+    <div class="card"><div class="n">${dbr(atual.data)}</div><div class="l">Última</div></div>
+    <div class="card"><div class="n">${esc(atual.peso||'—')}</div><div class="l">Peso (kg)</div></div>
+    <div class="card"><div class="n">${esc(atual.gordura||'—')}</div><div class="l">% Gordura</div></div>
+    <div class="card"><div class="n">${esc(atual.massaMuscular||'—')}</div><div class="l">% M. muscular</div></div>
+  </div>
+  ${comp.length?`<h2>⚖️ Comparativo — evolução dos indicadores</h2>
+  <table><tr><th>Indicador</th><th>1ª avaliação</th><th>Anterior</th><th>Atual</th><th>Δ vs anterior</th><th>Δ desde o início</th></tr>
+  ${comp.map(m=>`<tr><td><strong>${m.lb}</strong></td><td>${m.ini??'—'}</td><td>${m.ant??'—'}</td><td><strong>${m.atual??'—'}</strong></td>
+    <td>${fmtDelta(m.d1,m.sent,'#2E7D4F','#B3372E','#8a8f99')}</td><td>${fmtDelta(m.d2,m.sent,'#2E7D4F','#B3372E','#8a8f99')}</td></tr>`).join('')}</table>
+  <p style="font-size:11.5px;color:#8a8f99">Verde = evolução favorável (menos gordura, mais massa magra/muscular) · vermelho = atenção · peso e IMC são neutros.</p>`:''}
+  ${grafico('⚖️ Evolução do peso (kg)',v=>v.peso,'#8a1f2f')}
+  ${grafico('🔥 Evolução do % de gordura',v=>v.gordura,'#B3372E')}
+  ${grafico('💪 Evolução do % de massa muscular',v=>v.massaMuscular,'#2E7D4F')}
+  <h2>📋 Histórico completo</h2>
+  <table><tr><th>Data</th><th>Peso</th><th>Altura</th><th>IMC</th><th>% Gord.</th><th>P. gordura</th><th>P. magro</th><th>% M. musc.</th><th>Notas</th></tr>
+  ${avsAsc.map(v=>{const imc=v.peso&&v.altura?(v.peso/(v.altura*v.altura)).toFixed(1):'—';
+    return `<tr><td><strong>${dbr(v.data)}</strong></td><td>${esc(v.peso||'—')}</td><td>${esc(v.altura||'—')}</td><td>${imc}</td><td>${esc(v.gordura||'—')}</td><td>${esc(v.pesoGordura||'—')}</td><td>${esc(v.pesoMagro||'—')}</td><td>${esc(v.massaMuscular||'—')}</td><td>${esc(v.notas||'')}</td></tr>`;}).join('')}</table>`,
+  `Avaliação física — ${pnome(a.nome)}`);
 }
 function formAval(aid,id){
   const v=id?byId(db.avaliacoes,id):null;
