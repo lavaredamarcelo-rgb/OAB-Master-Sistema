@@ -320,7 +320,7 @@ async function carregaTudo(){
   db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,convidado:p.convidado||null,status:p.status}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,forma:c.forma_pagamento||'',pagamentos:c.pagamentos||[],origem:c.origem||'',lote:c.origem_lote||''}));
-  db.avaliacoes=avaliacoes.map(v=>({id:v.id,atletaId:v.atleta_id,data:String(v.data),peso:v.peso,altura:v.altura,gordura:v.gordura,vo2:v.vo2,notas:v.notas}));
+  db.avaliacoes=avaliacoes.map(v=>({id:v.id,atletaId:v.atleta_id,data:String(v.data),peso:v.peso,altura:v.altura,gordura:v.gordura,pesoGordura:v.peso_gordura||'',pesoMagro:v.peso_magro||'',massaMuscular:v.massa_muscular||'',notas:v.notas}));
   db.metas=metas.map(m=>({id:m.id,atletaId:m.atleta_id,desc:m.descricao,prazo:m.prazo?String(m.prazo):'',status:m.status}));
   db.stats=stats.map(s=>({id:s.id,eventoId:s.evento_id,atletaId:s.atleta_id,minutos:s.minutos,gols:s.gols,assist:s.assist,amarelos:s.amarelos,vermelho:s.vermelho,desarmes:s.desarmes,duelos:s.duelos,passes:s.passes,antecipacao:s.antecipacao||0,duelosAereos:s.duelos_aereos||0,chutesGol:s.chutes_gol||0,defesas:s.defesas||0,passesErrados:s.passes_errados||0,duelosPerdidos:s.duelos_perdidos||0,bolasPerdidas:s.bolas_perdidas||0,faltasCometidas:s.faltas_cometidas||0,chutesErrados:s.chutes_errados||0,golsSofridos:s.gols_sofridos||0,penaltisPerdidos:s.penaltis_perdidos||0,penaltisCometidos:s.penaltis_cometidos||0,golsContra:s.gols_contra||0,nota:s.nota,obs:s.obs}));
   db.uniformes=uniformes.map(u=>({id:u.id,descricao:u.descricao,numero:u.numero,tamanho:u.tamanho,status:u.status,atletaId:u.atleta_id,entregueEm:u.entregue_em,aceitoEm:u.aceito_em,pecas:u.pecas||{camisa:'estoque',short:'estoque',meiao:'estoque'},fornecedor:u.fornecedor||'',convidado:u.convidado||'',convFone:u.convidado_fone||'',goleiro:!!u.goleiro,cor:u.cor||''}));
@@ -1672,9 +1672,9 @@ function tAval(){
     const avs=db.avaliacoes.filter(v=>v.atletaId===sel).sort((a,b)=>b.data.localeCompare(a.data));
     const mts=db.metas.filter(m=>m.atletaId===sel);
     corpo=`<div class="card sect"><div class="spread"><h2>📈 Avaliações${souAtleta?' — minhas':''}</h2>${podeEditar?`<button class="mini" onclick="formAval('${sel}')">+ Nova avaliação</button>`:''}</div>
-    <div class="tblwrap"><table class="cardz"><tr><th>Data</th><th>Peso (kg)</th><th>Altura (m)</th><th>IMC</th><th>% Gordura</th><th>VO₂ máx</th><th>Notas</th></tr>
+    <div class="tblwrap"><table class="cardz"><tr><th>Data</th><th>Peso (kg)</th><th>Altura (m)</th><th>IMC</th><th>% Gordura</th><th>Peso gordura (kg)</th><th>Peso magro (kg)</th><th>% Massa musc.</th><th>Notas</th></tr>
     ${avs.length?avs.map(v=>{const imc=v.peso&&v.altura?(v.peso/(v.altura*v.altura)).toFixed(1):'—';
-      return `<tr><td data-l="Data"><strong>${dbr(v.data)}</strong></td><td data-l="Peso (kg)">${esc(v.peso)}</td><td data-l="Altura (m)">${esc(v.altura)}</td><td data-l="IMC">${imc}</td><td data-l="% Gordura">${esc(v.gordura||'—')}</td><td data-l="VO₂ máx">${esc(v.vo2||'—')}</td><td data-l="Notas">${esc(v.notas||'')}</td></tr>`;}).join(''):'<tr><td colspan="7" class="mut">Sem avaliações.</td></tr>'}</table></div></div>
+      return `<tr><td data-l="Data"><strong>${dbr(v.data)}</strong></td><td data-l="Peso (kg)">${esc(v.peso)}</td><td data-l="Altura (m)">${esc(v.altura)}</td><td data-l="IMC">${imc}</td><td data-l="% Gordura">${esc(v.gordura||'—')}</td><td data-l="Peso gordura (kg)">${esc(v.pesoGordura||'—')}</td><td data-l="Peso magro (kg)">${esc(v.pesoMagro||'—')}</td><td data-l="% Massa muscular">${esc(v.massaMuscular||'—')}</td><td data-l="Notas">${esc(v.notas||'')}</td></tr>`;}).join(''):'<tr><td colspan="9" class="mut">Sem avaliações.</td></tr>'}</table></div></div>
     <div class="card"><div class="spread"><h2>🎯 Metas</h2>${podeEditar?`<button class="mini" onclick="formMeta('${sel}')">+ Nova meta</button>`:''}</div>
     ${mts.length?mts.map(m=>`<div class="alertline" style="background:var(--bg)"><div style="flex:1"><strong>${esc(m.desc)}</strong><div class="mut">Prazo: ${dbr(m.prazo)}</div></div>${statusMeta(m)}
     ${podeEditar&&m.status!=='atingida'?`<button class="mini sec" onclick="metaOk('${m.id}')">Marcar atingida</button>`:''}
@@ -1690,12 +1690,21 @@ function formAval(aid){
   <div><label>Peso (kg)</label><input id="v_peso" type="number" step="0.1"></div>
   <div><label>Altura (m)</label><input id="v_alt" type="number" step="0.01" placeholder="1.78"></div>
   <div><label>% Gordura</label><input id="v_gord" type="number" step="0.1"></div>
-  <div><label>VO₂ máx</label><input id="v_vo2" type="number" step="0.1"></div>
+  <div><label>Peso de gordura (kg)</label><input id="v_pgord" type="number" step="0.1"></div>
+  <div><label>Peso magro (kg)</label><input id="v_pmagro" type="number" step="0.1"></div>
+  <div><label>% Massa muscular</label><input id="v_mmusc" type="number" step="0.1"></div>
   </div><label>Notas</label><textarea id="v_notas"></textarea>
   <div class="row" style="margin-top:14px"><button onclick="salvaAval('${aid}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function salvaAval(aid){
-  await q(sb.from('avaliacoes').insert({atleta_id:aid,data:fval('v_data')||hoje(),peso:fval('v_peso'),altura:fval('v_alt'),gordura:fval('v_gord'),vo2:fval('v_vo2'),notas:fval('v_notas')}));
+  let dados={atleta_id:aid,data:fval('v_data')||hoje(),peso:fval('v_peso'),altura:fval('v_alt'),gordura:fval('v_gord'),peso_gordura:fval('v_pgord'),peso_magro:fval('v_pmagro'),massa_muscular:fval('v_mmusc'),notas:fval('v_notas')};
+  let {error}=await sb.from('avaliacoes').insert(dados);
+  if(error&&/peso_gordura|peso_magro|massa_muscular/.test(error.message||'')){
+    delete dados.peso_gordura; delete dados.peso_magro; delete dados.massa_muscular;
+    const {error:e2}=await sb.from('avaliacoes').insert(dados);
+    if(e2){toast('⚠️ '+e2.message);return;}
+    toast('⚠️ Salvo sem os campos novos — rode o SQL v19 no Supabase');
+  } else if(error){toast('⚠️ '+error.message);return;}
   log('avaliacao',`Avaliação física registrada: ${nomeAt(aid)}`);
   fecha(); await recarrega(); toast('Avaliação registrada');
 }
