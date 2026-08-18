@@ -269,7 +269,7 @@ function freqAtleta(atId){
 const membros=()=>db.atletas.filter(a=>a.ativo&&!a.pendente);
 const nomeAt=id=>{const a=at(id);return a?a.nome:'(removido)';};
 const kb=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.round(n/1024)+' KB';
-function CREST(s){ return `<img src="escudo.png" width="${s}" alt="Escudo OAB/PA Master" style="height:auto;flex-shrink:0;display:block">`; }
+function CREST(s){ return `<img src="escudo-t.png" width="${s}" alt="Escudo OAB/PA Master" style="height:auto;flex-shrink:0;display:block">`; }
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._x); t._x=setTimeout(()=>t.classList.remove('show'),3000); }
 function modal(html){ $('modal').innerHTML=html; $('modalbg').classList.add('open'); }
 function fecha(){ $('modalbg').classList.remove('open'); }
@@ -1125,7 +1125,7 @@ function cardJogador(a,estilo){
   const pct=freqAtleta(a.id).pct;
   const uni=db.uniformes.find(u=>u.atletaId===a.id);
   const fv=v=>v!==undefined&&v!==null&&String(v).trim()!==''?esc(String(v)):'—';
-  const notas=[...db.stats.filter(x=>x.atletaId===a.id).map(x=>notaDe(x).v),...presencasSemStats(a.id).map(()=>6)];
+  const notas=[...db.stats.filter(x=>x.atletaId===a.id&&notaConta(x.eventoId)).map(x=>notaDe(x).v),...presencasSemStats(a.id).filter(pz=>notaConta(pz.eventoId)).map(()=>7)];
   const mediaN=notas.length?(notas.reduce((x,y)=>x+y,0)/notas.length).toFixed(1):'—';
   return `<div class="pcard ${estilo}">
     ${uni?`<div class="pnum">${esc(uni.numero)}</div>`:''}
@@ -1147,11 +1147,11 @@ async function geraCardImagem(atId){
   const avs=db.avaliacoes.filter(v=>v.atletaId===a.id).sort((x,y)=>String(y.data).localeCompare(String(x.data)));
   const av=avs[0]||{};
   const fq=freqAtleta(a.id);
-  const notas=[...db.stats.filter(x=>x.atletaId===a.id).map(x=>notaDe(x).v),...presencasSemStats(a.id).map(()=>6)];
+  const notas=[...db.stats.filter(x=>x.atletaId===a.id&&notaConta(x.eventoId)).map(x=>notaDe(x).v),...presencasSemStats(a.id).filter(pz=>notaConta(pz.eventoId)).map(()=>7)];
   const mediaN=notas.length?(notas.reduce((x,y)=>x+y,0)/notas.length).toFixed(1):'—';
   const uni=db.uniformes.find(u=>u.atletaId===a.id);
   const fv=v=>v!==undefined&&v!==null&&String(v).trim()!==''?String(v):'—';
-  const [escImg,fotoImg]=await Promise.all([carrImg('escudo.png'),a.fotoUrl?carrImg(a.fotoUrl,true):Promise.resolve(null)]);
+  const [escImg,fotoImg]=await Promise.all([carrImg('escudo-t.png'),a.fotoUrl?carrImg(a.fotoUrl,true):Promise.resolve(null)]);
   const W=470,H=640, cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
   const rr=(x0,y0,w,h,r)=>{x.beginPath();x.moveTo(x0+r,y0);x.arcTo(x0+w,y0,x0+w,y0+h,r);x.arcTo(x0+w,y0+h,x0,y0+h,r);x.arcTo(x0,y0+h,x0,y0,r);x.arcTo(x0,y0,x0+w,y0,r);x.closePath();};
   const ouro=estilo!=='clube';
@@ -1862,11 +1862,12 @@ function decStat(evId,atId,campo){
 }
 function notaAuto(x){
   const v=k=>Number(x&&x[k])||0;
-  let n=6+0.8*v('gols')+0.5*v('assist')+0.3*v('defesas')+0.2*v('antecipacao')+0.2*v('desarmes')+0.15*v('duelos')+0.15*v('duelosAereos')+0.1*v('chutesGol')
+  let n=7+0.8*v('gols')+0.5*v('assist')+0.3*v('defesas')+0.2*v('antecipacao')+0.2*v('desarmes')+0.15*v('duelos')+0.15*v('duelosAereos')+0.1*v('chutesGol')
        -0.15*v('duelosPerdidos')-0.2*v('bolasPerdidas')-0.1*v('passesErrados')-0.1*v('faltasCometidas')-0.05*v('chutesErrados')-0.2*v('golsSofridos')-0.5*v('penaltisPerdidos')-0.4*v('penaltisCometidos')-0.7*v('golsContra')-0.3*v('amarelos')-(x&&x.vermelho?1:0);
   return Math.max(1,Math.min(10,Math.round(n*10)/10));
 }
 const notaDe=x=>x.nota?{v:+x.nota,auto:false}:{v:notaAuto(x),auto:true};
+const notaConta=evId=>{const e=byId(db.eventos,evId);return !!(e&&ehJogoTipo(e.tipo));};
 const STATS_DEFS=[['g','⚽','Gols'],['as','🅰️','Assist.'],['due','⚔️','Duelos'],['da','🦅','Aéreos'],['ant','🧠','Antecip.'],['ch','🎯','Chutes'],['ce','💨','Ch. errado'],['df','🧤','Defesas'],['gs','🚨','Gols sofr.'],['pe','❌','P. err.'],['dp','💔','D. perd.'],['bp','🔄','B. perd.'],['fc','🚫','Faltas'],['pp','😖','Pên. perdido'],['pc','🎁','Pên. cometido'],['gco','🔴','Gol contra']];
 const STATS_RAROS=['pp','pc','gco'];
 const STATS_MAPA={g:'gols',as:'assist',due:'duelos',da:'duelosAereos',ant:'antecipacao',ch:'chutesGol',df:'defesas',pe:'passesErrados',dp:'duelosPerdidos',bp:'bolasPerdidas',fc:'faltasCometidas',ce:'chutesErrados',gs:'golsSofridos',pp:'penaltisPerdidos',pc:'penaltisCometidos',gco:'golsContra'};
@@ -1960,9 +1961,9 @@ function painelCraque(evId){
 }
 function pdfPremios(){
   const agg={}; db.stats.filter(x=>x.atletaId).forEach(x=>{const a=agg[x.atletaId]??={g:0,as:0,df:0,des:0,fc:0,ca:0,cv:0,j:0,notas:[]};
-    a.g+=+x.gols||0;a.as+=+x.assist||0;a.df+=+x.defesas||0;a.des+=+x.desarmes||0;a.fc+=+x.faltasCometidas||0;a.ca+=+x.amarelos||0;a.cv+=x.vermelho?1:0;a.j++;a.notas.push(notaDe(x).v);});
-  elenco().forEach(at2=>{ const ext=presencasSemStats(at2.id).length;
-    if(ext){ const g=agg[at2.id]??={g:0,as:0,df:0,des:0,fc:0,ca:0,cv:0,j:0,notas:[]}; g.j+=ext; for(let i=0;i<ext;i++)g.notas.push(6); } });
+    a.g+=+x.gols||0;a.as+=+x.assist||0;a.df+=+x.defesas||0;a.des+=+x.desarmes||0;a.fc+=+x.faltasCometidas||0;a.ca+=+x.amarelos||0;a.cv+=x.vermelho?1:0;a.j++;if(notaConta(x.eventoId))a.notas.push(notaDe(x).v);});
+  elenco().forEach(at2=>{ const extL=presencasSemStats(at2.id); const ext=extL.length; const extN=extL.filter(pz=>notaConta(pz.eventoId)).length;
+    if(ext){ const g=agg[at2.id]??={g:0,as:0,df:0,des:0,fc:0,ca:0,cv:0,j:0,notas:[]}; g.j+=ext; for(let i=0;i<extN;i++)g.notas.push(7); } });
   const L=Object.entries(agg); if(!L.length){toast('Nenhuma estatística ainda');return;}
   const media=a=>a.notas.length?a.notas.reduce((x,y)=>x+y,0)/a.notas.length:0;
   const top=f=>[...L].sort((x,y)=>f(y[1])-f(x[1]))[0];
@@ -2001,7 +2002,7 @@ function comparaGo(){
   const ida=fval('cmp_a'), idb=fval('cmp_b');
   if(!ida||!idb)return;
   const soma=id=>{const o={j:0,notas:[]}; STATS_DEFS.forEach(([k])=>o[k]=0);
-    db.stats.filter(x=>x.atletaId===id).forEach(x=>{STATS_DEFS.forEach(([k])=>o[k]+=Number(x[STATS_MAPA[k]])||0); o.j++; o.notas.push(notaDe(x).v);});
+    db.stats.filter(x=>x.atletaId===id).forEach(x=>{STATS_DEFS.forEach(([k])=>o[k]+=Number(x[STATS_MAPA[k]])||0); o.j++; if(notaConta(x.eventoId))o.notas.push(notaDe(x).v);});
     o.nm=o.notas.length?o.notas.reduce((x,y)=>x+y,0)/o.notas.length:0; return o;};
   const A=soma(ida), B=soma(idb);
   const NEG=['pe','dp','bp','fc','ce','gs','pp','pc','gco'];
@@ -2021,7 +2022,7 @@ function resumoMes(){
   const sts=db.stats.filter(x=>x.atletaId&&evIds.has(x.eventoId));
   const jogosMes=db.eventos.filter(e=>e.data.startsWith(mes)&&ehJogoTipo(e.tipo)&&e.placarNos!=null);
   if(!sts.length&&!jogosMes.length){toast('Nenhuma estatística ou placar lançado neste mês');return;}
-  const agg={}; sts.forEach(x=>{const a=agg[x.atletaId]??={g:0,as:0,df:0,notas:[]};a.g+=+x.gols||0;a.as+=+x.assist||0;a.df+=+x.defesas||0;a.notas.push(notaDe(x).v);});
+  const agg={}; sts.forEach(x=>{const a=agg[x.atletaId]??={g:0,as:0,df:0,notas:[]};a.g+=+x.gols||0;a.as+=+x.assist||0;a.df+=+x.defesas||0;if(notaConta(x.eventoId))a.notas.push(notaDe(x).v);});
   const L=Object.entries(agg);
   const nm=a=>a.notas.reduce((x,y)=>x+y,0)/a.notas.length;
   const topG=[...L].sort((x,y)=>y[1].g-x[1].g)[0], topA=[...L].sort((x,y)=>y[1].as-x[1].as)[0], topN=[...L].sort((x,y)=>nm(y[1])-nm(x[1]))[0];
@@ -2088,9 +2089,9 @@ function pdfTotaisTemporada(){
   const aggCat=cat=>{ const agg={};
     db.stats.filter(x=>x.atletaId&&(cat==='todos'||tipoDe(x.eventoId)===cat)).forEach(x=>{ const a=agg[x.atletaId]??=zera();
       STATS_DEFS.forEach(([k])=>a[k]+=Number(x[STATS_MAPA[k]])||0);
-      a.ca+=+x.amarelos||0; a.cv+=x.vermelho?1:0; a.j++; a.notas.push(notaDe(x).v); });
-    elenco().forEach(a2=>{ const ext=presencasSemStats(a2.id,cat).length;
-      if(ext){ const g=agg[a2.id]??=zera(); g.j+=ext; for(let i2=0;i2<ext;i2++)g.notas.push(6); } });
+      a.ca+=+x.amarelos||0; a.cv+=x.vermelho?1:0; a.j++; if(notaConta(x.eventoId))a.notas.push(notaDe(x).v); });
+    elenco().forEach(a2=>{ const extL=presencasSemStats(a2.id,cat); const ext=extL.length; const extN=extL.filter(pz=>notaConta(pz.eventoId)).length;
+      if(ext){ const g=agg[a2.id]??=zera(); g.j+=ext; for(let i2=0;i2<extN;i2++)g.notas.push(7); } });
     return agg; };
   const G=aggCat('todos');
   if(!Object.keys(G).length){toast('Nenhuma estatística ou presença lançada ainda');return;}
@@ -2199,9 +2200,9 @@ function tDesemp(){
   const catDe=evId=>{const e=byId(db.eventos,evId);return e?(e.tipo==='treino_amistoso'?'amistoso':e.tipo):'';};
   const agg={};
   db.stats.filter(s=>cat==='todos'||catDe(s.eventoId)===cat).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,ce:0,gs:0,pp:0,pc:0,gco:0,j:0,notas:[]};
-    a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.dp+=+s.duelosPerdidos||0; a.bp+=+s.bolasPerdidas||0; a.fc+=+s.faltasCometidas||0; a.ce+=+s.chutesErrados||0; a.gs+=+s.golsSofridos||0; a.pp+=+s.penaltisPerdidos||0; a.pc+=+s.penaltisCometidos||0; a.gco+=+s.golsContra||0; a.j++; a.notas.push(notaDe(s).v); });
-  elenco().forEach(a=>{ const ext=presencasSemStats(a.id,cat).length;
-    if(ext){ const g=agg[a.id]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,ce:0,gs:0,pp:0,pc:0,gco:0,j:0,notas:[]}; g.j+=ext; for(let i=0;i<ext;i++)g.notas.push(6); } });
+    a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.dp+=+s.duelosPerdidos||0; a.bp+=+s.bolasPerdidas||0; a.fc+=+s.faltasCometidas||0; a.ce+=+s.chutesErrados||0; a.gs+=+s.golsSofridos||0; a.pp+=+s.penaltisPerdidos||0; a.pc+=+s.penaltisCometidos||0; a.gco+=+s.golsContra||0; a.j++; if(notaConta(s.eventoId))a.notas.push(notaDe(s).v); });
+  elenco().forEach(a=>{ const extL=presencasSemStats(a.id,cat); const ext=extL.length; const extN=extL.filter(pz=>notaConta(pz.eventoId)).length;
+    if(ext){ const g=agg[a.id]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,ce:0,gs:0,pp:0,pc:0,gco:0,j:0,notas:[]}; g.j+=ext; for(let i=0;i<extN;i++)g.notas.push(7); } });
   const catBtn=(v,lbl)=>`<button class="mini ${cat===v?'':'sec'}" onclick="subState.despCat='${v}';renderTab()">${lbl}</button>`;
   const filtroCat=`<div class="row sect" style="gap:6px;flex-wrap:wrap"><span class="mut" style="font-size:12px;align-self:center">Estatísticas de:</span>
     ${catBtn('todos','🌐 Tudo')}${catBtn('jogo','🏆 Oficiais')}${catBtn('amistoso','🤝 Amistosos')}${catBtn('treino','🏃 Treinos')}</div>`;
@@ -2211,7 +2212,7 @@ function tDesemp(){
   if(sel){
     lanc=`<div class="tblwrap"><table><tr><th>Atleta</th><th>⚽</th><th>🅰️</th><th>🟨</th><th>🟥</th><th>🛡️</th><th>⚔️</th><th>💔</th><th>🦅</th><th>🧠</th><th>🎯</th><th>🧤</th><th>❌</th><th>🔄</th><th>🚫</th><th>Nota</th>${podeEditar?'<th></th>':''}</tr>
     ${ats.map(a=>{ const s=statDe(sel,a.id)||{};
-      return `<tr><td>${esc(a.nome)}</td><td>${s.gols??'—'}</td><td>${s.assist??'—'}</td><td>${s.amarelos??'—'}</td><td>${s.vermelho?'1':'—'}</td><td>${s.desarmes??'—'}</td><td>${s.duelos??'—'}</td><td>${s.duelosPerdidos||'—'}</td><td>${s.duelosAereos||'—'}</td><td>${s.antecipacao||'—'}</td><td>${s.chutesGol||'—'}</td><td>${s.defesas||'—'}</td><td>${s.passesErrados||'—'}</td><td>${s.bolasPerdidas||'—'}</td><td>${s.faltasCometidas||'—'}</td><td>${s.id?(s.nota?`<strong>${(+s.nota).toFixed(1)}</strong> ✔`:`<strong>${notaAuto(s).toFixed(1)}</strong> 🤖`):(db.presencas.some(pz=>pz.eventoId===sel&&pz.atletaId===a.id&&['presente','atraso'].includes(pz.status))?'<strong>6.0</strong> 🤖':'—')}</td>
+      return `<tr><td>${esc(a.nome)}</td><td>${s.gols??'—'}</td><td>${s.assist??'—'}</td><td>${s.amarelos??'—'}</td><td>${s.vermelho?'1':'—'}</td><td>${s.desarmes??'—'}</td><td>${s.duelos??'—'}</td><td>${s.duelosPerdidos||'—'}</td><td>${s.duelosAereos||'—'}</td><td>${s.antecipacao||'—'}</td><td>${s.chutesGol||'—'}</td><td>${s.defesas||'—'}</td><td>${s.passesErrados||'—'}</td><td>${s.bolasPerdidas||'—'}</td><td>${s.faltasCometidas||'—'}</td><td>${s.id?(s.nota?`<strong>${(+s.nota).toFixed(1)}</strong> ✔`:`<strong>${notaAuto(s).toFixed(1)}</strong> 🤖`):(db.presencas.some(pz=>pz.eventoId===sel&&pz.atletaId===a.id&&['presente','atraso'].includes(pz.status))?'<strong>7.0</strong> 🤖':'—')}</td>
       ${podeEditar?`<td><button class="mini sec" onclick="formStat('${sel}','${a.id}')">✏️ Lançar</button></td>`:''}</tr>`; }).join('')}</table></div>
     <p class="mut" style="margin-top:6px;font-size:12px">Legenda: ⚽ gols · 🅰️ assistências · 🛡️ desarmes · ⚔️ duelos ganhos · 💔 duelos perdidos · 🦅 aéreos · 🧠 antecipações · 🎯 chutes no gol · 🧤 defesas · ❌ passes errados · 🔄 bolas perdidas · 🚫 faltas cometidas · 🤖 nota do sistema / ✔ confirmada</p>`;
   }
@@ -2278,7 +2279,7 @@ function formStat(evId,atId){
   <div><label>😖 Pênaltis perdidos</label><input id="st_pp" type="number" value="${s.penaltisPerdidos??''}"></div>
   <div><label>🎁 Pênaltis cometidos</label><input id="st_pc" type="number" value="${s.penaltisCometidos??''}"></div>
   <div><label>🔴 Gols contra</label><input id="st_gco" type="number" value="${s.golsContra??''}"></div>
-  <div><label>Nota (vazio = usa a do sistema 🤖)</label><input id="st_n" type="number" step="0.1" min="0" max="10" value="${s.nota??''}" placeholder="🤖 ${s.eventoId?notaAuto(s):'6.0'}"></div>
+  <div><label>Nota (vazio = usa a do sistema 🤖)</label><input id="st_n" type="number" step="0.1" min="0" max="10" value="${s.nota??''}" placeholder="🤖 ${s.eventoId?notaAuto(s):'7.0'}"></div>
   </div>
   <div class="alertline al-ok" style="margin-top:8px">🤖 <strong>Nota sugerida pelo sistema: ${notaAuto(s).toFixed(1)}</strong> (recalcula ao salvar os lances) <button class="mini gold" onclick="$('st_n').value='${notaAuto(s).toFixed(1)}'">✔ Confirmar sugestão</button></div>
   <div class="row" style="margin-top:8px"><input type="checkbox" id="st_cv" ${s.vermelho?'checked':''} style="width:auto"><span>🟥 Expulso (cartão vermelho)</span></div>
@@ -2328,7 +2329,7 @@ async function geraArte(){
   const ev=byId(db.eventos,fval('ar_jogo'))||{titulo:'',data:hoje()};
   const gn=fval('ar_n')||'0', ge=fval('ar_e')||'0', dest=fval('ar_d');
   const pats=(db.pats||[]).filter(p=>p.ativo);
-  const [escImg,...logos]=await Promise.all([carrImg('escudo.png'),...pats.filter(p=>p.logo_url).map(p=>carrImg(p.logo_url,true))]);
+  const [escImg,...logos]=await Promise.all([carrImg('escudo-t.png'),...pats.filter(p=>p.logo_url).map(p=>carrImg(p.logo_url,true))]);
   const W=1080,H=1350,cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
   const g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#B8272D'); g.addColorStop(1,'#6E1013'); x.fillStyle=g; x.fillRect(0,0,W,H);
   x.fillStyle='rgba(255,255,255,.05)'; for(let i=-200;i<W+200;i+=170){ x.save(); x.translate(i,0); x.rotate(.2); x.fillRect(0,-200,70,H+400); x.restore(); }
@@ -5723,7 +5724,7 @@ async function arteRodapePats(){
   if(!pats.length){toast('Cadastre patrocinadores primeiro');return;}
   toast('Gerando arte…');
   const comLogo=pats.filter(p=>p.logo_url);
-  const [escImg,...logos]=await Promise.all([carrImg('escudo.png'),...comLogo.map(p=>carrImg(p.logo_url,true))]);
+  const [escImg,...logos]=await Promise.all([carrImg('escudo-t.png'),...comLogo.map(p=>carrImg(p.logo_url,true))]);
   const itens=comLogo.map((p,i)=>({p,img:logos[i]})).filter(x=>x.img);
   const semLogo=pats.filter(p=>!p.logo_url).map(p=>p.nome);
   // Tamanho proporcional à categoria: cada nível um degrau menor
