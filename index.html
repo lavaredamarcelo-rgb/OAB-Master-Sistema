@@ -325,12 +325,12 @@ async function carregaTudo(){
   db.stats=stats.map(s=>({id:s.id,eventoId:s.evento_id,atletaId:s.atleta_id,minutos:s.minutos,gols:s.gols,assist:s.assist,amarelos:s.amarelos,vermelho:s.vermelho,desarmes:s.desarmes,duelos:s.duelos,passes:s.passes,antecipacao:s.antecipacao||0,duelosAereos:s.duelos_aereos||0,chutesGol:s.chutes_gol||0,defesas:s.defesas||0,passesErrados:s.passes_errados||0,duelosPerdidos:s.duelos_perdidos||0,bolasPerdidas:s.bolas_perdidas||0,faltasCometidas:s.faltas_cometidas||0,chutesErrados:s.chutes_errados||0,golsSofridos:s.gols_sofridos||0,penaltisPerdidos:s.penaltis_perdidos||0,penaltisCometidos:s.penaltis_cometidos||0,golsContra:s.gols_contra||0,nota:s.nota,obs:s.obs}));
   db.uniformes=uniformes.map(u=>({id:u.id,descricao:u.descricao,numero:u.numero,tamanho:u.tamanho,status:u.status,atletaId:u.atleta_id,entregueEm:u.entregue_em,aceitoEm:u.aceito_em,pecas:u.pecas||{camisa:'estoque',short:'estoque',meiao:'estoque'},fornecedor:u.fornecedor||'',convidado:u.convidado||'',convFone:u.convidado_fone||'',goleiro:!!u.goleiro,cor:u.cor||''}));
   db.inventario=inventario.map(i=>({id:i.id,nome:i.nome,cat:i.cat,qtd:i.qtd,marca:i.marca||'',cor:i.cor||'',material:i.material||'',obs:i.obs||'',fotoUrl:i.foto_url||'',emprestimos:i.emprestimos||[]}));
-  const mapDoc=d=>({id:d.id,atletaId:d.atleta_id,categoria:d.categoria,nome:d.nome,path:d.path,mime:d.mime,tam:d.tam,quem:d.quem,quando:fdt(d.quando)});
+  const mapDoc=d=>({id:d.id,atletaId:d.atleta_id,categoria:d.categoria,nome:d.nome,titulo:d.titulo||'',descricao:d.descricao||'',path:d.path,mime:d.mime,tam:d.tam,quem:d.quem,quando:fdt(d.quando),quandoRaw:d.quando});
   db.docs=docsAll.filter(d=>d.escopo==='saude').map(mapDoc);
   db.arquivos=docsAll.filter(d=>d.escopo==='geral').map(mapDoc);
   db.finDocs=docsAll.filter(d=>d.escopo==='financeiro').map(mapDoc);
-  db.taticas={notas:tn.map(n=>({id:n.id,titulo:n.titulo,texto:n.texto,autor:n.autor,quando:fdt(n.quando)})),
-    esquemas:te.map(e=>({id:e.id,nome:e.nome,formacao:e.formacao,posicoes:e.posicoes,obs:e.obs,quando:fdt(e.quando),
+  db.taticas={notas:tn.map(n=>({id:n.id,titulo:n.titulo,texto:n.texto,autor:n.autor,quando:fdt(n.quando),quandoRaw:n.quando})),
+    esquemas:te.map(e=>({id:e.id,nome:e.nome,formacao:e.formacao,posicoes:e.posicoes,obs:e.obs,quando:fdt(e.quando),quandoRaw:e.quando,
       adversario:e.adversario||null,placar:e.placar||null,data_jogo:e.data_jogo?String(e.data_jogo):'',
       performance:e.performance||'',descricao_jogo:e.descricao_jogo||''})),
     arquivos:docsAll.filter(d=>d.escopo==='tatica').map(mapDoc)};
@@ -353,12 +353,19 @@ async function recarrega(){ await carregaTudo(); renderTab(); }
 
 /* ================= ARQUIVOS (Storage) ================= */
 function upFile(inp,maxMB,cb){ const f=inp.files[0]; if(!f)return; if(f.size>maxMB*1048576){toast(`Arquivo grande demais (máx. ${maxMB} MB)`);inp.value='';return;} cb(f); inp.value=''; }
-async function enviaArquivo(f,escopo,atletaId,categoria){
+async function enviaArquivo(f,escopo,atletaId,categoria,extra){
   const pasta=escopo==='tatica'?'tatica':escopo==='financeiro'?'financeiro':(atletaId||me.id);
   const path=`${pasta}/${uid()}-${f.name.replace(/[^\w.\-]+/g,'_')}`;
   const {error}=await sb.storage.from('arquivos').upload(path,f);
   if(error){toast('⚠️ Envio falhou: '+error.message);throw error;}
-  await q(sb.from('documentos').insert({atleta_id:escopo==='tatica'||escopo==='financeiro'?null:(atletaId||me.id),escopo,categoria:categoria||'Outro',nome:f.name,path,mime:f.type,tam:f.size,quem:me.nome}));
+  let dados={atleta_id:escopo==='tatica'||escopo==='financeiro'?null:(atletaId||me.id),escopo,categoria:categoria||'Outro',nome:f.name,path,mime:f.type,tam:f.size,quem:me.nome,titulo:(extra&&extra.titulo)||'',descricao:(extra&&extra.descricao)||''};
+  let {error:e1}=await sb.from('documentos').insert(dados);
+  if(e1&&/titulo|descricao/.test(e1.message||'')){
+    delete dados.titulo; delete dados.descricao;
+    const {error:e2}=await sb.from('documentos').insert(dados);
+    if(e2){toast('⚠️ '+e2.message);throw e2;}
+    if(extra&&(extra.titulo||extra.descricao))toast('⚠️ Anexado sem título — rode o SQL v18 no Supabase');
+  } else if(e1){toast('⚠️ '+e1.message);throw e1;}
 }
 async function abreArquivo(path,nome){
   const {data,error}=await sb.storage.from('arquivos').createSignedUrl(path,300,{download:nome});
@@ -913,6 +920,7 @@ function tPainel(){
   return `${bannerNotif()}
   ${meusPend.map(u=>`<div class="alertline al-warn sect">👕 Você recebeu <strong>${esc(u.descricao)} nº ${esc(u.numero)}</strong> — <button class="mini gold" onclick="aceitarUniforme('${u.id}')">Ler e aceitar o termo de responsabilidade</button></div>`).join('')}
   ${cardVotacaoCraque()}
+  ${cardNovidadesTaticas()}
   <div class="grid g4 sect">
     <div class="card stat ${me.role==='diretoria'?'clickable':''}" ${me.role==='diretoria'?`onclick="vai('atletas')"`:''}><div class="n">${elenco().length}</div><div class="l">Jogadores ativos</div></div>
     <div class="card stat clickable" onclick="vai('agenda')"><div class="n">${prox.length?dbr(prox[0].data):'—'}</div><div class="l">Próximo compromisso →</div></div>
@@ -1274,7 +1282,7 @@ async function excluiAtleta(id){
 
 /* ================= DOCUMENTOS ================= */
 const CATS_DOC=['Carteira OAB','Certidão','Atestado','Declaração de saúde','Comprovante','Outro'];
-function docLinha(d,podeDel){
+function docLinha(d,podeDel,podeEditTat){
   const isVideo=d.nome.match(/\.(mp4|mov|m4v|webm)$/i);
   if(isVideo){
     return `<div style="margin-bottom:16px;background:var(--bg2);border-radius:8px;overflow:hidden">
@@ -1284,15 +1292,17 @@ function docLinha(d,podeDel){
           Seu navegador não suporta vídeo.
         </video>
       </div>
-      <div style="padding:12px;display:flex;align-items:center;gap:8px">
+      <div style="padding:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="pill p-ok">🎬 Vídeo</span>
-        <span style="flex:1"><strong>${esc(d.nome)}</strong><div class="mut" style="font-size:11px">${kb(d.tam)} · ${esc(d.quando)}</div></span>
+        <span style="flex:1;min-width:0"><strong>${esc(d.titulo||d.nome)}</strong>${d.descricao?`<div style="font-size:13px;margin-top:2px">${esc(d.descricao)}</div>`:''}<div class="mut" style="font-size:11px">${kb(d.tam)} · ${esc(d.quando)}${d.titulo?' · '+esc(d.nome):''}</div></span>
+        ${podeEditTat?`<button class="mini sec" onclick="editaMaterialTat('${d.id}')">✏️</button>`:''}
         <button class="mini sec" onclick="abreArquivo('${esc(d.path)}','${esc(d.nome)}')">⬇</button>
         ${podeDel?`<button class="mini sec" onclick="removeArquivo('${d.id}')">✕</button>`:''}</div>
     </div>`;
   }
   return `<div class="doc"><span class="pill p-mut">${esc(d.categoria)}</span>
-  <span class="dinfo" style="flex:1"><strong>${esc(d.nome)}</strong><span class="mut"> · ${kb(d.tam)} · ${esc(d.quando)} · por ${esc(d.quem)}</span></span>
+  <span class="dinfo" style="flex:1"><strong>${esc(d.titulo||d.nome)}</strong>${d.descricao?`<div style="font-size:12.5px">${esc(d.descricao)}</div>`:''}<span class="mut"> · ${kb(d.tam)} · ${esc(d.quando)} · por ${esc(d.quem)}</span></span>
+  ${podeEditTat?`<button class="mini sec" onclick="editaMaterialTat('${d.id}')">✏️</button>`:''}
   <button class="mini sec" onclick="abreArquivo('${esc(d.path)}','${esc(d.nome)}')">⬇</button>
   ${podeDel?`<button class="mini sec" onclick="removeArquivo('${d.id}')">✕</button>`:''}</div>`;
 }
@@ -1800,6 +1810,21 @@ function craqueDo(evId){
   const ord=[...ts].sort((a,b)=>b.votos-a.votos||nomeAt(a.votoId).localeCompare(nomeAt(b.votoId)));
   const total=ts.reduce((x,t)=>x+t.votos,0);
   return {id:ord[0].votoId,votos:ord[0].votos,total,ranking:ord.map(t=>[t.votoId,t.votos])};
+}
+function cardNovidadesTaticas(){
+  const corte=Date.now()-7*864e5;
+  const rec=x=>x.quandoRaw&&new Date(x.quandoRaw).getTime()>=corte;
+  const T=db.taticas||{esquemas:[],notas:[],arquivos:[]};
+  const itens=[
+    ...T.esquemas.filter(rec).map(e=>({q:e.quandoRaw,txt:(e.formacao==='🎬 Prancheta'?'🎬 Jogada animada: ':'📋 Escalação: ')+e.nome})),
+    ...T.notas.filter(rec).map(n=>({q:n.quandoRaw,txt:'✍️ Anotação: '+n.titulo})),
+    ...T.arquivos.filter(rec).map(d=>({q:d.quandoRaw,txt:(d.nome.match(/\.(mp4|mov|m4v|webm)$/i)?'🎬 Vídeo: ':'📎 Material: ')+(d.titulo||d.nome)}))
+  ].sort((a,b)=>String(b.q).localeCompare(String(a.q))).slice(0,4);
+  if(!itens.length)return '';
+  return `<div class="card sect" style="border-color:var(--blue)"><div class="spread"><h2>🆕 Novidades nas Táticas</h2>
+  <button class="mini" onclick="vai('taticas')">📋 Abrir Táticas</button></div>
+  ${itens.map(x=>`<div class="alertline" style="background:var(--blue-soft)"><div style="flex:1">${esc(x.txt)}</div></div>`).join('')}
+  <p class="mut" style="margin-top:6px;font-size:12px">Publicações da comissão técnica nos últimos 7 dias.</p></div>`;
 }
 function cardVotacaoCraque(){
   // Depois de votar, o jogo sai da tela inicial (fica até 1 dia após a data do jogo
@@ -2372,7 +2397,7 @@ function tTaticas(){
     ${podeEditar?`<button class="mini sec" style="margin-top:6px" onclick="delNota('${n.id}')">✕ Excluir</button>`:''}</details>`).join(''):'<p class="mut">Nenhuma anotação.</p>'}</div>
   <div class="card"><h2>📎 Materiais táticos</h2>
   <p class="mut">Imagens, PDFs de treino e <strong>vídeos de jogadas</strong> (mp4/mov, máx. 50 MB).</p>
-  ${T.arquivos.length?T.arquivos.map(d=>docLinha(d,podeEditar)).join(''):'<p class="mut">Nenhum material anexado.</p>'}
+  ${T.arquivos.length?T.arquivos.map(d=>docLinha(d,podeEditar,podeEditar)).join(''):'<p class="mut">Nenhum material anexado.</p>'}
   ${podeEditar?`<div class="row" style="margin-top:8px"><input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.mp4,.mov,.m4v" style="max-width:320px" onchange="upTatArq(this)"></div>`:''}</div>
   </div>`;
 }
@@ -2620,8 +2645,36 @@ async function salvaEsquema(id){
   fecha(); await recarrega(); toast('Esquema salvo');
 }
 function delEsquema(id){ const e=byId(db.taticas.esquemas,id); confirma(`Excluir ${e&&e.formacao==='🎬 Prancheta'?'a jogada':'o esquema'} "${esc(e?e.nome:'')}"?`,async()=>{ await q(sb.from('taticas_esquemas').delete().eq('id',id)); await recarrega(); toast('Excluído'); }); }
-function upTatArq(inp){ upFile(inp,50,async f=>{ await enviaArquivo(f,'tatica',null,f.type.startsWith('video')?'Vídeo':'Material tático');
-  log('taticas',`Material tático anexado: ${f.name}`); await recarrega(); toast('Material anexado'); }); }
+let tatFilePendente=null;
+function upTatArq(inp){ upFile(inp,50,async f=>{ tatFilePendente=f;
+  modal(`<h2>🎬 Novo material tático</h2>
+  <p class="mut">Arquivo: <strong>${esc(f.name)}</strong> (${kb(f.size)})</p>
+  <label>Título da jogada / material</label><input id="tm_tit" value="${esc(f.name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' '))}" placeholder="Ex.: Escanteio ensaiado — bola na primeira trave">
+  <label>Descrição (opcional)</label><textarea id="tm_desc" style="min-height:80px" placeholder="Ex.: Jogada usada contra times de linha alta. Atenção ao movimento do ala esquerdo."></textarea>
+  <div class="row" style="margin-top:14px"><button id="btn_tm" onclick="upTatArqGo()">⬆ Enviar material</button><button class="sec" onclick="tatFilePendente=null;fecha()">Cancelar</button></div>`);
+}); }
+async function upTatArqGo(){
+  const f=tatFilePendente; if(!f){fecha();return;}
+  const b=$('btn_tm'); if(b){b.disabled=true;b.textContent='Enviando…';}
+  try{
+    await enviaArquivo(f,'tatica',null,f.type.startsWith('video')?'Vídeo':'Material tático',{titulo:fval('tm_tit'),descricao:fval('tm_desc')});
+    log('taticas',`Material tático anexado: ${fval('tm_tit')||f.name}`);
+    tatFilePendente=null; fecha(); await recarrega(); toast('🎬 Material anexado!');
+  }catch(_){ if(b){b.disabled=false;b.textContent='⬆ Enviar material';} }
+}
+function editaMaterialTat(id){
+  const d=db.taticas.arquivos.find(x=>x.id===id); if(!d)return;
+  modal(`<h2>✏️ Editar material tático</h2>
+  <p class="mut">Arquivo: ${esc(d.nome)}</p>
+  <label>Título</label><input id="tm_tit" value="${esc(d.titulo||'')}" placeholder="Ex.: Escanteio ensaiado">
+  <label>Descrição</label><textarea id="tm_desc" style="min-height:80px">${esc(d.descricao||'')}</textarea>
+  <div class="row" style="margin-top:14px"><button onclick="salvaMaterialTat('${id}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+async function salvaMaterialTat(id){
+  const {error}=await sb.from('documentos').update({titulo:fval('tm_tit')||'',descricao:fval('tm_desc')||''}).eq('id',id);
+  if(error){toast('⚠️ '+(/titulo|descricao/.test(error.message||'')?'Rode o SQL v18 no Supabase para ativar títulos':error.message));return;}
+  fecha(); await recarrega(); toast('✏️ Material atualizado');
+}
 
 /* ================= FINANCEIRO AVANÇADO (Lançador Rápido + Editor Período + Gestor Importações) ================= */
 function abrirLancadorRapido(){
@@ -5892,6 +5945,7 @@ function tMeu(){
     <button class="mini" onclick="modalCal('${e.id}')">📅 Pôr no calendário</button></div>`).join(''):'<p class="mut">Nada agendado por enquanto.</p>'}
   ${prox.length?`<button class="sec mini" onclick="baixarICS(db.eventos.filter(e=>e.data>=hoje()),'agenda-oabmaster.ics')">📅 Agenda completa (.ics)</button>`:''}</div>
   ${cardVotacaoCraque()}
+  ${cardNovidadesTaticas()}
   <div class="grid g5 sect">
     <div class="card stat clickable" onclick="vai('presencas')"><div class="n">${pct===null?'—':pct+'%'}</div><div class="l">Minha frequência →</div></div>
     <div class="card stat clickable" onclick="vai('desempenho')"><div class="n">${gols}⚽ ${asst}🅰️</div><div class="l">Gols / Assist. →</div></div>
