@@ -1301,12 +1301,15 @@ function docLinha(d,podeDel,podeEditTat){
       <div style="aspect-ratio:16/9;background:#000;position:relative">
         <video controls preload="metadata" playsinline style="width:100%;height:100%;display:block" data-vpath="${esc(d.path)}"></video>
       </div>
-      <div style="padding:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span class="pill p-ok">🎬 Vídeo</span>
-        <span style="flex:1;min-width:0"><strong>${esc(d.titulo||d.nome)}</strong>${d.descricao?`<div style="font-size:13px;margin-top:2px">${esc(d.descricao)}</div>`:''}<div class="mut" style="font-size:11px">${kb(d.tam)} · ${esc(d.quando)}${d.titulo?' · '+esc(d.nome):''}</div></span>
-        ${podeEditTat?`<button class="mini sec" onclick="editaMaterialTat('${d.id}')">✏️</button>`:''}
-        <button class="mini sec" onclick="abreArquivo('${esc(d.path)}','${esc(d.nome)}')">⬇</button>
-        ${podeDel?`<button class="mini sec" onclick="removeArquivo('${d.id}')">✕</button>`:''}</div>
+      <div style="padding:12px 14px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="pill p-ok" style="flex-shrink:0">🎬</span>
+          <strong style="flex:1;min-width:0;font-size:15.5px;overflow-wrap:anywhere">${esc(d.titulo||d.nome)}</strong>
+          <span style="display:flex;gap:4px;flex-shrink:0">${podeEditTat?`<button class="mini sec" onclick="editaMaterialTat('${d.id}')">✏️</button>`:''}<button class="mini sec" onclick="abreArquivo('${esc(d.path)}','${esc(d.nome)}')">⬇</button>${podeDel?`<button class="mini sec" onclick="removeArquivo('${d.id}')">✕</button>`:''}</span>
+        </div>
+        ${d.descricao?`<p style="margin:8px 0 0;font-size:13.5px;line-height:1.55">${esc(d.descricao)}</p>`:''}
+        <div class="mut" style="font-size:11px;margin-top:7px;display:flex;gap:12px;flex-wrap:wrap"><span>💾 ${kb(d.tam)}</span><span>📅 ${esc(d.quando)}</span><span>👤 ${esc(d.quem)}</span>${d.titulo?`<span>📁 ${esc(d.nome)}</span>`:''}</div>
+      </div>
     </div>`;
   }
   return `<div class="doc"><span class="pill p-mut">${esc(d.categoria)}</span>
