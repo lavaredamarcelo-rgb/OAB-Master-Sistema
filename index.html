@@ -1140,6 +1140,83 @@ function cardJogador(a,estilo){
     </div>
   </div>`;
 }
+async function geraCardImagem(atId){
+  const a=at(atId); if(!a)return null;
+  const estilo=subState.cardEstilo||'ouro';
+  const avs=db.avaliacoes.filter(v=>v.atletaId===a.id).sort((x,y)=>String(y.data).localeCompare(String(x.data)));
+  const av=avs[0]||{};
+  const fq=freqAtleta(a.id);
+  const notas=[...db.stats.filter(x=>x.atletaId===a.id).map(x=>notaDe(x).v),...presencasSemStats(a.id).map(()=>6)];
+  const mediaN=notas.length?(notas.reduce((x,y)=>x+y,0)/notas.length).toFixed(1):'—';
+  const uni=db.uniformes.find(u=>u.atletaId===a.id);
+  const fv=v=>v!==undefined&&v!==null&&String(v).trim()!==''?String(v):'—';
+  const [escImg,fotoImg]=await Promise.all([carrImg('escudo.png'),a.fotoUrl?carrImg(a.fotoUrl,true):Promise.resolve(null)]);
+  const W=470,H=640, cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
+  const rr=(x0,y0,w,h,r)=>{x.beginPath();x.moveTo(x0+r,y0);x.arcTo(x0+w,y0,x0+w,y0+h,r);x.arcTo(x0+w,y0+h,x0,y0+h,r);x.arcTo(x0,y0+h,x0,y0,r);x.arcTo(x0,y0,x0+w,y0,r);x.closePath();};
+  const ouro=estilo!=='clube';
+  const g=x.createLinearGradient(0,0,W*0.4,H); 
+  if(ouro){g.addColorStop(0,'#f7dd8d');g.addColorStop(0.45,'#e9bc2a');g.addColorStop(1,'#c3921a');}
+  else{g.addColorStop(0,'#8a1f2f');g.addColorStop(0.58,'#511219');g.addColorStop(1,'#27090d');}
+  rr(0,0,W,H,40); x.fillStyle=g; x.fill();
+  if(!ouro){x.strokeStyle='#F2C11E';x.lineWidth=3;rr(1.5,1.5,W-3,H-3,38);x.stroke();}
+  const ink=ouro?'#3a2c05':'#f7e8c8';
+  // número
+  if(uni){x.fillStyle=ink;x.font='800 58px Georgia';x.textAlign='left';x.fillText(String(uni.numero),34,86);}
+  // escudo
+  if(escImg){x.save();x.shadowColor='rgba(0,0,0,.35)';x.shadowBlur=8;x.shadowOffsetY=3;
+    const h2=86,w2=h2*escImg.width/escImg.height;x.drawImage(escImg,W-30-w2,26,w2,h2);x.restore();}
+  // foto circular
+  const cx=W/2, cy=224, r=118;
+  x.save();x.beginPath();x.arc(cx,cy,r,0,7);x.closePath();
+  x.fillStyle='#fff';x.fill();
+  x.clip();
+  if(fotoImg){const sc=Math.max(r*2/fotoImg.width,r*2/fotoImg.height);const w2=fotoImg.width*sc,h2=fotoImg.height*sc;
+    x.drawImage(fotoImg,cx-w2/2,cy-h2/2,w2,h2);}
+  else{x.fillStyle='#a08c4a';x.font='800 84px Helvetica';x.textAlign='center';x.textBaseline='middle';x.fillText(ini(a.nome),cx,cy);x.textBaseline='alphabetic';}
+  x.restore();
+  x.lineWidth=8;x.strokeStyle=ouro?'rgba(255,255,255,.75)':'#F2C11E';
+  x.beginPath();x.arc(cx,cy,r+3,0,7);x.stroke();
+  // nome e posições
+  x.fillStyle=ink;x.textAlign='center';
+  let fs=36; x.font='800 '+fs+'px Helvetica';
+  const nome=pnome(a.nome).toUpperCase();
+  while(x.measureText(nome).width>W-60&&fs>20){fs--;x.font='800 '+fs+'px Helvetica';}
+  x.fillText(nome,W/2,404);
+  if(a.posicao){x.globalAlpha=.85;x.font='700 19px Helvetica';x.fillText(a.posicao.toUpperCase(),W/2,434);x.globalAlpha=1;}
+  // divisor
+  x.globalAlpha=.35;x.fillStyle=ink;x.fillRect(40,470,W-80,2);x.globalAlpha=1;
+  // estatísticas
+  const stats=[[fv(av.altura),'ALTURA'],[fv(av.peso),'PESO'],[fq.pct===null?'—':fq.pct+'%','FREQ.'],[String(mediaN),'⭐ MÉDIA']];
+  const cw=(W-60)/stats.length;
+  stats.forEach(([v,lb],i)=>{const sx=30+cw*i+cw/2;
+    x.fillStyle=ink;x.font='800 34px Georgia';x.fillText(v,sx,540);
+    x.globalAlpha=.75;x.font='700 14px Helvetica';x.fillText(lb,sx,568);x.globalAlpha=1;});
+  // rodapé
+  x.globalAlpha=.7;x.font='600 15px Helvetica';x.fillText((db.config.time||'').toUpperCase(),W/2,H-28);x.globalAlpha=1;
+  return await new Promise(res=>cv.toBlob(res,'image/png'));
+}
+async function baixarCard(atId){
+  toast('Gerando o card…');
+  const b=await geraCardImagem(atId); if(!b){toast('⚠️ Não consegui gerar');return;}
+  baixar('card-'+pnome(nomeAt(atId)).replace(/\s+/g,'-').toLowerCase()+'.png',b,'image/png');
+  toast('🪪 Card baixado — está nos downloads!');
+}
+async function compartilharCard(atId){
+  toast('Gerando o card…');
+  const b=await geraCardImagem(atId); if(!b){toast('⚠️ Não consegui gerar');return;}
+  const file=new File([b],'card-'+pnome(nomeAt(atId)).replace(/\s+/g,'-').toLowerCase()+'.png',{type:'image/png'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:'Card — '+db.config.time});}catch(_){}
+  }else{
+    baixar(file.name,b,'image/png'); toast('Envio direto não suportado neste aparelho — baixei a imagem para você anexar');
+  }
+}
+async function copiarCard(atId){
+  toast('Gerando o card…');
+  const b=await geraCardImagem(atId); if(!b){toast('⚠️ Não consegui gerar');return;}
+  try{ await navigator.clipboard.write([new ClipboardItem({'image/png':b})]); toast('📋 Card copiado — cole na conversa!'); }
+  catch(_){ baixar('card.png',b,'image/png'); toast('Copiar não suportado aqui — baixei a imagem'); }
+}
 function verCardJogador(id){
   const a=at(id); if(!a)return;
   const est=subState.cardEstilo||'ouro';
@@ -1159,7 +1236,10 @@ function verCardJogador(id){
     <div style="height:${h}px;background:${nd.v>=7?'var(--ok)':nd.v>=5?'#e9bc2a':'var(--bad)'};border-radius:5px 5px 0 0"></div>
     <div class="mut" style="font-size:9px">${dbr(x.e.data).slice(0,5)}</div></div>`;}).join('')}
   </div></div>`:'';})()}
-  <div class="row" style="justify-content:center;margin-top:14px">
+  <div class="row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
+  <button class="mini gold" onclick="baixarCard('${id}')">⬇ Baixar</button>
+  <button class="mini gold" onclick="compartilharCard('${id}')">📤 Enviar</button>
+  <button class="mini sec" onclick="copiarCard('${id}')">📋 Copiar</button>
   ${podeFoto?`<label class="mini sec" style="cursor:pointer;padding:9px 14px;border:1px solid var(--line);border-radius:10px;display:inline-flex;align-items:center;gap:6px">📸 ${a.fotoUrl?'Trocar foto':'Enviar foto'}<input type="file" accept="image/*" style="display:none" onchange="enviaFotoCard('${id}',this)"></label>`:''}
   <button class="sec" onclick="fecha()">Fechar</button></div>`);
 }
@@ -5974,6 +6054,11 @@ function tMeu(){
     <div class="row" style="justify-content:center;margin-top:12px;flex-wrap:wrap">
       <label class="mini sec" style="cursor:pointer;padding:9px 14px;border:1px solid var(--line);border-radius:10px;display:inline-flex;align-items:center;gap:6px">📸 ${me.fotoUrl?'Trocar minha foto':'Enviar minha foto'}<input type="file" accept="image/*" style="display:none" onchange="enviaFotoAtleta('${me.id}',this)"></label>
       <button class="mini sec" onclick="formApelido()">✏️ Como quero ser chamado${me.apelido?': '+esc(me.apelido):''}</button>
+    </div>
+    <div class="row" style="justify-content:center;margin-top:8px">
+      <button class="mini gold" onclick="baixarCard(me.id)">⬇ Baixar card</button>
+      <button class="mini gold" onclick="compartilharCard(me.id)">📤 Enviar</button>
+      <button class="mini sec" onclick="copiarCard(me.id)">📋 Copiar</button>
     </div>
   </div>
   <div class="grid g2">
