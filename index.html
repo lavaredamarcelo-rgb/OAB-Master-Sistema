@@ -320,7 +320,7 @@ async function carregaTudo(){
   db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,convidado:p.convidado||null,status:p.status}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,forma:c.forma_pagamento||'',pagamentos:c.pagamentos||[],origem:c.origem||'',lote:c.origem_lote||''}));
-  db.avaliacoes=avaliacoes.map(v=>({id:v.id,atletaId:v.atleta_id,data:String(v.data),peso:v.peso,altura:v.altura,gordura:v.gordura,pesoGordura:v.peso_gordura||'',pesoMagro:v.peso_magro||'',massaMuscular:v.massa_muscular||'',notas:v.notas}));
+  db.avaliacoes=avaliacoes.map(v=>({id:v.id,atletaId:v.atleta_id,data:String(v.data),peso:v.peso,altura:v.altura,gordura:v.gordura,pesoGordura:v.peso_gordura||'',pesoMagro:v.peso_magro||'',massaMuscular:v.massa_muscular||'',salto1:v.salto1||'',salto2:v.salto2||'',salto3:v.salto3||'',forca:v.forca||'',resistencia:v.resistencia||'',notas:v.notas}));
   db.metas=metas.map(m=>({id:m.id,atletaId:m.atleta_id,desc:m.descricao,prazo:m.prazo?String(m.prazo):'',status:m.status}));
   db.stats=stats.map(s=>({id:s.id,eventoId:s.evento_id,atletaId:s.atleta_id,minutos:s.minutos,gols:s.gols,assist:s.assist,amarelos:s.amarelos,vermelho:s.vermelho,desarmes:s.desarmes,duelos:s.duelos,passes:s.passes,antecipacao:s.antecipacao||0,duelosAereos:s.duelos_aereos||0,chutesGol:s.chutes_gol||0,defesas:s.defesas||0,passesErrados:s.passes_errados||0,duelosPerdidos:s.duelos_perdidos||0,bolasPerdidas:s.bolas_perdidas||0,faltasCometidas:s.faltas_cometidas||0,chutesErrados:s.chutes_errados||0,golsSofridos:s.gols_sofridos||0,penaltisPerdidos:s.penaltis_perdidos||0,penaltisCometidos:s.penaltis_cometidos||0,golsContra:s.gols_contra||0,nota:s.nota,obs:s.obs}));
   db.uniformes=uniformes.map(u=>({id:u.id,descricao:u.descricao,numero:u.numero,tamanho:u.tamanho,status:u.status,atletaId:u.atleta_id,entregueEm:u.entregue_em,aceitoEm:u.aceito_em,pecas:u.pecas||{camisa:'estoque',short:'estoque',meiao:'estoque'},fornecedor:u.fornecedor||'',convidado:u.convidado||'',convFone:u.convidado_fone||'',goleiro:!!u.goleiro,cor:u.cor||''}));
@@ -1672,9 +1672,9 @@ function tAval(){
     const avs=db.avaliacoes.filter(v=>v.atletaId===sel).sort((a,b)=>b.data.localeCompare(a.data));
     const mts=db.metas.filter(m=>m.atletaId===sel);
     corpo=`<div class="card sect"><div class="spread"><h2>📈 Avaliações${souAtleta?' — minhas':''}</h2><div class="row" style="gap:6px">${avs.length?`<button class="mini gold" onclick="pdfAvaliacaoAtleta('${sel}')">📄 Relatório</button>`:''}${podeEditar?`<button class="mini" onclick="formAval('${sel}')">+ Nova avaliação</button>`:''}</div></div>
-    <div class="tblwrap"><table class="cardz"><tr><th>Data</th><th>Peso (kg)</th><th>Altura (m)</th><th>IMC</th><th>% Gordura</th><th>Peso gordura (kg)</th><th>Peso magro (kg)</th><th>% Massa musc.</th><th>Notas</th><th></th></tr>
+    <div class="tblwrap"><table class="cardz"><tr><th>Data</th><th>Peso (kg)</th><th>Altura (m)</th><th>IMC</th><th>% Gordura</th><th>Peso gordura (kg)</th><th>Peso magro (kg)</th><th>% Massa musc.</th><th>🦵 Impulsão</th><th>💪 Força</th><th>🏃 Resist.</th><th>Notas</th><th></th></tr>
     ${avs.length?avs.map(v=>{const imc=v.peso&&v.altura?(v.peso/(v.altura*v.altura)).toFixed(1):'—';
-      return `<tr><td data-l="Data"><strong>${dbr(v.data)}</strong></td><td data-l="Peso (kg)">${esc(v.peso)}</td><td data-l="Altura (m)">${esc(v.altura)}</td><td data-l="IMC">${imc}</td><td data-l="% Gordura">${esc(v.gordura||'—')}</td><td data-l="Peso gordura (kg)">${esc(v.pesoGordura||'—')}</td><td data-l="Peso magro (kg)">${esc(v.pesoMagro||'—')}</td><td data-l="% Massa muscular">${esc(v.massaMuscular||'—')}</td><td data-l="Notas">${esc(v.notas||'')}</td><td>${podeEditar?`<button class="mini sec" onclick="formAval('${sel}','${v.id}')">✏️</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="10" class="mut">Sem avaliações.</td></tr>'}</table></div></div>
+      return `<tr><td data-l="Data"><strong>${dbr(v.data)}</strong></td><td data-l="Peso (kg)">${esc(v.peso)}</td><td data-l="Altura (m)">${esc(v.altura)}</td><td data-l="IMC">${imc}</td><td data-l="% Gordura">${esc(v.gordura||'—')}</td><td data-l="Peso gordura (kg)">${esc(v.pesoGordura||'—')}</td><td data-l="Peso magro (kg)">${esc(v.pesoMagro||'—')}</td><td data-l="% Massa muscular">${esc(v.massaMuscular||'—')}</td><td data-l="🦵 Impulsão (melhor)">${(()=>{const m=melhorSalto(v);return m!=null?`<strong>${m} cm</strong><div class="mut" style="font-size:10.5px">${[v.salto1,v.salto2,v.salto3].filter(Boolean).join(' · ')}</div>`:'—';})()}</td><td data-l="💪 Força">${esc(v.forca||'—')}</td><td data-l="🏃 Resistência">${esc(v.resistencia||'—')}</td><td data-l="Notas">${esc(v.notas||'')}</td><td>${podeEditar?`<button class="mini sec" onclick="formAval('${sel}','${v.id}')">✏️</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="13" class="mut">Sem avaliações.</td></tr>'}</table></div></div>
     ${avs.length>=2?(()=>{const comp=compareAvs(avs);
     return `<div class="card sect"><h2>⚖️ Comparativo das avaliações</h2>
     <p class="mut">Atual (${dbr(avs[0].data)}) comparada com a anterior${avs[1]?' ('+dbr(avs[1].data)+')':''} e com a primeira (${dbr(avs[avs.length-1].data)}).</p>
@@ -1690,12 +1690,13 @@ function tAval(){
   return `${statusQuadro}${souAtleta?'':`<div class="card sect"><label style="margin-top:0">Atleta</label>
   <select onchange="subState.avalId=this.value;renderTab()"><option value="">— selecionar —</option>${ats.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.nome)}</option>`).join('')}</select></div>`}${corpo}`;
 }
+const melhorSalto=v=>{const ns=[v.salto1,v.salto2,v.salto3].map(x=>parseFloat(String(x??'').replace(',','.'))).filter(n=>!isNaN(n));return ns.length?Math.max(...ns):null;};
 function compareAvs(avsDesc){
   const atual=avsDesc[0], ant=avsDesc[1]||null, prim=avsDesc[avsDesc.length-1];
   const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isNaN(n)?null:n;};
   const imcDe=v=>{const p=num(v.peso),a=num(v.altura);return p&&a?+(p/(a*a)).toFixed(1):null;};
   const M=[['Peso (kg)',v=>num(v.peso),'neutro'],['IMC',imcDe,'neutro'],['% Gordura',v=>num(v.gordura),'down'],
-    ['Peso gordura (kg)',v=>num(v.pesoGordura),'down'],['Peso magro (kg)',v=>num(v.pesoMagro),'up'],['% Massa muscular',v=>num(v.massaMuscular),'up']];
+    ['Peso gordura (kg)',v=>num(v.pesoGordura),'down'],['Peso magro (kg)',v=>num(v.pesoMagro),'up'],['% Massa muscular',v=>num(v.massaMuscular),'up'],['🦵 Impulsão — melhor salto (cm)',v=>melhorSalto(v),'up']];
   return M.map(([lb,f,sent])=>{
     const a=f(atual), vAnt=ant?f(ant):null, vIni=prim!==atual?f(prim):null;
     return {lb,atual:a,ant:vAnt,ini:vIni,
@@ -1744,10 +1745,11 @@ function pdfAvaliacaoAtleta(atId){
   ${grafico('⚖️ Evolução do peso (kg)',v=>v.peso,'#8a1f2f')}
   ${grafico('🔥 Evolução do % de gordura',v=>v.gordura,'#B3372E')}
   ${grafico('💪 Evolução do % de massa muscular',v=>v.massaMuscular,'#2E7D4F')}
+  ${grafico('🦵 Evolução da impulsão — melhor salto (cm)',v=>melhorSalto(v),'#A86A12')}
   <h2>📋 Histórico completo</h2>
-  <table><tr><th>Data</th><th>Peso</th><th>Altura</th><th>IMC</th><th>% Gord.</th><th>P. gordura</th><th>P. magro</th><th>% M. musc.</th><th>Notas</th></tr>
+  <table><tr><th>Data</th><th>Peso</th><th>Altura</th><th>IMC</th><th>% Gord.</th><th>P. gordura</th><th>P. magro</th><th>% M. musc.</th><th>🦵 Saltos</th><th>💪 Força</th><th>🏃 Resist.</th><th>Notas</th></tr>
   ${avsAsc.map(v=>{const imc=v.peso&&v.altura?(v.peso/(v.altura*v.altura)).toFixed(1):'—';
-    return `<tr><td><strong>${dbr(v.data)}</strong></td><td>${esc(v.peso||'—')}</td><td>${esc(v.altura||'—')}</td><td>${imc}</td><td>${esc(v.gordura||'—')}</td><td>${esc(v.pesoGordura||'—')}</td><td>${esc(v.pesoMagro||'—')}</td><td>${esc(v.massaMuscular||'—')}</td><td>${esc(v.notas||'')}</td></tr>`;}).join('')}</table>`,
+    return `<tr><td><strong>${dbr(v.data)}</strong></td><td>${esc(v.peso||'—')}</td><td>${esc(v.altura||'—')}</td><td>${imc}</td><td>${esc(v.gordura||'—')}</td><td>${esc(v.pesoGordura||'—')}</td><td>${esc(v.pesoMagro||'—')}</td><td>${esc(v.massaMuscular||'—')}</td><td>${(()=>{const m=melhorSalto(v);return m!=null?`<strong>${m}</strong> (${[v.salto1,v.salto2,v.salto3].filter(Boolean).join('/')})`:'—';})()}</td><td>${esc(v.forca||'—')}</td><td>${esc(v.resistencia||'—')}</td><td>${esc(v.notas||'')}</td></tr>`;}).join('')}</table>`,
   `Avaliação física — ${pnome(a.nome)}`);
 }
 function formAval(aid,id){
@@ -1761,20 +1763,31 @@ function formAval(aid,id){
   <div><label>Peso de gordura (kg)</label><input id="v_pgord" type="number" step="0.1" value="${v?esc(v.pesoGordura||''):''}"></div>
   <div><label>Peso magro (kg)</label><input id="v_pmagro" type="number" step="0.1" value="${v?esc(v.pesoMagro||''):''}"></div>
   <div><label>% Massa muscular</label><input id="v_mmusc" type="number" step="0.1" value="${v?esc(v.massaMuscular||''):''}"></div>
-  </div><label>Notas</label><textarea id="v_notas">${v?esc(v.notas||''):''}</textarea>
+  </div>
+  <label style="margin-top:14px">🦵 Impulsão — teste de salto (3 tentativas, em cm)</label>
+  <div class="grid g3">
+  <div><label>Salto 1</label><input id="v_s1" type="number" step="0.5" value="${v?esc(v.salto1||''):''}"></div>
+  <div><label>Salto 2</label><input id="v_s2" type="number" step="0.5" value="${v?esc(v.salto2||''):''}"></div>
+  <div><label>Salto 3</label><input id="v_s3" type="number" step="0.5" value="${v?esc(v.salto3||''):''}"></div>
+  </div>
+  <div class="grid g2">
+  <div><label>💪 Teste de força</label><input id="v_forca" value="${v?esc(v.forca||''):''}" placeholder="Ex.: Flexões 1 min: 32"></div>
+  <div><label>🏃 Teste de resistência</label><input id="v_resist" value="${v?esc(v.resistencia||''):''}" placeholder="Ex.: Cooper 12 min: 2.400 m"></div>
+  </div>
+  <label>Notas</label><textarea id="v_notas">${v?esc(v.notas||''):''}</textarea>
   <div class="row" style="margin-top:14px"><button onclick="salvaAval('${aid}','${id||''}')">Salvar</button>
   ${v?`<button class="bad" onclick="delAval('${id}')">🗑 Excluir</button>`:''}
   <button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function salvaAval(aid,id){
-  let dados={atleta_id:aid,data:fval('v_data')||hoje(),peso:fval('v_peso'),altura:fval('v_alt'),gordura:fval('v_gord'),peso_gordura:fval('v_pgord'),peso_magro:fval('v_pmagro'),massa_muscular:fval('v_mmusc'),notas:fval('v_notas')};
+  let dados={atleta_id:aid,data:fval('v_data')||hoje(),peso:fval('v_peso'),altura:fval('v_alt'),gordura:fval('v_gord'),peso_gordura:fval('v_pgord'),peso_magro:fval('v_pmagro'),massa_muscular:fval('v_mmusc'),salto1:fval('v_s1'),salto2:fval('v_s2'),salto3:fval('v_s3'),forca:fval('v_forca'),resistencia:fval('v_resist'),notas:fval('v_notas')};
   const op=d=>id?sb.from('avaliacoes').update(d).eq('id',id).select():sb.from('avaliacoes').insert(d).select();
   let {data:res,error}=await op(dados);
-  if(error&&/peso_gordura|peso_magro|massa_muscular/.test(error.message||'')){
-    delete dados.peso_gordura; delete dados.peso_magro; delete dados.massa_muscular;
+  if(error&&/peso_gordura|peso_magro|massa_muscular|salto1|salto2|salto3|forca|resistencia/.test(error.message||'')){
+    delete dados.peso_gordura; delete dados.peso_magro; delete dados.massa_muscular; delete dados.salto1; delete dados.salto2; delete dados.salto3; delete dados.forca; delete dados.resistencia;
     const {data:r2,error:e2}=await op(dados);
     if(e2){toast('⚠️ '+e2.message);return;}
-    res=r2; toast('⚠️ Salvo sem os campos novos — rode o SQL v19 no Supabase');
+    res=r2; toast('⚠️ Salvo sem os campos novos — rode o SQL v20 no Supabase');
   } else if(error){toast('⚠️ '+error.message);return;}
   if(id&&(!res||!res.length)){toast('⚠️ O banco recusou a edição — verifique sua permissão');return;}
   log('avaliacao',`Avaliação física ${id?'editada':'registrada'}: ${nomeAt(aid)}`);
