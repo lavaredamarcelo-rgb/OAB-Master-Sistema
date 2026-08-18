@@ -1228,8 +1228,8 @@ function verCardJogador(id){
     <button class="mini ${est==='clube'?'':'sec'}" onclick="subState.cardEstilo='clube';verCardJogador('${id}')">🛡️ Cores do clube</button>
   </div>
   <div style="display:flex;justify-content:center">${cardJogador(a,est)}</div>
-  ${(()=>{const jn=[...db.stats.filter(x=>x.atletaId===id).map(x=>({e:byId(db.eventos,x.eventoId),s:x})),
-    ...presencasSemStats(id).map(pz=>({e:byId(db.eventos,pz.eventoId),s:{}}))].filter(x=>x.e).sort((x,y)=>x.e.data.localeCompare(y.e.data)).slice(-10);
+  ${(()=>{const jn=[...db.stats.filter(x=>x.atletaId===id&&notaConta(x.eventoId)).map(x=>({e:byId(db.eventos,x.eventoId),s:x})),
+    ...presencasSemStats(id).filter(pz=>notaConta(pz.eventoId)).map(pz=>({e:byId(db.eventos,pz.eventoId),s:{}}))].filter(x=>x.e).sort((x,y)=>x.e.data.localeCompare(y.e.data)).slice(-10);
   return jn.length?`<div style="margin-top:14px"><label>📈 Evolução da nota — últimos ${jn.length} jogos (🤖 = nota do sistema)</label>
   <div style="display:flex;gap:5px;align-items:flex-end;height:96px;margin-top:6px">
   ${jn.map(x=>{const nd=notaDe(x.s); const h=Math.round(nd.v/10*72)+8;
@@ -2221,7 +2221,7 @@ function tDesemp(){
   if(sel){
     lanc=`<div class="tblwrap"><table><tr><th>Atleta</th><th>⚽</th><th>🅰️</th><th>🟨</th><th>🟥</th><th>🛡️</th><th>⚔️</th><th>💔</th><th>🦅</th><th>🧠</th><th>🎯</th><th>🧤</th><th>❌</th><th>🔄</th><th>🚫</th><th>Nota</th>${podeEditar?'<th></th>':''}</tr>
     ${ats.map(a=>{ const s=statDe(sel,a.id)||{};
-      return `<tr><td>${esc(a.nome)}</td><td>${s.gols??'—'}</td><td>${s.assist??'—'}</td><td>${s.amarelos??'—'}</td><td>${s.vermelho?'1':'—'}</td><td>${s.desarmes??'—'}</td><td>${s.duelos??'—'}</td><td>${s.duelosPerdidos||'—'}</td><td>${s.duelosAereos||'—'}</td><td>${s.antecipacao||'—'}</td><td>${s.chutesGol||'—'}</td><td>${s.defesas||'—'}</td><td>${s.passesErrados||'—'}</td><td>${s.bolasPerdidas||'—'}</td><td>${s.faltasCometidas||'—'}</td><td>${s.id?(s.nota?`<strong>${(+s.nota).toFixed(1)}</strong> ✔`:`<strong>${notaAuto(s).toFixed(1)}</strong> 🤖`):(db.presencas.some(pz=>pz.eventoId===sel&&pz.atletaId===a.id&&['presente','atraso'].includes(pz.status))?'<strong>7.0</strong> 🤖':'—')}</td>
+      return `<tr><td>${esc(a.nome)}</td><td>${s.gols??'—'}</td><td>${s.assist??'—'}</td><td>${s.amarelos??'—'}</td><td>${s.vermelho?'1':'—'}</td><td>${s.desarmes??'—'}</td><td>${s.duelos??'—'}</td><td>${s.duelosPerdidos||'—'}</td><td>${s.duelosAereos||'—'}</td><td>${s.antecipacao||'—'}</td><td>${s.chutesGol||'—'}</td><td>${s.defesas||'—'}</td><td>${s.passesErrados||'—'}</td><td>${s.bolasPerdidas||'—'}</td><td>${s.faltasCometidas||'—'}</td><td>${!notaConta(sel)?'—':s.id?(s.nota?`<strong>${(+s.nota).toFixed(1)}</strong> ✔`:`<strong>${notaAuto(s).toFixed(1)}</strong> 🤖`):(db.presencas.some(pz=>pz.eventoId===sel&&pz.atletaId===a.id&&['presente','atraso'].includes(pz.status))?'<strong>7.0</strong> 🤖':'—')}</td>
       ${podeEditar?`<td><button class="mini sec" onclick="formStat('${sel}','${a.id}')">✏️ Lançar</button></td>`:''}</tr>`; }).join('')}</table></div>
     <p class="mut" style="margin-top:6px;font-size:12px">Legenda: ⚽ gols · 🅰️ assistências · 🛡️ desarmes · ⚔️ duelos ganhos · 💔 duelos perdidos · 🦅 aéreos · 🧠 antecipações · 🎯 chutes no gol · 🧤 defesas · ❌ passes errados · 🔄 bolas perdidas · 🚫 faltas cometidas · 🤖 nota do sistema / ✔ confirmada</p>`;
   }
@@ -2288,9 +2288,9 @@ function formStat(evId,atId){
   <div><label>😖 Pênaltis perdidos</label><input id="st_pp" type="number" value="${s.penaltisPerdidos??''}"></div>
   <div><label>🎁 Pênaltis cometidos</label><input id="st_pc" type="number" value="${s.penaltisCometidos??''}"></div>
   <div><label>🔴 Gols contra</label><input id="st_gco" type="number" value="${s.golsContra??''}"></div>
-  <div><label>Nota (vazio = usa a do sistema 🤖)</label><input id="st_n" type="number" step="0.1" min="0" max="10" value="${s.nota??''}" placeholder="🤖 ${s.eventoId?notaAuto(s):'7.0'}"></div>
+  ${notaConta(evId)?`<div><label>Nota (vazio = usa a do sistema 🤖)</label><input id="st_n" type="number" step="0.1" min="0" max="10" value="${s.nota??''}" placeholder="🤖 ${s.eventoId?notaAuto(s):'7.0'}"></div>`:''}
   </div>
-  <div class="alertline al-ok" style="margin-top:8px">🤖 <strong>Nota sugerida pelo sistema: ${notaAuto(s).toFixed(1)}</strong> (recalcula ao salvar os lances) <button class="mini gold" onclick="$('st_n').value='${notaAuto(s).toFixed(1)}'">✔ Confirmar sugestão</button></div>
+  ${notaConta(evId)?`<div class="alertline al-ok" style="margin-top:8px">🤖 <strong>Nota sugerida pelo sistema: ${notaAuto(s).toFixed(1)}</strong> (recalcula ao salvar os lances) <button class="mini gold" onclick="$('st_n').value='${notaAuto(s).toFixed(1)}'">✔ Confirmar sugestão</button></div>`:'<p class="mut" style="margin-top:6px">🏃 Treinos não recebem nota — só jogos e amistosos pontuam.</p>'}
   <div class="row" style="margin-top:8px"><input type="checkbox" id="st_cv" ${s.vermelho?'checked':''} style="width:auto"><span>🟥 Expulso (cartão vermelho)</span></div>
   <label>Observações</label><input id="st_obs" value="${esc(s.obs||'')}" placeholder="Ex.: defendeu pênalti">
   <div class="row" style="margin-top:14px"><button onclick="salvaStat('${evId}','${atId}')">Salvar</button>
@@ -2308,7 +2308,7 @@ function delStat(evId,atId){
 }
 async function salvaStat(evId,atId){
   const n=v=>v===''?null:Number(v);
-  let dados={evento_id:evId,atleta_id:atId,minutos:n(fval('st_min')),gols:n(fval('st_g'))||0,assist:n(fval('st_a'))||0,amarelos:Number(fval('st_ca'))||0,vermelho:$('st_cv').checked,desarmes:n(fval('st_d'))||0,duelos:n(fval('st_du'))||0,antecipacao:n(fval('st_ant'))||0,duelos_aereos:n(fval('st_da'))||0,chutes_gol:n(fval('st_ch'))||0,defesas:n(fval('st_df'))||0,passes_errados:n(fval('st_pe'))||0,duelos_perdidos:n(fval('st_dp'))||0,bolas_perdidas:n(fval('st_bp'))||0,faltas_cometidas:n(fval('st_fc'))||0,chutes_errados:n(fval('st_ce'))||0,gols_sofridos:n(fval('st_gs'))||0,penaltis_perdidos:n(fval('st_pp'))||0,penaltis_cometidos:n(fval('st_pc'))||0,gols_contra:n(fval('st_gco'))||0,nota:n(fval('st_n')),obs:fval('st_obs')};
+  let dados={evento_id:evId,atleta_id:atId,minutos:n(fval('st_min')),gols:n(fval('st_g'))||0,assist:n(fval('st_a'))||0,amarelos:Number(fval('st_ca'))||0,vermelho:$('st_cv').checked,desarmes:n(fval('st_d'))||0,duelos:n(fval('st_du'))||0,antecipacao:n(fval('st_ant'))||0,duelos_aereos:n(fval('st_da'))||0,chutes_gol:n(fval('st_ch'))||0,defesas:n(fval('st_df'))||0,passes_errados:n(fval('st_pe'))||0,duelos_perdidos:n(fval('st_dp'))||0,bolas_perdidas:n(fval('st_bp'))||0,faltas_cometidas:n(fval('st_fc'))||0,chutes_errados:n(fval('st_ce'))||0,gols_sofridos:n(fval('st_gs'))||0,penaltis_perdidos:n(fval('st_pp'))||0,penaltis_cometidos:n(fval('st_pc'))||0,gols_contra:n(fval('st_gco'))||0,nota:notaConta(evId)?n(fval('st_n')):null,obs:fval('st_obs')};
   let {error}=await sb.from('stats').upsert(dados,{onConflict:'evento_id,atleta_id'});
   if(error&&/antecipacao|duelos_aereos|chutes_gol|defesas|passes_errados|duelos_perdidos|bolas_perdidas|faltas_cometidas|chutes_errados|gols_sofridos|penaltis_perdidos|penaltis_cometidos|gols_contra/.test(error.message||'')){
     ['antecipacao','duelos_aereos','chutes_gol','defesas','passes_errados','duelos_perdidos','bolas_perdidas','faltas_cometidas','chutes_errados','gols_sofridos','penaltis_perdidos','penaltis_cometidos','gols_contra'].forEach(k=>delete dados[k]);
