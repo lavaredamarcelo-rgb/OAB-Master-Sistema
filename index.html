@@ -114,8 +114,8 @@ a{color:var(--blue)}
 .pcard.clube .pfoto{border-color:#F2C11E}
 .pcard .pnum{position:absolute;top:14px;left:16px;font-size:28px;font-weight:800;font-family:Georgia,serif;line-height:1}
 .pcard .ppos{position:absolute;top:46px;left:16px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;max-width:80px;text-align:left}
-.pcard .pescudo{position:absolute;top:10px;right:10px;background:#fff;border-radius:50%;width:48px;height:48px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.3);border:2px solid rgba(0,0,0,.12)}
-.pcard.clube .pescudo{border-color:#F2C11E}
+.pcard .pescudo{position:absolute;top:12px;right:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+.pcard .ppos2{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;opacity:.85;margin-top:3px}
 .pcard .pnome{font-size:17px;font-weight:800;margin-top:6px;text-transform:uppercase;letter-spacing:.03em}
 .pcard .ptime{font-size:10px;text-transform:uppercase;letter-spacing:.12em;opacity:.75;margin-top:2px}
 .pcard .pstats{display:flex;justify-content:space-around;margin-top:12px;padding-top:10px;border-top:1px solid rgba(0,0,0,.18)}
@@ -1123,20 +1123,21 @@ function cardJogador(a,estilo){
   const av=avs[0]||{};
   const pct=freqAtleta(a.id).pct;
   const uni=db.uniformes.find(u=>u.atletaId===a.id);
-  const pos=(a.posicao||'').split(',')[0].trim();
   const fv=v=>v!==undefined&&v!==null&&String(v).trim()!==''?esc(String(v)):'—';
+  const notas=[...db.stats.filter(x=>x.atletaId===a.id).map(x=>notaDe(x).v),...presencasSemStats(a.id).map(()=>6)];
+  const mediaN=notas.length?(notas.reduce((x,y)=>x+y,0)/notas.length).toFixed(1):'—';
   return `<div class="pcard ${estilo}">
     ${uni?`<div class="pnum">${esc(uni.numero)}</div>`:''}
-    ${pos?`<div class="ppos">${esc(pos)}</div>`:''}
-    <div class="pescudo">${CREST(38)}</div>
+    <div class="pescudo">${CREST(42)}</div>
     ${a.fotoUrl?`<img class="pfoto" src="${esc(a.fotoUrl)}" alt="${esc(pnome(a.nome))}">`:`<div class="pfoto" style="display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:#a08c4a">${ini(a.nome)}</div>`}
     <div class="pnome">${esc(pnome(a.nome))}</div>
-    <div class="ptime">${esc(db.config.time)}</div>
+    ${a.posicao?`<div class="ppos2">${esc(a.posicao)}</div>`:''}
     <div class="pstats">
       <div><div class="v">${fv(av.altura)}</div><div class="k">Altura</div></div>
       <div><div class="v">${fv(av.peso)}</div><div class="k">Peso</div></div>
       <div><div class="v">${fv(av.vo2)}</div><div class="k">VO₂</div></div>
       <div><div class="v">${pct===null?'—':pct+'%'}</div><div class="k">Freq.</div></div>
+      <div><div class="v">${mediaN}</div><div class="k">⭐ Média</div></div>
     </div>
   </div>`;
 }
