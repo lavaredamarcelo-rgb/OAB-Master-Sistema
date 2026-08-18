@@ -2680,8 +2680,9 @@ function editaMaterialTat(id){
   <div class="row" style="margin-top:14px"><button onclick="salvaMaterialTat('${id}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function salvaMaterialTat(id){
-  const {error}=await sb.from('documentos').update({titulo:fval('tm_tit')||'',descricao:fval('tm_desc')||''}).eq('id',id);
+  const {data,error}=await sb.from('documentos').update({titulo:fval('tm_tit')||'',descricao:fval('tm_desc')||''}).eq('id',id).select();
   if(error){toast('⚠️ '+(/titulo|descricao/.test(error.message||'')?'Rode o SQL v18 no Supabase para ativar títulos':error.message));return;}
+  if(!data||!data.length){toast('⚠️ O banco recusou a alteração — rode o SQL v18.1 no Supabase (permissão de edição)');return;}
   fecha(); await recarrega(); toast('✏️ Material atualizado');
 }
 
