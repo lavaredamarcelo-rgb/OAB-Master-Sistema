@@ -1042,13 +1042,14 @@ function tAtletas(){
     const manuais=db.atletas.filter(a=>a.cadastroManual&&!a.pendente);
     const nomesConv=[...new Set([...db.cobrancas.map(c=>(c.convidado||'').trim()),...db.presencas.map(pz=>(pz.convidado||'').trim()),...db.stats.map(st=>(st.convidado||'').trim())].filter(Boolean))].sort();
     if(!manuais.length&&!nomesConv.length)return '';
-    return `<div class="card sect" style="border-color:var(--gold)"><h2>🔗 Vínculos pendentes <span class="pill p-gold">${manuais.length+nomesConv.length}</span></h2>
-    <p class="mut">Quando a pessoa se cadastrar no sistema, vincule aqui — os lançamentos (cobranças, presenças, estatísticas etc.) passam para o perfil real, sem redigitar nada.</p>
+    return `<div class="card sect" style="border-color:var(--gold)"><details>
+    <summary style="cursor:pointer;font-weight:700;font-size:17px;font-family:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif">🔗 Vínculos pendentes <span class="pill p-gold">${manuais.length+nomesConv.length}</span> <span class="mut" style="font-weight:400;font-size:12.5px">— toque para abrir</span></summary>
+    <p class="mut" style="margin-top:10px">Quando a pessoa se cadastrar no sistema, vincule aqui — os lançamentos (cobranças, presenças, estatísticas etc.) passam para o perfil real, sem redigitar nada.</p>
     ${manuais.map(m=>`<div class="alertline al-gold"><div style="flex:1"><strong>📋 ${esc(m.nome)}</strong> <span class="pill p-mut">cadastro manual</span></div>
       <button class="mini gold" onclick="modalVincularAlvo('manual','${m.id}')">🔗 Vincular a um perfil</button></div>`).join('')}
     ${nomesConv.map(n=>`<div class="alertline" style="background:var(--warn-soft)"><div style="flex:1"><strong>🎟️ ${esc(n)}</strong> <span class="pill p-mut">lançamentos de convidado</span></div>
       <button class="mini" onclick="modalVincularAlvo('convidado','${esc(n)}')">🎟️ Puxar para um perfil</button></div>`).join('')}
-    </div>`;})()}
+    </details></div>`;})()}
   ${pendentes.length?`<div class="card sect" style="border-color:var(--warn)"><h2>🆕 Solicitações aguardando aprovação</h2>
   ${pendentes.map(a=>`<div class="alertline al-warn"><div style="flex:1"><strong>${esc(a.nome)}</strong><div class="mut">${a.oab?'OAB '+esc(a.oab)+' · ':''}${a.posicao?esc(a.posicao)+' · ':''}${a.fone?'📱 '+esc(a.fone):''} · ${esc(a.email)}</div></div>
   <button class="mini" onclick="aprovaCadastro('${a.id}')">✔ Aprovar</button>
