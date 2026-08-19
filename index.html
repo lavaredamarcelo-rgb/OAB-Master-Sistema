@@ -933,6 +933,7 @@ function tPainel(){
   ${meusPend.map(u=>`<div class="alertline al-warn sect">👕 Você recebeu <strong>${esc(u.descricao)} nº ${esc(u.numero)}</strong> — <button class="mini gold" onclick="aceitarUniforme('${u.id}')">Ler e aceitar o termo de responsabilidade</button></div>`).join('')}
   ${cardVotacaoCraque()}
   ${cardNovidadesTaticas()}
+  ${cardAcordos(false)}
   <div class="row sect"><button class="gold mini" onclick="verCardJogador(me.id)">🪪 Meu card de jogador</button></div>
   <div class="grid g4 sect">
     <div class="card stat ${me.role==='diretoria'?'clickable':''}" ${me.role==='diretoria'?`onclick="vai('atletas')"`:''}><div class="n">${elenco().length}</div><div class="l">Jogadores ativos</div></div>
@@ -4021,6 +4022,7 @@ function tFinCob(){
       ${!p.guest?`<div class="row" style="margin:10px 0 4px">
         ${p.aberto>0?`<button style="background:var(--bad);font-weight:700" onclick="cobraTudoWhats('${p.id}')">📱 Cobrar tudo no WhatsApp (${brl(p.aberto)})</button>
         <button class="mini gold" onclick="quitacaoLote('${p.id}')">💳 Quitar deste jogador</button>`:''}
+        ${p.nAtr?`<button class="mini warn" onclick="modalNegociacao('${p.id}')">🤝 Negociar</button>`:''}
         <button class="mini sec" onclick="pdfExtratoAtleta('${p.id}')">🧾 Extrato (PDF)</button></div>`:''}
       <div class="tblwrap" style="margin-top:6px"><table class="cardz"><tr><th></th><th>Descrição</th><th>Valor</th><th>Venc.</th><th>Situação</th><th></th></tr>
       ${p.list.sort((a,b)=>b.venc.localeCompare(a.venc)).map(c=>`<tr style="cursor:pointer" onclick="mostraDetalheCobranca('${c.id}')">
@@ -4633,6 +4635,110 @@ async function zeraFinanceiroGo(){
   await q(sb.from('despesas').delete().not('id','is',null));
   log('financeiro','FINANCEIRO ZERADO pelo fundador — todas as cobranças e despesas eliminadas');
   fecha(); await recarrega(); toast('Financeiro zerado — recomeço limpo 🧹');
+}
+/* ================= NEGOCIAÇÃO DE ATRASADOS ================= */
+const ehAcordo=c=>/^🤝 Acordo/.test(c.desc||'');
+function planosNegociacao(atId){
+  const atr=db.cobrancas.filter(c=>c.atletaId===atId&&c.status==='atrasado'&&!ehAcordo(c));
+  if(!atr.length)return null;
+  const totalCheio=+atr.reduce((s,c)=>s+restanteDe(c),0).toFixed(2);
+  const totalBase=+atr.reduce((s,c)=>s+Math.max(0,Number(c.valor)-pagoParcial(c)),0).toFixed(2);
+  const hj=new Date(); const anoStr=String(hj.getFullYear());
+  const dia=Math.min(db.config.mensDia||10,28);
+  const vencMes=m=>{ const d=new Date(hj.getFullYear(),m,dia);
+    if(d<=hj){ const alt=new Date(hj.getTime()+5*864e5); return alt.toISOString().slice(0,10); }
+    return `${anoStr}-${String(m+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`; };
+  const meses=[]; for(let m=hj.getMonth();m<12;m++)meses.push(m);
+  const n=meses.length;
+  const distribui=(total,pesos)=>{ const soma=pesos.reduce((a,b)=>a+b,0);
+    const parcelas=pesos.map(pz=>+(total*pz/soma).toFixed(2));
+    const dif=+(total-parcelas.reduce((a,b)=>a+b,0)).toFixed(2);
+    parcelas[parcelas.length-1]=+(parcelas[parcelas.length-1]+dif).toFixed(2);
+    return parcelas.map((v,i)=>({venc:vencMes(meses[i]),valor:v})); };
+  const planos=[];
+  planos.push({key:'avista',titulo:'💰 Quitação à vista',sub:`Paga o valor base, sem os acréscimos de atraso — economia de ${brl(totalCheio-totalBase)}`,total:totalBase,parcelas:[{venc:hoje(),valor:totalBase}]});
+  if(n>=2){
+    planos.push({key:'linear',titulo:`📆 Parcelado em ${n}×`,sub:'Parcelas iguais até dezembro, junto com a mensalidade do mês',total:totalCheio,parcelas:distribui(totalCheio,meses.map(()=>1))});
+    planos.push({key:'entrada',titulo:'💳 Entrada de 30% + parcelas',sub:`Entrada agora e o restante em ${n-1}× até dezembro`,total:totalCheio,
+      parcelas:[{venc:hoje(),valor:+(totalCheio*0.3).toFixed(2)},...distribui(+(totalCheio*0.7).toFixed(2),meses.slice(1).map(()=>1))]});
+    planos.push({key:'escalonado',titulo:'📈 Escalonado (começa leve)',sub:'Parcelas crescentes — a maior fica para dezembro',total:totalCheio,parcelas:distribui(totalCheio,meses.map((_,i)=>i+1))});
+  }
+  return {atr,totalCheio,totalBase,planos};
+}
+function modalNegociacao(atId){
+  const a=at(atId); if(!a)return;
+  const N=planosNegociacao(atId);
+  if(!N){toast('Este jogador não tem cobranças em atraso para negociar 🎉');return;}
+  subState.negPlanos=N.planos; subState.negAtleta=atId;
+  modal(`<h2>🤝 Negociação — ${esc(pnome(a.nome))}</h2>
+  <div class="grid g3" style="margin-top:8px">
+    <div class="card stat" style="padding:8px"><div class="n" style="font-size:16px;color:var(--bad)">${brl(N.totalCheio)}</div><div class="l">Em atraso (c/ acréscimos)</div></div>
+    <div class="card stat" style="padding:8px"><div class="n" style="font-size:16px">${brl(N.totalBase)}</div><div class="l">Valor base</div></div>
+    <div class="card stat" style="padding:8px"><div class="n" style="font-size:16px">${N.atr.length}</div><div class="l">Cobranças</div></div>
+  </div>
+  <p class="mut" style="margin:8px 0 0;font-size:12.5px">Todos os planos quitam a dívida até 31/12. Envie a proposta e, quando o atleta aceitar, aplique o acordo — as cobranças atrasadas viram as parcelas combinadas.</p>
+  ${N.planos.map((pl,i)=>`<div class="card" style="margin-top:10px;padding:12px">
+    <div class="spread"><strong>${pl.titulo}</strong><span class="pill p-gold">${brl(pl.total)}</span></div>
+    <p class="mut" style="margin:4px 0 6px;font-size:12.5px">${pl.sub}</p>
+    <div style="font-size:13px">${pl.parcelas.map((pc,j)=>`<span class="pill p-mut" style="margin:2px 3px 2px 0">${pl.parcelas.length>1?(j+1)+'ª ':''}${dbr(pc.venc)} — <strong>${brl(pc.valor)}</strong></span>`).join('')}</div>
+    <div class="row" style="margin-top:8px">
+      <button class="mini" onclick="enviarProposta(${i})">📱 Enviar proposta</button>
+      <button class="mini gold" onclick="aplicarAcordo(${i})">✔ Aplicar acordo</button>
+    </div>
+  </div>`).join('')}
+  <div class="row" style="margin-top:14px"><button class="sec" onclick="fecha()">Fechar</button></div>`);
+}
+function enviarProposta(idx){
+  const atId=subState.negAtleta, pl=subState.negPlanos[idx], a=at(atId);
+  if(!pl||!a)return;
+  const linhas=pl.parcelas.map((pc,j)=>`${pl.parcelas.length>1?'• '+(j+1)+'ª parcela — ':'• '}${dbr(pc.venc)}: *${brl(pc.valor)}*`).join('\n');
+  const msg=`Prezado(a) @${pnome(a.nome)},\n\n*${db.config.time} — Tesouraria* 🏦\n\nPara facilitar a regularização dos valores em aberto, preparamos esta proposta:\n\n${pl.titulo.replace(/^[^ ]+ /,'')}\n${linhas}\n*Total: ${brl(pl.total)}*${pl.key==='avista'?'\n(abonamos os acréscimos de atraso na quitação à vista)':''}\n\nTudo quitado até o fim do ano e você segue em dia com o clube. Topa? Qualquer ajuste, conversamos.${db.config.pix?'\n\n💳 Pix: '+db.config.pix:''}\n\nContamos com você! 🤝⚖️`;
+  if(a.fone) window.open(waLink(a.fone,msg),'_blank');
+  else copiar(msg,'Proposta copiada — cole na conversa');
+  log('financeiro',`Proposta de negociação enviada: ${pnome(a.nome)} — ${pl.titulo} (${brl(pl.total)})`);
+}
+function aplicarAcordo(idx){
+  const atId=subState.negAtleta, pl=subState.negPlanos[idx], a=at(atId);
+  if(!pl||!a)return;
+  const N=planosNegociacao(atId); if(!N)return;
+  confirma(`Aplicar o acordo <strong>${pl.titulo}</strong> para <strong>${esc(pnome(a.nome))}</strong>?<br>
+  As ${N.atr.length} cobranças atrasadas serão substituídas por ${pl.parcelas.length} parcela(s) somando <strong>${brl(pl.total)}</strong>, com vencimentos até dezembro.<br>
+  <span class="mut">${pl.parcelas.map((pc,j)=>dbr(pc.venc)+' — '+brl(pc.valor)).join(' · ')}</span>`,async()=>{
+    const origem=N.atr.map(c=>c.desc).join(', ');
+    // preserva no histórico o que já foi pago parcialmente
+    for(const c of N.atr){
+      if(pagoParcial(c)>0){
+        await sb.from('cobrancas').update({status:'pago',pago_em:hoje(),valor:pagoParcial(c),detalhes:((c.detalhes||'')+' · Encerrada por acordo — saldo renegociado').trim()}).eq('id',c.id);
+      }else{
+        await sb.from('cobrancas').delete().eq('id',c.id);
+      }
+    }
+    const rows=pl.parcelas.map((pc,j)=>({atleta_id:atId,descricao:`🤝 Acordo ${pl.parcelas.length>1?(j+1)+'/'+pl.parcelas.length+' ':''}— renegociação`,valor:pc.valor,venc:pc.venc,detalhes:`Acordo (${pl.titulo}) sobre: ${origem}`}));
+    const {error}=await sb.from('cobrancas').insert(rows);
+    if(error){toast('⚠️ '+error.message);return;}
+    log('financeiro',`🤝 ACORDO aplicado: ${a.nome} — ${pl.titulo}, ${pl.parcelas.length} parcela(s) de ${brl(pl.total)} (origem: ${origem})`);
+    fecha(); await recarrega(); toast('🤝 Acordo aplicado — parcelas criadas até dezembro!');
+  });
+}
+function cardAcordos(soAtleta){
+  const acs=db.cobrancas.filter(c=>ehAcordo(c)&&(soAtleta?c.atletaId===me.id:true));
+  const por={};
+  acs.forEach(c=>{(por[c.atletaId]??=[]).push(c);});
+  const grupos=Object.entries(por).filter(([,l])=>l.some(c=>c.status!=='pago'));
+  if(!grupos.length)return '';
+  return `<div class="card sect" style="border-color:var(--gold)"><h2>🤝 Acordo${grupos.length>1?'s':''} de pagamento em andamento</h2>
+  ${grupos.map(([id,list])=>{
+    list.sort((a,b)=>String(a.venc).localeCompare(String(b.venc)));
+    const pagas=list.filter(c=>c.status==='pago').length;
+    const prox=list.find(c=>c.status!=='pago');
+    const emAtraso=list.some(c=>c.status==='atrasado');
+    const meu=id===me.id;
+    return `<div class="alertline ${emAtraso?'al-bad':'al-ok'}"><div style="flex:1">
+      ${soAtleta?'':`<strong>${esc(pnome(nomeAt(id)))}</strong> — `}<strong>${pagas} de ${list.length} parcela${list.length>1?'s':''} paga${pagas===1?'':'s'}</strong>${emAtraso?' <span class="pill p-bad">parcela em atraso</span>':' <span class="pill p-ok">em dia</span>'}
+      ${prox?`<div class="mut">próxima: <strong>${brl(restanteDe(prox))}</strong> até ${dbr(prox.venc)}</div>`:''}</div>
+      ${meu&&prox&&db.config.pix?`<button class="mini gold" onclick="pagarPix('${prox.id}')">💳 Pagar parcela</button>`:''}
+      ${!soAtleta&&me.role==='diretoria'?`<button class="mini sec" onclick="vai('financeiro')">Ver</button>`:''}
+    </div>`;}).join('')}</div>`;
 }
 function formCobranca(){
   const ats=elenco();
@@ -6156,6 +6262,7 @@ function tMeu(){
   ${prox.length?`<button class="sec mini" onclick="baixarICS(db.eventos.filter(e=>e.data>=hoje()),'agenda-oabmaster.ics')">📅 Agenda completa (.ics)</button>`:''}</div>
   ${cardVotacaoCraque()}
   ${cardNovidadesTaticas()}
+  ${cardAcordos(true)}
   <div class="grid g5 sect">
     <div class="card stat clickable" onclick="vai('presencas')"><div class="n">${pct===null?'—':pct+'%'}</div><div class="l">Minha frequência →</div></div>
     <div class="card stat clickable" onclick="vai('desempenho')"><div class="n">${gols}⚽ ${asst}🅰️</div><div class="l">Gols / Assist. →</div></div>
