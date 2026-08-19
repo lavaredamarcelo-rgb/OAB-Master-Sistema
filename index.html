@@ -3010,8 +3010,8 @@ function tAgenda(){
     <p class="mut">Baixe o <strong>.ics</strong> para incluir jogos e treinos no calendário do celular — com lembretes automáticos (1 dia e 3 h antes).</p>
     <div class="row">${podeEditar?`<button onclick="formEvento()">+ Novo compromisso</button>`:''}
     ${evs.length?`<button class="sec" onclick="baixarICS(db.eventos,'agenda-time.ics')">📅 Baixar agenda (.ics)</button>`:''}</div></div>
-  <div class="card tblwrap"><table class="cardz"><tr><th>Data</th><th>Hora</th><th>Compromisso</th><th>Local</th><th></th></tr>
-  ${evs.length?evs.map(e=>`<tr style="${(e.dataFim||e.data)<hoje()?'opacity:.55':''}">
+  ${(()=>{
+    const linhaEv=e=>`<tr style="${(e.dataFim||e.data)<hoje()?'opacity:.55':''}">
     <td data-l="Data"><strong>${dbr(e.data)}</strong>${e.dataFim?`<div class="mut">até ${dbr(e.dataFim)}</div>`:''}</td><td data-l="Hora">${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''}</td>
     <td><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong>${e.tipo==='campeonato'?' <span class="pill p-gold">campeonato</span>':''}${e.placarNos!=null?` <span class="pill ${e.placarNos>e.placarDeles?'p-ok':e.placarNos===e.placarDeles?'p-warn':'p-bad'}">${e.placarNos}×${e.placarDeles}${e.adversario?' '+esc(e.adversario):''}</span>`:''}${e.obs?`<div class="mut" style="white-space:pre-wrap">${esc(e.obs)}</div>`:''}</td>
     <td data-l="Local">${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener" title="Abrir no Google Maps">📍 ${esc(e.local)}</a>`:'—'}</td>
@@ -3019,7 +3019,20 @@ function tAgenda(){
     ${podeEditar?`${ehJogoTipo(e.tipo)?`<button class="mini ${e.placarNos!=null?'sec':'gold'}" onclick="formPlacar('${e.id}')">⚽ Placar</button>`:''}
     <button class="mini sec" onclick="formEvento('${e.id}')">✏️ Editar</button>
     <button class="mini sec" onclick="convocar('${e.id}')">📣 Convocar</button>
-    <button class="mini sec" onclick="delEvento('${e.id}')">✕</button>`:''}</td></tr>`).join(''):'<tr><td colspan="5" class="mut">Nenhum compromisso.</td></tr>'}</table></div>
+    <button class="mini sec" onclick="delEvento('${e.id}')">✕</button>`:''}</td></tr>`;
+    const porMes=lista=>{ let out='',m0='';
+      lista.forEach(e=>{ const m=e.data.slice(0,7);
+        if(m!==m0){ m0=m; out+=`<tr><td colspan="5" style="background:var(--p-soft);color:var(--p);font-weight:800;font-size:13px;letter-spacing:.03em">📅 ${MESES_NOME[Number(m.slice(5))-1].toUpperCase()} / ${m.slice(0,4)}</td></tr>`; }
+        out+=linhaEv(e); });
+      return out; };
+    const cab='<tr><th>Data</th><th>Hora</th><th>Compromisso</th><th>Local</th><th></th></tr>';
+    const futuros=evs.filter(e=>(e.dataFim||e.data)>=hoje());
+    const passados=evs.filter(e=>(e.dataFim||e.data)<hoje()).reverse();
+    return `<div class="card sect"><h2>📅 Próximos compromissos ${futuros.length?`<span class="pill p-ok">${futuros.length}</span>`:''}</h2>
+    ${futuros.length?`<div class="tblwrap"><table class="cardz">${cab}${porMes(futuros)}</table></div>`:'<p class="mut">Nada agendado — crie um compromisso acima.</p>'}</div>
+    ${passados.length?`<div class="card sect"><details><summary style="cursor:pointer;font-weight:700;font-size:16px">🗂️ Já realizados <span class="pill p-mut">${passados.length}</span> <span class="mut" style="font-weight:400;font-size:12.5px">— toque para abrir, do mais recente para o mais antigo</span></summary>
+    <div class="tblwrap" style="margin-top:10px"><table class="cardz">${cab}${porMes(passados)}</table></div></details></div>`:''}`;
+  })()}
   ${jogosPlacar.length?`<div class="card" style="margin-top:14px"><div class="spread"><h2>🏆 Retrospecto de jogos</h2>
   <div class="row" style="gap:6px"><select onchange="subState.retroAdv=this.value;renderTab()" style="max-width:210px"><option value="">🌐 Todos os adversários</option>${advs.map(a=>`<option value="${esc(a)}" ${a===advSel?'selected':''}>${esc(a)}</option>`).join('')}</select>
   <button class="mini gold" onclick="pdfRetrospecto()">📄 PDF</button></div></div>
