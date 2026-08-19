@@ -1038,6 +1038,17 @@ function tAtletas(){
   <div class="card sect" style="background:var(--blue-soft);border-color:var(--blue)">
   <strong>Como adicionar alguém:</strong> envie o link do sistema + o <strong>código do time</strong> (<code>${esc(db.config.codigo)}</code> — mude em Ajustes). A pessoa cria a própria conta, você aprova aqui e, se for o caso, muda a função dela (treinador, preparador, diretoria) no ✏️ Editar.
   <div class="row" style="margin-top:12px"><button onclick="formNovoAtletaManual()">➕ Cadastrar atleta manualmente</button><span class="mut" style="font-size:12px">• Preencha os dados agora, vincule ao perfil dele depois que se registrar</span></div></div>
+  ${(()=>{
+    const manuais=db.atletas.filter(a=>a.cadastroManual&&!a.pendente);
+    const nomesConv=[...new Set([...db.cobrancas.map(c=>(c.convidado||'').trim()),...db.presencas.map(pz=>(pz.convidado||'').trim()),...db.stats.map(st=>(st.convidado||'').trim())].filter(Boolean))].sort();
+    if(!manuais.length&&!nomesConv.length)return '';
+    return `<div class="card sect" style="border-color:var(--gold)"><h2>🔗 Vínculos pendentes <span class="pill p-gold">${manuais.length+nomesConv.length}</span></h2>
+    <p class="mut">Quando a pessoa se cadastrar no sistema, vincule aqui — os lançamentos (cobranças, presenças, estatísticas etc.) passam para o perfil real, sem redigitar nada.</p>
+    ${manuais.map(m=>`<div class="alertline al-gold"><div style="flex:1"><strong>📋 ${esc(m.nome)}</strong> <span class="pill p-mut">cadastro manual</span></div>
+      <button class="mini gold" onclick="modalVincularAlvo('manual','${m.id}')">🔗 Vincular a um perfil</button></div>`).join('')}
+    ${nomesConv.map(n=>`<div class="alertline" style="background:var(--warn-soft)"><div style="flex:1"><strong>🎟️ ${esc(n)}</strong> <span class="pill p-mut">lançamentos de convidado</span></div>
+      <button class="mini" onclick="modalVincularAlvo('convidado','${esc(n)}')">🎟️ Puxar para um perfil</button></div>`).join('')}
+    </div>`;})()}
   ${pendentes.length?`<div class="card sect" style="border-color:var(--warn)"><h2>🆕 Solicitações aguardando aprovação</h2>
   ${pendentes.map(a=>`<div class="alertline al-warn"><div style="flex:1"><strong>${esc(a.nome)}</strong><div class="mut">${a.oab?'OAB '+esc(a.oab)+' · ':''}${a.posicao?esc(a.posicao)+' · ':''}${a.fone?'📱 '+esc(a.fone):''} · ${esc(a.email)}</div></div>
   <button class="mini" onclick="aprovaCadastro('${a.id}')">✔ Aprovar</button>
@@ -1315,6 +1326,18 @@ function formAtleta(id){
   <div class="row" style="margin-top:8px"><input type="checkbox" id="a_isento" ${a.isentoMens?'checked':''} style="width:auto"> <span>🧤 Isento de mensalidade (ex.: goleiro)</span></div>
   <div class="row" style="margin-top:16px"><button onclick="salvaAtleta('${id}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button>
   ${id!==me.id&&!travaDir?`<span style="flex:1"></span><button class="bad" onclick="confirmaExcluir('${id}')">🗑 Excluir do sistema</button>`:''}</div>`);
+}
+function modalVincularAlvo(tipo,chave){
+  const alvos=db.atletas.filter(a=>!a.pendente&&!a.cadastroManual&&a.ativo);
+  if(!alvos.length){toast('Nenhum perfil registrado disponível');return;}
+  const rotulo=tipo==='manual'?('📋 '+(at(chave)?at(chave).nome:'')):('🎟️ '+chave);
+  modal(`<h2>🔗 Vincular lançamentos</h2>
+  <p class="mut">Tudo que foi lançado para <strong>${esc(rotulo)}</strong> será transferido para o perfil escolhido abaixo.</p>
+  <label>Transferir para</label>
+  <select id="vl_alvo">${alvos.map(a=>`<option value="${a.id}">${esc(a.nome)}</option>`).join('')}</select>
+  <div class="row" style="margin-top:14px">
+    <button class="gold" onclick="${tipo==='manual'?`vincularManualmente(fval('vl_alvo'),'${chave}')`:`vincularConvidado(fval('vl_alvo'),'${esc(chave)}')`}">🔗 Vincular</button>
+    <button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function vincularConvidado(idReal,nomeConv){
   if(!nomeConv)return;
