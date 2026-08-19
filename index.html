@@ -4676,7 +4676,11 @@ function modalNegociacao(atId){
     <div class="card stat" style="padding:8px"><div class="n" style="font-size:16px">${brl(N.totalBase)}</div><div class="l">Valor base</div></div>
     <div class="card stat" style="padding:8px"><div class="n" style="font-size:16px">${N.atr.length}</div><div class="l">Cobranças</div></div>
   </div>
-  <p class="mut" style="margin:8px 0 0;font-size:12.5px">Todos os planos quitam a dívida até 31/12. Envie a proposta e, quando o atleta aceitar, aplique o acordo — as cobranças atrasadas viram as parcelas combinadas.</p>
+  <p class="mut" style="margin:8px 0 0;font-size:12.5px">Todos os planos quitam a dívida até 31/12. Envie a proposta completa para a pessoa escolher com calma e, quando aceitar, aplique o acordo — as cobranças atrasadas viram as parcelas combinadas.</p>
+  <div class="row" style="margin-top:10px">
+    <button class="gold" onclick="pdfPropostaNegociacao('${atId}')">📄 Proposta completa (PDF)</button>
+    <button onclick="enviarPropostaTodas()">📱 Todas as opções no WhatsApp</button>
+  </div>
   ${N.planos.map((pl,i)=>`<div class="card" style="margin-top:10px;padding:12px">
     <div class="spread"><strong>${pl.titulo}</strong><span class="pill p-gold">${brl(pl.total)}</span></div>
     <p class="mut" style="margin:4px 0 6px;font-size:12.5px">${pl.sub}</p>
@@ -4687,6 +4691,45 @@ function modalNegociacao(atId){
     </div>
   </div>`).join('')}
   <div class="row" style="margin-top:14px"><button class="sec" onclick="fecha()">Fechar</button></div>`);
+}
+function pdfPropostaNegociacao(atId){
+  const a=at(atId); const N=planosNegociacao(atId);
+  if(!a||!N){toast('Sem cobranças em atraso para propor');return;}
+  const rotulos=['Opção 1','Opção 2','Opção 3','Opção 4'];
+  abreRelatorio(`<h1>🤝 Proposta de Regularização</h1>
+  <p class="sub">${esc(a.nome)}${a.oab?' · OAB '+esc(a.oab):''} — ${esc(db.config.time)} · emitida em ${new Date().toLocaleDateString('pt-BR')}</p>
+  <div class="cards">
+    <div class="card"><div class="n bad">${brl(N.totalCheio)}</div><div class="l">Em aberto c/ acréscimos</div></div>
+    <div class="card"><div class="n">${brl(N.totalBase)}</div><div class="l">Valor base</div></div>
+    <div class="card"><div class="n">${N.atr.length}</div><div class="l">Cobranças</div></div>
+    <div class="card"><div class="n">31/12</div><div class="l">Prazo final</div></div>
+  </div>
+  <h2>📋 O que está em aberto</h2>
+  <table><tr><th>Cobrança</th><th>Vencimento</th><th>Valor devido</th></tr>
+  ${N.atr.map(c=>`<tr><td>${esc(c.desc)}</td><td>${dbr(c.venc)}</td><td class="bad">${brl(restanteDe(c))}</td></tr>`).join('')}</table>
+  ${N.planos.map((pl,i)=>`<div class="mes"><h2>${rotulos[i]||''} — ${pl.titulo} · ${brl(pl.total)}</h2>
+  <p style="font-size:12.5px;color:#8a8f99;margin:4px 0 8px">${pl.sub}</p>
+  <table><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th></tr>
+  ${pl.parcelas.map((pc,j)=>`<tr><td>${pl.parcelas.length>1?(j+1)+'ª':'Única'}</td><td>${dbr(pc.venc)}</td><td><strong>${brl(pc.valor)}</strong></td></tr>`).join('')}
+  ${pl.key==='avista'?`<tr class="tot"><td colspan="2">Economia (abono dos acréscimos de atraso)</td><td class="ok">${brl(+(N.totalCheio-N.totalBase).toFixed(2))}</td></tr>`:''}
+  </table></div>`).join('')}
+  <h2>✅ Como aceitar</h2>
+  <p style="font-size:13.5px;line-height:1.6">Basta responder à diretoria indicando a <strong>opção escolhida</strong>. O acordo é registrado no sistema e as parcelas aparecem no seu espaço, cada uma com <strong>QR Code Pix do valor exato</strong>. Cumprindo as parcelas em dia, nenhum acréscimo novo é aplicado — e você encerra o ano em dia com o clube. 🤝</p>
+  <p style="font-size:11.5px;color:#8a8f99">Proposta de caráter conciliatório, sem redução do valor principal das mensalidades. Dúvidas ou contrapropostas: fale com a diretoria.</p>
+  <div style="margin-top:44px;display:flex;gap:40px;text-align:center">
+    <div style="flex:1;border-top:1px solid #333;padding-top:6px">Diretoria — ${esc(db.config.time)}</div>
+    <div style="flex:1;border-top:1px solid #333;padding-top:6px">${esc(a.nome)}</div>
+  </div>`,`Proposta — ${pnome(a.nome)}`);
+}
+function enviarPropostaTodas(){
+  const atId=subState.negAtleta, a=at(atId), N=planosNegociacao(atId);
+  if(!a||!N)return;
+  const rot=['*Opção 1*','*Opção 2*','*Opção 3*','*Opção 4*'];
+  const blocos=N.planos.map((pl,i)=>`${rot[i]||''} — ${pl.titulo.replace(/^[^ ]+ /,'')}: *${brl(pl.total)}*\n${pl.parcelas.map((pc,j)=>`   ${pl.parcelas.length>1?(j+1)+'ª ':''}${dbr(pc.venc)} — ${brl(pc.valor)}`).join('\n')}${pl.key==='avista'?'\n   (com abono dos acréscimos de atraso)':''}`).join('\n\n');
+  const msg=`Prezado(a) @${pnome(a.nome)},\n\n*${db.config.time} — Tesouraria* 🏦\n\nPara regularizar os valores em aberto (${brl(N.totalCheio)}), preparamos estas opções — todas quitando até o fim do ano:\n\n${blocos}\n\n👉 *Responda com a opção escolhida* que registramos no sistema — as parcelas aparecem no seu espaço com Pix de valor exato.${db.config.pix?'\n\n💳 Pix: '+db.config.pix:''}\n\nContamos com você! 🤝⚖️`;
+  if(a.fone) window.open(waLink(a.fone,msg),'_blank');
+  else copiar(msg,'Proposta copiada — cole na conversa');
+  log('financeiro',`Proposta completa (todas as opções) enviada: ${pnome(a.nome)}`);
 }
 function enviarProposta(idx){
   const atId=subState.negAtleta, pl=subState.negPlanos[idx], a=at(atId);
