@@ -6341,7 +6341,7 @@ function tMeu(){
   const minhasFaltas=fqMe.f, pct=fqMe.pct;
   const st=db.stats.filter(s=>s.atletaId===me.id);
   const gols=st.reduce((s,x)=>s+(+x.gols||0),0), asst=st.reduce((s,x)=>s+(+x.assist||0),0);
-  const notas=st.filter(x=>x.nota).map(x=>+x.nota);
+  const notas=[...st.filter(x=>notaConta(x.eventoId)).map(x=>notaDe(x).v),...presencasSemStats(me.id).filter(pz=>notaConta(pz.eventoId)).map(()=>7)];
   const pend=meusUni.filter(u=>u.status==='pendente');
   const prox=db.eventos.filter(e=>e.data>=hoje()||(e.dataFim&&e.dataFim>=hoje())).sort((a,b)=>a.data.localeCompare(b.data)).slice(0,3);
   const docsFaltando=db.config.docsObrig.filter(cat=>!db.arquivos.some(d=>d.atletaId===me.id&&d.categoria===cat));
