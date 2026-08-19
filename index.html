@@ -322,7 +322,7 @@ async function carregaTudo(){
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,forma:c.forma_pagamento||'',pagamentos:c.pagamentos||[],origem:c.origem||'',lote:c.origem_lote||''}));
   db.avaliacoes=avaliacoes.map(v=>({id:v.id,atletaId:v.atleta_id,data:String(v.data),peso:v.peso,altura:v.altura,gordura:v.gordura,pesoGordura:v.peso_gordura||'',pesoMagro:v.peso_magro||'',massaMuscular:v.massa_muscular||'',salto1:v.salto1||'',salto2:v.salto2||'',salto3:v.salto3||'',forca:v.forca||'',resistencia:v.resistencia||'',notas:v.notas}));
   db.metas=metas.map(m=>({id:m.id,atletaId:m.atleta_id,desc:m.descricao,prazo:m.prazo?String(m.prazo):'',status:m.status}));
-  db.stats=stats.map(s=>({id:s.id,eventoId:s.evento_id,atletaId:s.atleta_id,minutos:s.minutos,gols:s.gols,assist:s.assist,amarelos:s.amarelos,vermelho:s.vermelho,desarmes:s.desarmes,duelos:s.duelos,passes:s.passes,antecipacao:s.antecipacao||0,duelosAereos:s.duelos_aereos||0,chutesGol:s.chutes_gol||0,defesas:s.defesas||0,passesErrados:s.passes_errados||0,duelosPerdidos:s.duelos_perdidos||0,bolasPerdidas:s.bolas_perdidas||0,faltasCometidas:s.faltas_cometidas||0,chutesErrados:s.chutes_errados||0,golsSofridos:s.gols_sofridos||0,penaltisPerdidos:s.penaltis_perdidos||0,penaltisCometidos:s.penaltis_cometidos||0,golsContra:s.gols_contra||0,nota:s.nota,obs:s.obs}));
+  db.stats=stats.map(s=>({id:s.id,eventoId:s.evento_id,atletaId:s.atleta_id,convidado:s.convidado||'',minutos:s.minutos,gols:s.gols,assist:s.assist,amarelos:s.amarelos,vermelho:s.vermelho,desarmes:s.desarmes,duelos:s.duelos,passes:s.passes,antecipacao:s.antecipacao||0,duelosAereos:s.duelos_aereos||0,chutesGol:s.chutes_gol||0,defesas:s.defesas||0,passesErrados:s.passes_errados||0,duelosPerdidos:s.duelos_perdidos||0,bolasPerdidas:s.bolas_perdidas||0,faltasCometidas:s.faltas_cometidas||0,chutesErrados:s.chutes_errados||0,golsSofridos:s.gols_sofridos||0,penaltisPerdidos:s.penaltis_perdidos||0,penaltisCometidos:s.penaltis_cometidos||0,golsContra:s.gols_contra||0,nota:s.nota,obs:s.obs}));
   db.uniformes=uniformes.map(u=>({id:u.id,descricao:u.descricao,numero:u.numero,tamanho:u.tamanho,status:u.status,atletaId:u.atleta_id,entregueEm:u.entregue_em,aceitoEm:u.aceito_em,pecas:u.pecas||{camisa:'estoque',short:'estoque',meiao:'estoque'},fornecedor:u.fornecedor||'',convidado:u.convidado||'',convFone:u.convidado_fone||'',goleiro:!!u.goleiro,cor:u.cor||''}));
   db.inventario=inventario.map(i=>({id:i.id,nome:i.nome,cat:i.cat,qtd:i.qtd,marca:i.marca||'',cor:i.cor||'',material:i.material||'',obs:i.obs||'',fotoUrl:i.foto_url||'',emprestimos:i.emprestimos||[]}));
   const mapDoc=d=>({id:d.id,atletaId:d.atleta_id,categoria:d.categoria,nome:d.nome,titulo:d.titulo||'',descricao:d.descricao||'',path:d.path,mime:d.mime,tam:d.tam,quem:d.quem,quando:fdt(d.quando),quandoRaw:d.quando});
@@ -1292,9 +1292,15 @@ function formAtleta(id){
   const a=at(id);
   const podeDiretoria=me.fundador;
   const travaDir=a.role==='diretoria'&&!me.fundador;
-  const cadastroManual=db.atletas.find(at=>at.cadastroManual&&at.nome===a.nome&&at.id!==id);
+  const manuais=db.atletas.filter(at=>at.cadastroManual&&at.id!==id);
+  const nomesConv=[...new Set([...db.cobrancas.map(c=>(c.convidado||'').trim()),...db.presencas.map(pz=>(pz.convidado||'').trim()),...db.stats.map(st=>(st.convidado||'').trim())].filter(Boolean))].sort();
   modal(`<h2>Editar cadastro</h2>
-  ${cadastroManual?`<div class="alertline al-gold sect">📋 Existe um <strong>cadastro manual</strong> com este nome. <button class="mini gold" onclick="vincularManualmente('${id}','${cadastroManual.id}')">🔗 Vincular dados</button></div>`:''}
+  ${manuais.length&&!a.cadastroManual?`<div class="alertline al-gold sect" style="flex-wrap:wrap">📋 <strong>Vincular cadastro manual:</strong> traz presenças, estatísticas, cobranças, uniformes e avaliações lançados no manual para este perfil.
+  <div class="row" style="gap:6px;width:100%;margin-top:6px"><select id="a_vincman" style="flex:1;max-width:260px">${manuais.map(m=>`<option value="${m.id}" ${m.nome===a.nome?'selected':''}>${esc(m.nome)}</option>`).join('')}</select>
+  <button class="mini gold" onclick="vincularManualmente('${id}',fval('a_vincman'))">🔗 Vincular</button></div></div>`:''}
+  ${nomesConv.length&&!a.cadastroManual?`<div class="alertline sect" style="background:var(--warn-soft);flex-wrap:wrap">🎟️ <strong>Puxar lançamentos de convidado:</strong> cobranças, presenças e estatísticas feitas com este nome de convidado passam para este perfil.
+  <div class="row" style="gap:6px;width:100%;margin-top:6px"><select id="a_vincconv" style="flex:1;max-width:260px">${nomesConv.map(n=>`<option>${esc(n)}</option>`).join('')}</select>
+  <button class="mini" onclick="vincularConvidado('${id}',fval('a_vincconv'))">🎟️ Puxar lançamentos</button></div></div>`:''}
   <label>Nome completo</label><input id="a_nome" value="${esc(a.nome)}">
   <label>Como quer ser chamado(a) — nome de exibição (opcional)</label><input id="a_apelido" value="${esc(a.apelido||'')}" placeholder="Ex.: Marcelão, J. Silva, Careca… (vazio = automático)">
   <div class="grid g2">
@@ -1309,6 +1315,25 @@ function formAtleta(id){
   <div class="row" style="margin-top:8px"><input type="checkbox" id="a_isento" ${a.isentoMens?'checked':''} style="width:auto"> <span>🧤 Isento de mensalidade (ex.: goleiro)</span></div>
   <div class="row" style="margin-top:16px"><button onclick="salvaAtleta('${id}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button>
   ${id!==me.id&&!travaDir?`<span style="flex:1"></span><button class="bad" onclick="confirmaExcluir('${id}')">🗑 Excluir do sistema</button>`:''}</div>`);
+}
+async function vincularConvidado(idReal,nomeConv){
+  if(!nomeConv)return;
+  const a=at(idReal);
+  confirma(`Transferir todos os lançamentos do convidado <strong>🎟️ ${esc(nomeConv)}</strong> (cobranças, presenças e estatísticas) para <strong>${esc(a?a.nome:'')}</strong>?`,async()=>{
+    let nCob=0,nPres=0,nStat=0;
+    const {data:d1,error:e1}=await sb.from('cobrancas').update({atleta_id:idReal,convidado:''}).eq('convidado',nomeConv).is('atleta_id',null).select();
+    if(e1){toast('⚠️ '+e1.message);return;} nCob=(d1||[]).length;
+    const {data:d2}=await sb.from('stats').update({atleta_id:idReal,convidado:null}).eq('convidado',nomeConv).is('atleta_id',null).select();
+    nStat=(d2||[]).length;
+    const pres=db.presencas.filter(pz=>!pz.atletaId&&pz.convidado===nomeConv);
+    for(const pz of pres){
+      const jaTem=db.presencas.some(x=>x.eventoId===pz.eventoId&&x.atletaId===idReal);
+      if(jaTem) await sb.from('presencas').delete().eq('evento_id',pz.eventoId).eq('convidado',nomeConv);
+      else{ const {error:e3}=await sb.from('presencas').update({atleta_id:idReal,convidado:null}).eq('evento_id',pz.eventoId).eq('convidado',nomeConv); if(!e3)nPres++; }
+    }
+    log('cadastro',`Lançamentos de convidado transferidos: 🎟️ ${nomeConv} → ${a?a.nome:idReal} (${nCob} cobranças, ${nPres} presenças, ${nStat} estatísticas)`);
+    fecha(); await recarrega(); toast(`🎟️→👤 Transferido: ${nCob} cobrança(s), ${nPres} presença(s), ${nStat} estatística(s)`);
+  });
 }
 async function vincularManualmente(idAtual,idManual){
   const manual=at(idManual);
