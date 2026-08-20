@@ -934,6 +934,7 @@ function tPainel(){
   ${cardVotacaoCraque()}
   ${cardNovidadesTaticas()}
   ${cardAcordos(false)}
+  ${cardRankingClube()}
   <div class="row sect"><button class="gold mini" onclick="verCardJogador(me.id)">🪪 Meu card de jogador</button></div>
   <div class="grid g4 sect">
     <div class="card stat ${me.role==='diretoria'?'clickable':''}" ${me.role==='diretoria'?`onclick="vai('atletas')"`:''}><div class="n">${elenco().length}</div><div class="l">Jogadores ativos</div></div>
@@ -1098,6 +1099,7 @@ function perfil(id){
     <div class="card stat" style="padding:10px"><div class="n" style="font-size:20px">${gols}⚽ ${asst}🅰️</div><div class="l">Gols / Assist.</div></div>
     <div class="card stat" style="padding:10px"><div class="n" style="font-size:20px;color:${f>=db.config.limiteFaltas?'var(--bad)':'var(--ink)'}">${f}</div><div class="l">Faltas</div></div>
   </div>
+  ${(()=>{const P=pontosClube(id);const pat=patenteDe(P.total);return `<p style="margin:10px 0 0">🏅 <strong>${P.total} Pontos do Clube</strong> · ${pat.ico} ${pat.nome} <span class="mut">(campo ${P.campo} · perfil ${P.perfil})</span></p>`;})()}
   <h3 style="margin-top:16px">Contato</h3>
   <p style="margin:0">${a.fone?`📱 <a href="${waLink(a.fone,'Olá, '+pnome(a.nome)+'! ')}" target="_blank" rel="noopener">${esc(a.fone)}</a>`:'📱 —'}${a.email?` · ✉️ ${esc(a.email)}`:''}</p>
   <h3 style="margin-top:16px">Pendências</h3>
@@ -1146,6 +1148,7 @@ function cardJogador(a,estilo){
     ${a.fotoUrl?`<img class="pfoto" src="${esc(a.fotoUrl)}" alt="${esc(pnome(a.nome))}">`:`<div class="pfoto" style="display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:#a08c4a">${ini(a.nome)}</div>`}
     <div class="pnome">${esc(pnome(a.nome))}</div>
     ${a.posicao?`<div class="ppos2">${esc(a.posicao)}</div>`:''}
+    ${(()=>{const pat=patenteDe(pontosClube(a.id).total);return `<div class="ppos2" style="opacity:.95;margin-top:4px">${pat.ico} ${pat.nome.toUpperCase()}</div>`;})()}
     <div class="pstats">
       <div><div class="v">${fv(av.altura)}</div><div class="k">Altura</div></div>
       <div><div class="v">${fv(av.peso)}</div><div class="k">Peso</div></div>
@@ -1196,9 +1199,11 @@ async function geraCardImagem(atId){
   const nome=pnome(a.nome).toUpperCase();
   while(x.measureText(nome).width>W-60&&fs>20){fs--;x.font='800 '+fs+'px Helvetica';}
   x.fillText(nome,W/2,404);
-  if(a.posicao){x.globalAlpha=.85;x.font='700 19px Helvetica';x.fillText(a.posicao.toUpperCase(),W/2,434);x.globalAlpha=1;}
+  if(a.posicao){x.globalAlpha=.85;x.font='700 19px Helvetica';x.fillText(a.posicao.toUpperCase(),W/2,432);x.globalAlpha=1;}
+  const patC=patenteDe(pontosClube(a.id).total);
+  x.globalAlpha=.95;x.font='800 17px Helvetica';x.fillText(patC.ico+' '+patC.nome.toUpperCase(),W/2,460);x.globalAlpha=1;
   // divisor
-  x.globalAlpha=.35;x.fillStyle=ink;x.fillRect(40,470,W-80,2);x.globalAlpha=1;
+  x.globalAlpha=.35;x.fillStyle=ink;x.fillRect(40,476,W-80,2);x.globalAlpha=1;
   // estatísticas
   const stats=[[fv(av.altura),'ALTURA'],[fv(av.peso),'PESO'],[fq.pct===null?'—':fq.pct+'%','FREQ.'],[String(mediaN),'⭐ MÉDIA']];
   const cw=(W-60)/stats.length;
@@ -2049,6 +2054,106 @@ function jogosSemSofrer(atId,cat){
     .filter(e=>db.presencas.some(x=>x.eventoId===e.id&&x.atletaId===atId&&['presente','atraso'].includes(x.status))
              ||db.stats.some(x=>x.eventoId===e.id&&x.atletaId===atId)).length;
 }
+/* ================= PONTOS DO CLUBE (gamificação) ================= */
+const PATENTES=[[0,'📚','Estagiário'],[150,'⚖️','Associado'],[400,'💼','Sócio'],[800,'👑','Decano']];
+function patenteDe(pts){ let r=PATENTES[0]; PATENTES.forEach(pt=>{ if(pts>=pt[0])r=pt; }); return {ico:r[1],nome:r[2],min:r[0]}; }
+function proximaPatente(pts){ return PATENTES.find(pt=>pt[0]>pts)||null; }
+function pontosCampo(atId,mesPrefix){
+  // Pontos públicos (presenças e conquistas de campo) — iguais para todos os olhares
+  let pts=0; const det=[];
+  const peso={presente:0,atraso:1,justificada:2,falta:3};
+  const porDia={};
+  db.presencas.filter(pz=>pz.atletaId===atId).forEach(pz=>{
+    const e=byId(db.eventos,pz.eventoId); if(!e)return;
+    if(mesPrefix&&!e.data.startsWith(mesPrefix))return;
+    const d=porDia[e.data]; const j=ehJogoTipo(e.tipo), t=ehTreinoTipo(e.tipo);
+    if(!d||peso[pz.status]<peso[d.status]) porDia[e.data]={status:pz.status,jogo:j||(d?d.jogo:false),treino:t||(d?d.treino:false)};
+    else{ if(j)d.jogo=true; if(t)d.treino=true; }
+  });
+  let pj=0,ptr=0,pa=0,pjus=0,pAtr=0;
+  Object.values(porDia).forEach(d=>{ const base=d.jogo?15:10;
+    if(d.status==='presente'){ pts+=base; d.jogo?pj++:ptr++; }
+    else if(d.status==='atraso'){ pts+=base/2; pa++; pAtr+=base/2; }
+    else if(d.status==='justificada'){ pts+=3; pjus++; } });
+  if(pj)det.push({txt:'✅ Presenças em jogos',calc:pj+'× 15',pts:pj*15});
+  if(ptr)det.push({txt:'🏃 Presenças em treinos',calc:ptr+'× 10',pts:ptr*10});
+  if(pa)det.push({txt:'⏰ Atrasos (metade)',calc:pa+'×',pts:pAtr});
+  if(pjus)det.push({txt:'📝 Faltas justificadas',calc:pjus+'× 3',pts:pjus*3});
+  const evsMes=e=>!mesPrefix||e.data.startsWith(mesPrefix);
+  const craques=db.eventos.filter(e=>evsMes(e)&&(()=>{const c=craqueDo(e.id);return c&&c.id===atId;})()).length;
+  if(craques){ pts+=craques*25; det.push({txt:'🌟 Craque do Jogo (eleito)',calc:craques+'× 25',pts:craques*25}); }
+  const notasAltas=db.stats.filter(x=>x.atletaId===atId&&notaConta(x.eventoId)&&(()=>{const e=byId(db.eventos,x.eventoId);return e&&evsMes(e);})()&&notaDe(x).v>=8).length;
+  if(notasAltas){ pts+=notasAltas*10; det.push({txt:'⭐ Notas 8+ em jogos',calc:notasAltas+'× 10',pts:notasAltas*10}); }
+  const mur=db.eventos.filter(e=>evsMes(e)&&ehJogoTipo(e.tipo)&&e.placarNos!=null&&Number(e.placarDeles)===0)
+    .filter(e=>db.presencas.some(x=>x.eventoId===e.id&&x.atletaId===atId&&['presente','atraso'].includes(x.status))||db.stats.some(x=>x.eventoId===e.id&&x.atletaId===atId)).length;
+  if(mur){ pts+=mur*5; det.push({txt:'🧱 Jogos sem sofrer gol',calc:mur+'× 5',pts:mur*5}); }
+  return {pts:Math.round(pts),det};
+}
+function pontosPerfil(atId){
+  // Bônus de perfil e compromissos — calculado com o que o usuário logado consegue ver
+  const a=at(atId); if(!a)return {pts:0,det:[],miss:[]};
+  let pts=0; const det=[],miss=[];
+  const mensDia=db.cobrancas.filter(c=>c.atletaId===atId&&ehMensal(c)&&c.status==='pago'&&c.pagoEm&&String(c.pagoEm)<=String(c.venc)).length;
+  if(mensDia){ pts+=mensDia*20; det.push({txt:'💰 Mensalidades pagas em dia',calc:mensDia+'× 20',pts:mensDia*20}); }
+  const acordoOk=db.cobrancas.filter(c=>c.atletaId===atId&&ehAcordo(c)&&c.status==='pago').length;
+  if(acordoOk){ pts+=acordoOk*10; det.push({txt:'🤝 Parcelas de acordo pagas',calc:acordoOk+'× 10',pts:acordoOk*10}); }
+  const nAv=db.avaliacoes.filter(v=>v.atletaId===atId).length;
+  if(nAv){ pts+=nAv*25; det.push({txt:'📋 Avaliações físicas realizadas',calc:nAv+'× 25',pts:nAv*25}); }
+  else miss.push({txt:'📋 Fazer a avaliação física',pts:25});
+  const saudeOk=a.consent&&a.consent.aceito&&a.saude&&(a.saude.sangue||a.saude.emergencia||a.saude.plano||a.saude.alergias);
+  if(saudeOk){ pts+=30; det.push({txt:'🩺 Ficha de saúde + termo LGPD',calc:'',pts:30}); }
+  else miss.push({txt:'🩺 Completar a ficha de saúde (e aceitar o termo)',pts:30});
+  if(db.config.docsObrig&&db.config.docsObrig.length){
+    const docsOk=db.config.docsObrig.every(cat=>db.arquivos.some(d=>d.atletaId===atId&&d.categoria===cat));
+    if(docsOk){ pts+=20; det.push({txt:'📁 Documentos obrigatórios completos',calc:'',pts:20}); }
+    else miss.push({txt:'📁 Anexar os documentos obrigatórios',pts:20});
+  }
+  if(a.fotoUrl){ pts+=15; det.push({txt:'📸 Foto no card',calc:'',pts:15}); }
+  else miss.push({txt:'📸 Enviar sua foto para o card',pts:15});
+  const uniAceito=db.uniformes.some(u=>u.atletaId===atId&&u.status==='com_atleta');
+  const uniPend=db.uniformes.some(u=>u.atletaId===atId&&u.status==='pendente');
+  if(uniAceito){ pts+=10; det.push({txt:'👕 Termo do uniforme aceito',calc:'',pts:10}); }
+  else if(uniPend) miss.push({txt:'👕 Aceitar o termo do uniforme',pts:10});
+  return {pts,det,miss};
+}
+function pontosClube(atId){
+  const c=pontosCampo(atId), pf=pontosPerfil(atId);
+  return {total:c.pts+pf.pts,campo:c.pts,perfil:pf.pts,det:[...c.det,...pf.det],miss:pf.miss};
+}
+function cardRankingClube(){
+  const mes=hoje().slice(0,7);
+  const lista=elenco().map(a=>({a,temp:pontosCampo(a.id).pts,mes:pontosCampo(a.id,mes).pts})).filter(r=>r.temp>0);
+  if(!lista.length)return '';
+  const topT=[...lista].sort((x,y)=>y.temp-x.temp).slice(0,5);
+  const topM=[...lista].sort((x,y)=>y.mes-x.mes).filter(r=>r.mes>0).slice(0,3);
+  return `<div class="card sect" style="border-color:var(--gold)"><h2>🏅 Ranking de Participação</h2>
+  <p class="mut" style="margin-top:0;font-size:12.5px">Pontos de campo: presenças, craque, notas 8+, jogos sem sofrer gol. Complete o perfil para somar ainda mais no seu placar pessoal.</p>
+  ${topM.length?`<div class="mut" style="font-size:12px;font-weight:700;text-transform:uppercase;margin:8px 0 4px">🔥 Destaques do mês</div>
+  <div class="row" style="gap:6px;flex-wrap:wrap">${topM.map((r,i)=>`<span class="pill ${i===0?'p-gold':'p-mut'}">${['🥇','🥈','🥉'][i]} ${esc(pnome(r.a.nome))} — ${r.mes}</span>`).join('')}</div>`:''}
+  <div class="mut" style="font-size:12px;font-weight:700;text-transform:uppercase;margin:10px 0 4px">🏆 Temporada</div>
+  ${topT.map((r,i)=>{const pat=patenteDe(pontosClube(r.a.id).total);
+    return `<div class="alertline" style="background:var(--bg)"><span class="medal">${['🥇','🥈','🥉','4º','5º'][i]}</span>
+    <span style="flex:1">${esc(pnome(r.a.nome))} <span class="pill p-mut" style="font-size:10.5px">${pat.ico} ${pat.nome}</span></span><strong>${r.temp}</strong></div>`;}).join('')}
+  </div>`;
+}
+function cardMeusPontos(){
+  const P=pontosClube(me.id);
+  const pat=patenteDe(P.total), prox=proximaPatente(P.total);
+  return `<div class="card sect" style="border-color:var(--gold)"><div class="spread"><h2>${pat.ico} Meus Pontos do Clube</h2>
+  <span class="pill p-gold" style="font-size:15px">${P.total} pts</span></div>
+  <div class="row" style="gap:6px;margin:4px 0 8px;flex-wrap:wrap">
+    <span class="pill p-gold">${pat.ico} ${pat.nome}</span>
+    <span class="pill p-mut">🏟️ Campo: ${P.campo}</span>
+    <span class="pill p-mut">🪪 Perfil: ${P.perfil}</span>
+  </div>
+  ${prox?`<div style="background:var(--bg2);border-radius:99px;height:10px;overflow:hidden"><div style="height:100%;width:${Math.min(100,Math.round((P.total-pat.min)/(prox[0]-pat.min)*100))}%;background:var(--gold)"></div></div>
+  <p class="mut" style="font-size:12px;margin-top:4px">Faltam <strong>${prox[0]-P.total} pts</strong> para ${prox[1]} ${prox[2]}</p>`:'<p class="mut" style="font-size:12.5px">👑 Patente máxima alcançada — Decano do Master!</p>'}
+  ${P.miss.length?`<div class="mut" style="font-size:12px;font-weight:700;text-transform:uppercase;margin:10px 0 4px">🎯 Minhas missões — pontos esperando você</div>
+  ${P.miss.map(m=>`<div class="alertline al-warn" style="padding:7px 10px"><div style="flex:1">${m.txt}</div><span class="pill p-gold">+${m.pts}</span></div>`).join('')}`:'<p class="mut" style="font-size:12.5px;margin-top:8px">✅ Todas as missões de perfil completas — pontue nos jogos!</p>'}
+  <details style="margin-top:8px"><summary class="mut" style="cursor:pointer;font-size:12.5px">📊 Ver de onde vêm meus pontos</summary>
+  ${P.det.map(d=>`<div class="alertline" style="background:var(--bg);padding:6px 10px"><div style="flex:1;font-size:13px">${d.txt}${d.calc?` <span class="mut">(${d.calc})</span>`:''}</div><strong>+${d.pts}</strong></div>`).join('')||'<p class="mut">Ainda sem pontos — comece aparecendo no treino! 💪</p>'}</details>
+  </div>`;
+}
 function craqueDo(evId){
   // Contagem vem de função sigilosa do banco — ninguém vê o voto individual dos outros
   const ts=(db.craqueTotais||[]).filter(t=>t.eventoId===evId);
@@ -2132,6 +2237,8 @@ function pdfPremios(){
   ${linha('🧤 Luva de Ouro',top(a=>a.df),a=>a.df+' defesas')}
   ${linha('🛡️ Xerife',top(a=>a.des),a=>a.des+' desarmes')}
   ${linha('🤝 Fair Play',fair,a=>`${a.fc} falta${a.fc===1?'':'s'} · ${a.ca}🟨 ${a.cv}🟥`)}
+  ${(()=>{const l=elenco().map(a2=>({a:a2,p:pontosCampo(a2.id).pts})).sort((x,y)=>y.p-x.p)[0];
+    return l&&l.p?`<tr><td><strong>🏅 Mais Participativo</strong></td><td><strong>${esc(l.a.nome)}</strong></td><td>${l.p} pontos de campo${(()=>{const pat=patenteDe(pontosClube(l.a.id).total);return ' · '+pat.ico+' '+pat.nome;})()}</td></tr>`:'';})()}
   ${(()=>{const m=elenco().map(a=>({id:a.id,v:jogosSemSofrer(a.id)})).sort((x,y)=>y.v-x.v)[0];
     return m&&m.v?`<tr><td><strong>🧱 Muralha</strong></td><td><strong>${esc(nomeAt(m.id))}</strong></td><td>${m.v} jogo${m.v>1?'s':''} sem sofrer gol</td></tr>`:'';})()}
   ${linha('🌟 Craque da Temporada',craque,a=>'nota média '+media(a).toFixed(2)+' em '+a.j+' partida'+(a.j>1?'s':''))}
@@ -2190,6 +2297,8 @@ function resumoMes(){
 `:'')
     +(topN?`🌟 Melhor nota: ${pnome(nomeAt(topN[0]))} (${nm(topN[1]).toFixed(1)})
 `:'')
+    +((()=>{const l=elenco().map(a2=>({a:a2,p:pontosCampo(a2.id,mes).pts})).sort((x,y)=>y.p-x.p)[0];return l&&l.p?`🏅 Mais participativo: ${pnome(l.a.nome)} (${l.p} pts)
+`:'';})())
     +`
 Sigam firmes, ${'@'}todos! 💪⚽`;
   modalWhats('Destaques do mês',msg);
@@ -6355,6 +6464,8 @@ function tMeu(){
   ${cardVotacaoCraque()}
   ${cardNovidadesTaticas()}
   ${cardAcordos(true)}
+  ${cardMeusPontos()}
+  ${cardRankingClube()}
   <div class="grid g5 sect">
     <div class="card stat clickable" onclick="vai('presencas')"><div class="n">${pct===null?'—':pct+'%'}</div><div class="l">Minha frequência →</div></div>
     <div class="card stat clickable" onclick="vai('desempenho')"><div class="n">${gols}⚽ ${asst}🅰️</div><div class="l">Gols / Assist. →</div></div>
