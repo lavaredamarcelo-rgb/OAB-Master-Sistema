@@ -2229,7 +2229,7 @@ function pontosCampo(atId,mesPrefix){
   if(pjus)det.push({txt:'📝 Faltas justificadas',calc:pjus+'× 3',pts:pjus*3});
   const evsMes=e=>!mesPrefix||e.data.startsWith(mesPrefix);
   const craques=db.eventos.filter(e=>evsMes(e)&&(()=>{const c=craqueDo(e.id);return c&&c.id===atId;})()).length;
-  if(craques){ pts+=craques*25; det.push({txt:'🌟 Craque do Jogo (eleito)',calc:craques+'× 25',pts:craques*25}); }
+  if(craques){ pts+=craques*15; det.push({txt:'🌟 Craque do Jogo (eleito)',calc:craques+'× 15',pts:craques*15}); }
   const notasAltas=db.stats.filter(x=>x.atletaId===atId&&notaConta(x.eventoId)&&(()=>{const e=byId(db.eventos,x.eventoId);return e&&evsMes(e);})()&&notaDe(x).v>=8).length;
   if(notasAltas){ pts+=notasAltas*10; det.push({txt:'⭐ Notas 8+ em jogos',calc:notasAltas+'× 10',pts:notasAltas*10}); }
   const mur=db.eventos.filter(e=>evsMes(e)&&ehJogoTipo(e.tipo)&&e.placarNos!=null&&Number(e.placarDeles)===0)
@@ -2242,9 +2242,10 @@ function pontosPerfil(atId){
   const a=at(atId); if(!a)return {pts:0,det:[],miss:[]};
   let pts=0; const det=[],miss=[];
   const mensDia=db.cobrancas.filter(c=>c.atletaId===atId&&ehMensal(c)&&c.status==='pago'&&c.pagoEm&&String(c.pagoEm)<=String(c.venc)).length;
-  if(mensDia){ pts+=mensDia*20; det.push({txt:'💰 Mensalidades pagas em dia',calc:mensDia+'× 20',pts:mensDia*20}); }
+  if(mensDia){ pts+=mensDia*40; det.push({txt:'💰 Mensalidades pagas em dia',calc:mensDia+'× 40',pts:mensDia*40}); }
   const acordoOk=db.cobrancas.filter(c=>c.atletaId===atId&&ehAcordo(c)&&c.status==='pago').length;
-  if(acordoOk){ pts+=acordoOk*10; det.push({txt:'🤝 Parcelas de acordo pagas',calc:acordoOk+'× 10',pts:acordoOk*10}); }
+  if(acordoOk){ pts+=acordoOk*20; det.push({txt:'🤝 Parcelas de acordo pagas',calc:acordoOk+'× 20',pts:acordoOk*20}); }
+  if(db.cobrancas.some(c=>c.atletaId===atId&&ehMensal(c)&&c.status!=='pago')) miss.push({txt:'💰 Pagar a mensalidade até o vencimento (vale a cada mês)',pts:40});
   const nAv=db.avaliacoes.filter(v=>v.atletaId===atId).length;
   if(nAv){ pts+=nAv*25; det.push({txt:'📋 Avaliações físicas realizadas',calc:nAv+'× 25',pts:nAv*25}); }
   else miss.push({txt:'📋 Fazer a avaliação física',pts:25});
