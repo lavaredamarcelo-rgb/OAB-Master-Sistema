@@ -322,7 +322,7 @@ async function carregaTudo(){
   db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,convidado:p.convidado||null,status:p.status}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,forma:c.forma_pagamento||'',pagamentos:c.pagamentos||[],origem:c.origem||'',lote:c.origem_lote||''}));
-  db.avaliacoes=avaliacoes.map(v=>({id:v.id,atletaId:v.atleta_id,data:String(v.data),peso:v.peso,altura:v.altura,gordura:v.gordura,pesoGordura:v.peso_gordura||'',pesoMagro:v.peso_magro||'',massaMuscular:v.massa_muscular||'',vo2:v.vo2||'',yoyo:v.yoyo||'',salto1:v.salto1||'',salto2:v.salto2||'',salto3:v.salto3||'',forca:v.forca||'',resistencia:v.resistencia||'',notas:v.notas}));
+  db.avaliacoes=avaliacoes.map(v=>({id:v.id,atletaId:v.atleta_id,data:String(v.data),peso:v.peso,altura:v.altura,gordura:v.gordura,pesoGordura:v.peso_gordura||'',pesoMagro:v.peso_magro||'',massaMuscular:v.massa_muscular||'',vo2:v.vo2||'',yoyo:v.yoyo||'',salto1:v.salto1||'',salto2:v.salto2||'',salto3:v.salto3||'',forca:v.forca||'',resistencia:v.resistencia||'',yoyoDist:v.resistencia||'',notas:v.notas}));
   db.metas=metas.map(m=>({id:m.id,atletaId:m.atleta_id,desc:m.descricao,prazo:m.prazo?String(m.prazo):'',status:m.status}));
   db.stats=stats.map(s=>({id:s.id,eventoId:s.evento_id,atletaId:s.atleta_id,convidado:s.convidado||'',minutos:s.minutos,gols:s.gols,assist:s.assist,amarelos:s.amarelos,vermelho:s.vermelho,desarmes:s.desarmes,duelos:s.duelos,passes:s.passes,antecipacao:s.antecipacao||0,duelosAereos:s.duelos_aereos||0,chutesGol:s.chutes_gol||0,defesas:s.defesas||0,passesErrados:s.passes_errados||0,duelosPerdidos:s.duelos_perdidos||0,bolasPerdidas:s.bolas_perdidas||0,faltasCometidas:s.faltas_cometidas||0,chutesErrados:s.chutes_errados||0,golsSofridos:s.gols_sofridos||0,penaltisPerdidos:s.penaltis_perdidos||0,penaltisCometidos:s.penaltis_cometidos||0,golsContra:s.gols_contra||0,nota:s.nota,obs:s.obs}));
   db.uniformes=uniformes.map(u=>({id:u.id,descricao:u.descricao,numero:u.numero,tamanho:u.tamanho,status:u.status,atletaId:u.atleta_id,entregueEm:u.entregue_em,aceitoEm:u.aceito_em,pecas:u.pecas||{camisa:'estoque',short:'estoque',meiao:'estoque'},fornecedor:u.fornecedor||'',convidado:u.convidado||'',convFone:u.convidado_fone||'',goleiro:!!u.goleiro,cor:u.cor||''}));
@@ -1732,7 +1732,7 @@ function tAval(){
     corpo=`<div class="card sect"><div class="spread"><h2>📈 Avaliações${souAtleta?' — minhas':''}</h2><div class="row" style="gap:6px">${avs.length?`<button class="mini gold" onclick="pdfAvaliacaoAtleta('${sel}')">📄 Relatório</button>`:''}${podeEditar?`<button class="mini" onclick="formAval('${sel}')">+ Nova avaliação</button>`:''}</div></div>
     <div class="tblwrap"><table class="cardz"><tr><th>Data</th><th>Peso (kg)</th><th>Altura (m)</th><th>IMC</th><th>% Gordura</th><th>Peso gordura (kg)</th><th>Peso magro (kg)</th><th>% Massa musc.</th><th>🫁 VO2</th><th>🏃 Yo-yo</th><th>🦵 Salto horiz.</th><th>Notas</th><th></th></tr>
     ${avs.length?avs.map(v=>{const imc=v.peso&&v.altura?(v.peso/(v.altura*v.altura)).toFixed(1):'—';
-      return `<tr><td data-l="Data"><strong>${dbr(v.data)}</strong></td><td data-l="Peso (kg)">${esc(v.peso)}</td><td data-l="Altura (m)">${esc(v.altura)}</td><td data-l="IMC">${imc}</td><td data-l="% Gordura">${esc(v.gordura||'—')}</td><td data-l="Peso gordura (kg)">${esc(v.pesoGordura||'—')}</td><td data-l="Peso magro (kg)">${esc(v.pesoMagro||'—')}</td><td data-l="% Massa muscular">${esc(v.massaMuscular||'—')}</td><td data-l="🫁 VO2 máx">${vo2De(v)??'—'}</td><td data-l="🏃 Yo-yo">${yoyoDist(v.yoyo)!=null?`<strong>${yoyoDist(v.yoyo)} m</strong> <span class="mut" style="font-size:11px">nível ${yoyoNivel(yoyoDist(v.yoyo))}</span> ${pillNivel(nivelMeta('yoyo',yoyoDist(v.yoyo)))}`:'—'}</td><td data-l="🦵 Salto horizontal (melhor)">${(()=>{const m=melhorSalto(v);return m!=null?`<strong>${m} cm</strong> ${pillNivel(nivelMeta('salto',m))}<div class="mut" style="font-size:10.5px">${[v.salto1,v.salto2,v.salto3].filter(Boolean).join(' · ')}</div>`:'—';})()}</td><td data-l="Notas">${esc(v.notas||'')}</td><td>${podeEditar?`<button class="mini sec" onclick="formAval('${sel}','${v.id}')">✏️</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="13" class="mut">Sem avaliações.</td></tr>'}</table></div></div>
+      return `<tr><td data-l="Data"><strong>${dbr(v.data)}</strong></td><td data-l="Peso (kg)">${esc(v.peso)}</td><td data-l="Altura (m)">${esc(v.altura)}</td><td data-l="IMC">${imc}</td><td data-l="% Gordura">${esc(v.gordura||'—')}</td><td data-l="Peso gordura (kg)">${esc(v.pesoGordura||'—')}</td><td data-l="Peso magro (kg)">${esc(v.pesoMagro||'—')}</td><td data-l="% Massa muscular">${esc(v.massaMuscular||'—')}</td><td data-l="🫁 VO2 máx">${vo2De(v)??'—'}</td><td data-l="🏃 Yo-yo">${yoyoNivelDe(v)!=null||yoyoDistDe(v)!=null?`${yoyoNivelDe(v)!=null?`<strong>nível ${fmtNivel(yoyoNivelDe(v))}</strong> ${pillNivel(nivelMeta('yoyo',yoyoNivelDe(v)))}`:''}${yoyoDistDe(v)!=null?`<div class="mut" style="font-size:11px">${yoyoDistDe(v)} m</div>`:''}`:'—'}</td><td data-l="🦵 Salto horizontal (melhor)">${(()=>{const m=melhorSalto(v);return m!=null?`<strong>${m} cm</strong> ${pillNivel(nivelMeta('salto',m))}<div class="mut" style="font-size:10.5px">${[v.salto1,v.salto2,v.salto3].filter(Boolean).join(' · ')}</div>`:'—';})()}</td><td data-l="Notas">${esc(v.notas||'')}</td><td>${podeEditar?`<button class="mini sec" onclick="formAval('${sel}','${v.id}')">✏️</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="13" class="mut">Sem avaliações.</td></tr>'}</table></div></div>
     ${cardEvolucao(sel,souAtleta?'📈 Minha evolução':'📈 Evolução de '+esc(pnome(at(sel)?at(sel).nome:'')))}
     ${avs.length>=2?(()=>{const comp=compareAvs(avs);
     return `<div class="card sect"><h2>⚖️ Comparativo das avaliações</h2>
@@ -1755,20 +1755,21 @@ const numV=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isNaN(n
 const NIVEIS=['Insuficiente','Regular','Bom','Ótimo','Excelente'];
 const COR_NIVEL={Insuficiente:'p-bad',Regular:'p-warn',Bom:'p-mut',Ótimo:'p-ok','Excelente':'p-gold','Na meta':'p-ok','Acima da meta':'p-warn'};
 /* Yo-yo test: distância em metros → nível (4.0 = 1200 m; cada 0.1 = 15 m) → VO2 máx estimado (Yo-yo IR1: d×0,0084+36,4) */
-function yoyoDist(raw){ const n=numV(raw); if(n==null)return null; if(n<50){ const i=Math.floor(n), f=Math.round((n-i)*10); return i*300+f*15; } return Math.round(n); }
-const yoyoNivel=d=>d==null?null:Math.floor(d/300)+'.'+Math.min(9,Math.round((d%300)/15));
+// Nível do Yo-yo (voltas .1 a .4 por nível: 1.1 … 1.4, 2.1 …) e distância (m) são lançados separadamente, como mostra o sistema do preparador
+const yoyoNivelDe=v=>{const n=numV(v.yoyo);return n!=null&&n<50?n:null;};              // <50 = nível; valores antigos ≥50 eram distância
+const yoyoDistDe=v=>{const d=numV(v.yoyoDist);if(d!=null)return Math.round(d);const n=numV(v.yoyo);return n!=null&&n>=50?Math.round(n):null;};
 const yoyoVo2=d=>d==null?null:+(d*0.0084+36.4).toFixed(1);
-function vo2De(v){ const d=yoyoDist(v.yoyo); return d!=null?yoyoVo2(d):numV(v.vo2); }
-const yoyoTxt=d=>d==null?'—':`${d} m · nível ${yoyoNivel(d)} · VO2 ${yoyoVo2(d)}`;
+function vo2De(v){ const d=yoyoDistDe(v); return d!=null?yoyoVo2(d):numV(v.vo2); }
+const fmtNivel=n=>n==null?'—':n.toFixed(1);
 const METAS_PREP=[
   {k:'gordura',ico:'🔥',nome:'% de gordura',unid:'%',sent:'down',meta:14,param:'Meta: 14% (considerando idade e perfil)',val:v=>numV(v.gordura)},
-  {k:'yoyo',ico:'🏃',nome:'Yo-yo test',unid:' m',sent:'up',param:'nível 4.0 (1200 m) bom · 5.0 (1500 m) ótimo · 6.0 (1800 m) excelente · VO2 estimado pela distância',val:v=>yoyoDist(v.yoyo),fmt:d=>`${d} m <span class="mut" style="font-size:11px">nível ${yoyoNivel(d)} · VO2 ${yoyoVo2(d)}</span>`},
+  {k:'yoyo',ico:'🏃',nome:'Yo-yo test',unid:'',sent:'up',param:'abaixo do nível 4 insuficiente · nível 4 bom · 5 ótimo · 6 excelente',val:v=>yoyoNivelDe(v),fmt:(n,v)=>`nível ${fmtNivel(n)}${v&&yoyoDistDe(v)!=null?` <span class="mut" style="font-size:11px">· ${yoyoDistDe(v)} m · VO2 ${yoyoVo2(yoyoDistDe(v))}</span>`:''}`},
   {k:'salto',ico:'🦵',nome:'Salto horizontal',unid:' cm',sent:'up',param:'1,00 m insuficiente · 1,50 regular · 1,70 bom · 2,00 ótimo · +2 m excelente',val:v=>melhorSalto(v)}];
 function nivelMeta(k,n){
   if(n==null)return null;
   if(k==='gordura')return n<=14?{nivel:'Na meta',estrelas:3,txt:'✅ meta de 14% atingida'}:{nivel:'Acima da meta',estrelas:n<=16?2:n<=18?1:0,txt:`faltam ${(n-14).toFixed(1)} p.p. para a meta`};
-  if(k==='yoyo'){const nv=n>=1800?'Excelente':n>=1500?'Ótimo':n>=1200?'Bom':'Insuficiente';const est={Insuficiente:0,Bom:1,Ótimo:2,Excelente:3}[nv];
-    const prox=n<1200?[1200,'bom (4.0)']:n<1500?[1500,'ótimo (5.0)']:n<1800?[1800,'excelente (6.0)']:null;return {nivel:nv,estrelas:est,txt:prox?`faltam ${prox[0]-n} m para ${prox[1]}`:'🏆 nível máximo'};}
+  if(k==='yoyo'){const nv=n>=6?'Excelente':n>=5?'Ótimo':n>=4?'Bom':'Insuficiente';const est={Insuficiente:0,Bom:1,Ótimo:2,Excelente:3}[nv];
+    const prox=n<4?[4,'bom']:n<5?[5,'ótimo']:n<6?[6,'excelente']:null;return {nivel:nv,estrelas:est,txt:prox?`falta chegar ao nível ${prox[0]}.1 para ${prox[1]}`:'🏆 nível máximo'};}
   if(k==='salto'){const nv=n>200?'Excelente':n>=200?'Ótimo':n>=170?'Bom':n>=150?'Regular':'Insuficiente';const est={Insuficiente:0,Regular:0.75,Bom:1.5,Ótimo:2.25,Excelente:3}[nv];
     const prox=n<150?[150,'regular']:n<170?[170,'bom']:n<200?[200,'ótimo']:n<=200?[201,'excelente']:null;return {nivel:nv,estrelas:est,txt:prox?`faltam ${prox[0]-n} cm para ${prox[1]}`:'🏆 nível máximo'};}
   return null;
@@ -1777,7 +1778,7 @@ const pillNivel=nv=>nv?`<span class="pill ${COR_NIVEL[nv.nivel]||'p-mut'}" style
 function ultimaAval(atId){ return db.avaliacoes.filter(v=>v.atletaId===atId).sort((a,b)=>String(b.data).localeCompare(String(a.data)))[0]||null; }
 function metasDe(atId){
   const av=ultimaAval(atId); if(!av)return null;
-  return METAS_PREP.map(m=>{const n=m.val(av);const nv=nivelMeta(m.k,n);return {...m,n,nv,data:av.data};});
+  return METAS_PREP.map(m=>{const n=m.val(av);const nv=nivelMeta(m.k,n);return {...m,n,nv,data:av.data,av};});
 }
 function htmlMetasPrep(atId,pdf){
   const ms=metasDe(atId);
@@ -1785,7 +1786,7 @@ function htmlMetasPrep(atId,pdf){
   if(!ms)return pdf?'':`<div class="card sect"><h2>🎯 Metas do preparador</h2><p class="mut">Sem avaliação física lançada ainda — faça a avaliação para ver suas metas.</p>${legendaMetas()}</div>`;
   const total=ms.filter(m=>m.nv).reduce((x,m)=>x+m.nv.estrelas,0), maxT=ms.filter(m=>m.nv).length*3;
   const linhas=ms.map(m=>`<tr><td><strong>${m.ico} ${m.nome}</strong><div class="mut" style="font-size:11px">${m.param}</div></td>
-    <td data-l="Marca atual">${m.n!=null?`<strong>${m.fmt?m.fmt(m.n):m.n+m.unid}</strong>`:'<span class="mut">não avaliado</span>'}</td>
+    <td data-l="Marca atual">${m.n!=null?`<strong>${m.fmt?m.fmt(m.n,m.av):m.n+m.unid}</strong>`:'<span class="mut">não avaliado</span>'}</td>
     <td data-l="Situação">${m.nv?`${pillNivel(m.nv)}<div class="mut" style="font-size:11px">${m.nv.txt}</div>`:'—'}</td></tr>`).join('');
   if(pdf)return `<h2>🎯 Metas do preparador físico</h2><p class="sub">Parâmetros definidos pela comissão técnica · última avaliação em ${dbr(ms[0].data)}</p>
     <table><tr><th>Indicador / parâmetro</th><th>Marca atual</th><th>Situação</th></tr>${linhas}</table>
@@ -1798,7 +1799,7 @@ function htmlMetasPrep(atId,pdf){
 function legendaMetas(){
   return `<details style="margin-top:8px"><summary class="mut" style="cursor:pointer;font-size:12.5px">📏 Como funciona a classificação</summary>
   <p class="mut" style="font-size:12.5px;margin:6px 0 0">🔥 <strong>% de gordura</strong> — meta única de <strong>14%</strong>.<br>
-  🏃 <strong>Yo-yo test</strong> — lança-se a distância percorrida; cada nível = 300 m (20 corridas de 15 m), cada 0.1 = 15 m. Nível 4.0 (1200 m) bom · 5.0 (1500 m) ótimo · 6.0 (1800 m) excelente · abaixo de 4.0 insuficiente. O <strong>VO2 máx</strong> é estimado pela fórmula do Yo-yo IR1: distância × 0,0084 + 36,4 (ml/kg/min).<br>
+  🏃 <strong>Yo-yo test</strong> — o nível tem 4 voltas (1.1, 1.2, 1.3, 1.4 → 2.1 …). Abaixo do nível 4 insuficiente · nível 4 bom · 5 ótimo · 6 excelente. A distância percorrida (m) é lançada à parte e gera o <strong>VO2 máx estimado</strong> pela fórmula do Yo-yo IR1: distância × 0,0084 + 36,4 (ml/kg/min).<br>
   🦵 <strong>Salto horizontal</strong> — 1,00 m insuficiente · 1,50 m regular · 1,70 m bom · 2,00 m ótimo · acima de 2 m excelente.<br>
   ⭐ A pontuação geral soma até 3 estrelas por indicador (máximo 9).</p></details>`;
 }
@@ -1809,7 +1810,8 @@ function cardEvolucao(atId,titulo){
   const M=[
     {t:'🔥 % de gordura',f:v=>numV(v.gordura),cor:'var(--bad)',sent:'down',metas:[[14,'meta']],u:'%'},
     {t:'🫁 VO2 máx estimado',f:v=>vo2De(v),cor:'var(--blue)',sent:'up',metas:[],u:''},
-    {t:'🏃 Yo-yo test (m)',f:v=>yoyoDist(v.yoyo),cor:'var(--p)',sent:'up',metas:[[1200,'bom'],[1500,'ótimo'],[1800,'excelente']],u:' m'},
+    {t:'🏃 Yo-yo test — nível',f:v=>yoyoNivelDe(v),cor:'var(--p)',sent:'up',metas:[[4,'bom'],[5,'ótimo'],[6,'excelente']],u:''},
+    {t:'🏃 Yo-yo test — distância (m)',f:v=>yoyoDistDe(v),cor:'var(--p)',sent:'up',metas:[],u:' m'},
     {t:'🦵 Salto horizontal (cm)',f:v=>melhorSalto(v),cor:'var(--gold)',sent:'up',metas:[[150,'regular'],[170,'bom'],[200,'ótimo']],u:' cm'},
     {t:'💪 % massa muscular',f:v=>numV(v.massaMuscular),cor:'var(--ok)',sent:'up',metas:[],u:'%'},
     {t:'⚖️ Peso (kg)',f:v=>numV(v.peso),cor:'var(--ink2)',sent:'neutro',metas:[],u:' kg'}];
@@ -1838,7 +1840,7 @@ function cardRankingMetas(){
   const col=m=>{const rk=lista.map(r=>({a:r.a,m:r.ms.find(x=>x.k===m.k)})).filter(r=>r.m.n!=null).sort((x,y)=>m.sent==='down'?x.m.n-y.m.n:y.m.n-x.m.n);
     if(!rk.length)return '';
     return `<div><div class="mut" style="font-size:12px;font-weight:700;text-transform:uppercase;margin:8px 0 4px">${m.ico} ${m.nome}</div>
-    ${rk.map((r,i)=>`<div class="alertline clickable" style="background:var(--bg);padding:6px 10px;cursor:pointer" onclick="subState.avalId='${r.a.id}';renderTab()"><span class="medal">${med(i)}</span><span style="flex:1">${esc(pnome(r.a.nome))}</span><strong>${m.k==='yoyo'?r.m.n+' m · '+yoyoNivel(r.m.n):r.m.n+m.unid}</strong> ${pillNivel(r.m.nv)}</div>`).join('')}</div>`;};
+    ${rk.map((r,i)=>`<div class="alertline clickable" style="background:var(--bg);padding:6px 10px;cursor:pointer" onclick="subState.avalId='${r.a.id}';renderTab()"><span class="medal">${med(i)}</span><span style="flex:1">${esc(pnome(r.a.nome))}</span><strong>${m.k==='yoyo'?'nível '+fmtNivel(r.m.n)+(yoyoDistDe(r.m.av)!=null?' · '+yoyoDistDe(r.m.av)+' m':''):r.m.n+m.unid}</strong> ${pillNivel(r.m.nv)}</div>`).join('')}</div>`;};
   return `<div class="card sect" style="border-color:var(--gold)"><h2>🏆 Ranking das metas do preparador</h2>
   <p class="mut" style="margin-top:0;font-size:12.5px">Última avaliação de cada atleta · toque no nome para abrir.</p>
   ${geral.length?`<div class="mut" style="font-size:12px;font-weight:700;text-transform:uppercase;margin:8px 0 4px">⭐ Geral (estrelas somadas)</div>
@@ -1852,7 +1854,7 @@ function compareAvs(avsDesc){
   const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isNaN(n)?null:n;};
   const imcDe=v=>{const p=num(v.peso),a=num(v.altura);return p&&a?+(p/(a*a)).toFixed(1):null;};
   const M=[['Peso (kg)',v=>num(v.peso),'neutro'],['IMC',imcDe,'neutro'],['% Gordura',v=>num(v.gordura),'down'],
-    ['Peso gordura (kg)',v=>num(v.pesoGordura),'down'],['Peso magro (kg)',v=>num(v.pesoMagro),'up'],['% Massa muscular',v=>num(v.massaMuscular),'up'],['🫁 VO2 máx (ml/kg/min)',v=>vo2De(v),'up'],['🏃 Yo-yo test — distância (m)',v=>yoyoDist(v.yoyo),'up'],['🦵 Salto horizontal — melhor (cm)',v=>melhorSalto(v),'up']];
+    ['Peso gordura (kg)',v=>num(v.pesoGordura),'down'],['Peso magro (kg)',v=>num(v.pesoMagro),'up'],['% Massa muscular',v=>num(v.massaMuscular),'up'],['🫁 VO2 máx (ml/kg/min)',v=>vo2De(v),'up'],['🏃 Yo-yo test — nível',v=>yoyoNivelDe(v),'up'],['🏃 Yo-yo test — distância (m)',v=>yoyoDistDe(v),'up'],['🦵 Salto horizontal — melhor (cm)',v=>melhorSalto(v),'up']];
   return M.map(([lb,f,sent])=>{
     const a=f(atual), vAnt=ant?f(ant):null, vIni=prim!==atual?f(prim):null;
     return {lb,atual:a,ant:vAnt,ini:vIni,
@@ -1903,13 +1905,14 @@ function pdfAvaliacaoAtleta(atId){
   ${grafico('🔥 Evolução do % de gordura',v=>v.gordura,'#B3372E')}
   ${grafico('💪 Evolução do % de massa muscular',v=>v.massaMuscular,'#2E7D4F')}
   ${grafico('🫁 Evolução do VO2 máx estimado (ml/kg/min)',v=>vo2De(v),'#1C4FA0')}
-  ${grafico('🏃 Evolução do Yo-yo test — distância (m)',v=>yoyoDist(v.yoyo),'#8a1f2f')}
+  ${grafico('🏃 Evolução do Yo-yo test — nível',v=>yoyoNivelDe(v),'#8a1f2f')}
+  ${grafico('🏃 Evolução do Yo-yo test — distância (m)',v=>yoyoDistDe(v),'#c0392b')}
   ${grafico('🦵 Evolução do salto horizontal — melhor (cm)',v=>melhorSalto(v),'#A86A12')}
   ${htmlMetasPrep(atId,true)}
   <h2>📋 Histórico completo</h2>
   <table><tr><th>Data</th><th>Peso</th><th>Altura</th><th>IMC</th><th>% Gord.</th><th>P. gordura</th><th>P. magro</th><th>% M. musc.</th><th>🫁 VO2</th><th>🏃 Yo-yo</th><th>🦵 Saltos</th><th>Notas</th></tr>
   ${avsAsc.map(v=>{const imc=v.peso&&v.altura?(v.peso/(v.altura*v.altura)).toFixed(1):'—';
-    return `<tr><td><strong>${dbr(v.data)}</strong></td><td>${esc(v.peso||'—')}</td><td>${esc(v.altura||'—')}</td><td>${imc}</td><td>${esc(v.gordura||'—')}</td><td>${esc(v.pesoGordura||'—')}</td><td>${esc(v.pesoMagro||'—')}</td><td>${esc(v.massaMuscular||'—')}</td><td>${vo2De(v)??'—'}</td><td>${yoyoDist(v.yoyo)!=null?yoyoDist(v.yoyo)+' m (nível '+yoyoNivel(yoyoDist(v.yoyo))+')':'—'}</td><td>${(()=>{const m=melhorSalto(v);return m!=null?`<strong>${m}</strong> (${[v.salto1,v.salto2,v.salto3].filter(Boolean).join('/')})`:'—';})()}</td><td>${esc(v.notas||'')}</td></tr>`;}).join('')}</table>`,
+    return `<tr><td><strong>${dbr(v.data)}</strong></td><td>${esc(v.peso||'—')}</td><td>${esc(v.altura||'—')}</td><td>${imc}</td><td>${esc(v.gordura||'—')}</td><td>${esc(v.pesoGordura||'—')}</td><td>${esc(v.pesoMagro||'—')}</td><td>${esc(v.massaMuscular||'—')}</td><td>${vo2De(v)??'—'}</td><td>${yoyoNivelDe(v)!=null?'nível '+fmtNivel(yoyoNivelDe(v)):''}${yoyoDistDe(v)!=null?' ('+yoyoDistDe(v)+' m)':''}${yoyoNivelDe(v)==null&&yoyoDistDe(v)==null?'—':''}</td><td>${(()=>{const m=melhorSalto(v);return m!=null?`<strong>${m}</strong> (${[v.salto1,v.salto2,v.salto3].filter(Boolean).join('/')})`:'—';})()}</td><td>${esc(v.notas||'')}</td></tr>`;}).join('')}</table>`,
   `Avaliação física — ${pnome(a.nome)}`);
 }
 function formAval(aid,id){
@@ -1931,17 +1934,18 @@ function formAval(aid,id){
   <div><label>Salto 3</label><input id="v_s3" type="number" step="0.5" value="${v?esc(v.salto3||''):''}"></div>
   </div>
   <div class="grid g2">
-  <div><label>🏃 Yo-yo test — distância percorrida (m)</label><input id="v_yoyo" type="number" step="15" value="${v&&yoyoDist(v.yoyo)!=null?yoyoDist(v.yoyo):''}" placeholder="Ex.: 1200" oninput="document.getElementById('v_yoyo_prev').textContent=(()=>{const d=yoyoDist(this.value);return d!=null?'nível '+yoyoNivel(d)+' · VO2 máx ≈ '+yoyoVo2(d)+' ml/kg/min':'';})()">
-  <div id="v_yoyo_prev" class="mut" style="font-size:12px;margin-top:2px">${v&&yoyoDist(v.yoyo)!=null?'nível '+yoyoNivel(yoyoDist(v.yoyo))+' · VO2 máx ≈ '+yoyoVo2(yoyoDist(v.yoyo))+' ml/kg/min':''}</div></div>
+  <div><label>🏃 Yo-yo test — nível alcançado</label><input id="v_yoyo" type="number" step="0.1" min="1" value="${v&&yoyoNivelDe(v)!=null?yoyoNivelDe(v):''}" placeholder="Ex.: 4.3 (voltas .1 a .4)"></div>
+  <div><label>🏃 Yo-yo test — distância (m)</label><input id="v_yoyod" type="number" step="1" value="${v&&yoyoDistDe(v)!=null?yoyoDistDe(v):''}" placeholder="Ex.: 1200" oninput="document.getElementById('v_yoyo_prev').textContent=(()=>{const d=numV(this.value);return d!=null?'VO2 máx ≈ '+yoyoVo2(d)+' ml/kg/min':'';})()">
+  <div id="v_yoyo_prev" class="mut" style="font-size:12px;margin-top:2px">${v&&yoyoDistDe(v)!=null?'VO2 máx ≈ '+yoyoVo2(yoyoDistDe(v))+' ml/kg/min':''}</div></div>
   </div>
-  <p class="mut" style="font-size:12px;margin:4px 0 0">Yo-yo: nível 4.0 = 1200 m (bom) · 5.0 = 1500 m (ótimo) · 6.0 = 1800 m (excelente); o VO2 máx é calculado pela distância. % de gordura: meta 14%.</p>
+  <p class="mut" style="font-size:12px;margin:4px 0 0">Yo-yo: voltas .1 a .4 por nível · nível 4 bom · 5 ótimo · 6 excelente; o VO2 máx é calculado pela distância em metros. % de gordura: meta 14%.</p>
   <label>Notas</label><textarea id="v_notas">${v?esc(v.notas||''):''}</textarea>
   <div class="row" style="margin-top:14px"><button onclick="salvaAval('${aid}','${id||''}')">Salvar</button>
   ${v?`<button class="bad" onclick="delAval('${id}')">🗑 Excluir</button>`:''}
   <button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function salvaAval(aid,id){
-  let dados={atleta_id:aid,data:fval('v_data')||hoje(),peso:fval('v_peso'),altura:fval('v_alt'),gordura:fval('v_gord'),peso_gordura:fval('v_pgord'),peso_magro:fval('v_pmagro'),massa_muscular:fval('v_mmusc'),yoyo:fval('v_yoyo'),vo2:(()=>{const d=yoyoDist(fval('v_yoyo'));return d!=null?String(yoyoVo2(d)):'';})(),salto1:fval('v_s1'),salto2:fval('v_s2'),salto3:fval('v_s3'),notas:fval('v_notas')};
+  let dados={atleta_id:aid,data:fval('v_data')||hoje(),peso:fval('v_peso'),altura:fval('v_alt'),gordura:fval('v_gord'),peso_gordura:fval('v_pgord'),peso_magro:fval('v_pmagro'),massa_muscular:fval('v_mmusc'),yoyo:fval('v_yoyo'),resistencia:fval('v_yoyod'),vo2:(()=>{const d=numV(fval('v_yoyod'));return d!=null?String(yoyoVo2(d)):'';})(),salto1:fval('v_s1'),salto2:fval('v_s2'),salto3:fval('v_s3'),notas:fval('v_notas')};
   const op=d=>id?sb.from('avaliacoes').update(d).eq('id',id).select():sb.from('avaliacoes').insert(d).select();
   let {data:res,error}=await op(dados);
   if(error&&/yoyo/.test(error.message||'')){
