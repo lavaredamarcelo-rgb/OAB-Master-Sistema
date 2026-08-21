@@ -1782,7 +1782,7 @@ function tAval(){
   const podeEditar=!souAtleta;
 
   // Quadro de status de avaliações
-  const statusQuadro=`<div class="card sect">
+  const statusQuadro=souAtleta?'':`<div class="card sect">
     <div class="spread"><h2>📊 Status de Avaliações</h2>${podeEditar?`<button class="gold mini" onclick="convocarAvaliacao()">📢 Convocar para Avaliação</button>`:''}</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:12px">
     ${ats.map(a=>{
@@ -1820,7 +1820,7 @@ function tAval(){
     ${podeEditar&&m.status!=='atingida'?`<button class="mini sec" onclick="metaOk('${m.id}')">Marcar atingida</button>`:''}
     ${podeEditar?`<button class="mini sec" onclick="delMeta('${m.id}')">✕</button>`:''}</div>`).join(''):'<p class="mut">Sem metas cadastradas.</p>'}</div>`;
   }
-  return `${statusQuadro}${souAtleta?'':cardRankingMetas()}${souAtleta?'':`<div class="card sect"><label style="margin-top:0">Atleta</label>
+  return `${statusQuadro}${cardRankingMetas()}${souAtleta?'':`<div class="card sect"><label style="margin-top:0">Atleta</label>
   <select onchange="subState.avalId=this.value;renderTab()"><option value="">— selecionar —</option>${ats.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.nome)}</option>`).join('')}</select></div>`}${corpo}`;
 }
 /* ===== Metas do preparador físico (parâmetros fixos) ===== */
