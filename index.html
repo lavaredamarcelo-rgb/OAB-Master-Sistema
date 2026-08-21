@@ -1172,7 +1172,7 @@ async function enviaFotoAtleta(aid,inp){
 const POS_ABREV=p=>{const s=(posicoesDe({posicao:p||''})[0]||'').toLowerCase();
   if(/gol/.test(s))return 'GOL'; if(/zag|fixo/.test(s))return 'ZAG'; if(/ala|lateral/.test(s))return 'ALA'; if(/vol/.test(s))return 'VOL'; if(/mei/.test(s))return 'MEI'; if(/ata|piv/.test(s))return 'ATA'; return s?s.slice(0,3).toUpperCase():'JOG';};
 const ehGoleiro=a=>/gol/i.test(a.posicao||'');
-const OV_PESOS={NOT:.35,FRE:.25,FIS:.20,CLU:.20};
+const OV_PESOS={NOT:.25,FRE:.25,FIS:.25,CLU:.25};
 const OV_NOMES={NOT:'Nota média nos jogos (×10)',FRE:'Frequência em jogos e treinos (%)',FIS:'Nota física (metas do preparador, ×10)',CLU:'Pontos do Clube (em relação ao 1º do ranking)'};
 function ovBrutos(atId){
   const a=at(atId); if(!a)return null;
@@ -1209,7 +1209,7 @@ function cardOverallElenco(){
   const lista=elenco().map(a=>({a,o:overallDe(a.id)})).sort((x,y)=>y.o.ov-x.o.ov||x.a.nome.localeCompare(y.a.nome));
   if(!lista.length)return '';
   const med=i=>['🥇','🥈','🥉'][i]||`${i+1}º`;
-  return `<div class="card sect" style="border-color:var(--gold)"><div class="spread"><h2>🎮 Overall do elenco</h2><span class="mut" style="font-size:12px">nota 35% · frequência 25% · físico 20% · clube 20%</span>${gestor()?`<button class="mini gold" onclick="arteElenco()">🖼️ Arte com todos os cards</button>`:''}</div>
+  return `<div class="card sect" style="border-color:var(--gold)"><div class="spread"><h2>🎮 Overall do elenco</h2><span class="mut" style="font-size:12px">nota · frequência · físico · clube — 25% cada</span>${gestor()?`<button class="mini gold" onclick="arteElenco()">🖼️ Arte com todos os cards</button>`:''}</div>
   ${lista.map((r,i)=>`<div class="alertline clickable" style="background:var(--bg);padding:6px 10px;cursor:pointer" onclick="verCardJogador('${r.a.id}')"><span class="medal">${med(i)}</span>
     <span style="flex:1">${esc(pnome(r.a.nome))} <span class="pill ${r.o.tier==='especial'?'p-gold':r.o.tier==='ouro'?'p-warn':'p-mut'}" style="font-size:10.5px">${TIER_NOME[r.o.tier]}</span>
     <div class="mut" style="font-size:11px">${r.o.attrs.map(x=>`${x.k} ${x.v??'—'}`).join(' · ')}</div></span><strong style="font-size:20px;font-family:Georgia,serif">${r.o.ov}</strong></div>`).join('')}
@@ -1323,7 +1323,7 @@ async function geraArteElenco(){
   x.fillStyle='#F2C11E'; x.textAlign='left'; x.font='900 54px Helvetica'; x.fillText('ELENCO '+(db.config.time||'').toUpperCase(),pad+130,92);
   x.fillStyle='#f7e8c8'; x.font='600 24px Helvetica'; x.fillText('Cards da temporada '+hoje().slice(0,4)+' · ordenados pelo overall · '+dbr(hoje()),pad+130,132);
   imgs.forEach((im,i)=>{const c=i%cols, r=Math.floor(i/cols); x.drawImage(im,pad+c*(cw+gap),head+r*(ch+gap),cw,ch);});
-  x.fillStyle='rgba(247,232,200,.7)'; x.textAlign='center'; x.font='600 18px Helvetica'; x.fillText('Overall = nota 35% · frequência 25% · físico 20% · pontos do clube 20%  —  gerado pelo sistema do clube',W/2,H-pad+10);
+  x.fillStyle='rgba(247,232,200,.7)'; x.textAlign='center'; x.font='600 18px Helvetica'; x.fillText('Overall = nota · frequência · físico · pontos do clube (25% cada)  —  gerado pelo sistema do clube',W/2,H-pad+10);
   return await new Promise(res=>cv.toBlob(res,'image/png'));
 }
 async function arteElenco(){
