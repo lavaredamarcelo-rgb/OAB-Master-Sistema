@@ -124,31 +124,38 @@ a{color:var(--blue)}
 .pcard .pstats .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;opacity:.75}
 .pcard .pstats>div{flex:1;text-align:center;min-width:0}
 .pcard .pstats.cinco .v{font-size:14.5px}.pcard .pstats.cinco .k{font-size:8.5px;letter-spacing:.03em;white-space:nowrap}
-/* ===== Card FUT (escudo) ===== */
-.futwrap{width:260px;flex-shrink:0;filter:drop-shadow(0 10px 22px rgba(0,0,0,.35))}
-.futwrap.glow{filter:drop-shadow(0 0 6px #F2C11E) drop-shadow(0 0 16px rgba(242,193,30,.75)) drop-shadow(0 10px 22px rgba(0,0,0,.35))}
-.fut{position:relative;width:260px;height:400px;clip-path:polygon(0 0,100% 0,100% 80%,93% 88%,72% 96%,50% 100%,28% 96%,7% 88%,0 80%)}
-.fut .fut-in{position:absolute;inset:5px;clip-path:polygon(0 0,100% 0,100% 80%,93% 88%,72% 96%,50% 100%,28% 96%,7% 88%,0 80%);overflow:hidden}
-.fut.t-bronze{background:linear-gradient(160deg,#e2b58c,#a86f3e 50%,#6b3f1a)}.fut.t-bronze .fut-in{background:linear-gradient(165deg,#d9a06a,#b07442 45%,#7c4a22);color:#2f1a08}
-.fut.t-prata{background:linear-gradient(160deg,#f4f4f6,#b9bcc6 50%,#7c8090)}.fut.t-prata .fut-in{background:linear-gradient(165deg,#ececf0,#c9ccd6 45%,#9296a3);color:#1f2230}
-.fut.t-ouro{background:linear-gradient(160deg,#fff1b8,#e9bc2a 50%,#a87c12)}.fut.t-ouro .fut-in{background:linear-gradient(165deg,#f7dd8d,#e9bc2a 45%,#c3921a);color:#3a2c05}
-.fut.t-especial{background:linear-gradient(160deg,#ffe680,#F2C11E 50%,#b8870c)}.fut.t-especial .fut-in{background:linear-gradient(165deg,#8a1f2f,#511219 58%,#1C2F5A);color:#f7e8c8}
-.fut.t-clube{background:linear-gradient(160deg,#F2C11E,#c3921a)}.fut.t-clube .fut-in{background:linear-gradient(165deg,#8a1f2f,#511219 58%,#27090d);color:#f7e8c8}
-.fut .fov{position:absolute;left:18px;top:14px;font-size:46px;font-weight:900;font-family:Georgia,serif;line-height:1}
-.fut .fpos{position:absolute;left:20px;top:64px;font-size:15px;font-weight:800;letter-spacing:.06em}
-.fut .fflag{position:absolute;left:20px;top:90px;width:34px;height:23px;border-radius:3px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.35)}
-.fut .fcrest{position:absolute;left:18px;top:122px;width:38px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
-.fut .fphoto{position:absolute;right:14px;top:16px;width:150px;height:172px;object-fit:cover;object-position:top;border-radius:14px 14px 0 0;-webkit-mask-image:linear-gradient(#000 72%,transparent 100%);mask-image:linear-gradient(#000 72%,transparent 100%)}
-.fut .fphoto.ini{display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:800;background:rgba(255,255,255,.35);color:rgba(0,0,0,.45)}
-.fut.t-especial .fphoto.ini,.fut.t-clube .fphoto.ini{background:rgba(255,255,255,.15);color:rgba(255,255,255,.7)}
-.fut .fname{position:absolute;left:0;right:0;top:190px;text-align:center;font-size:23px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;line-height:1.05;padding:0 10px}
-.fut .fpat{position:absolute;left:0;right:0;top:219px;text-align:center;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;opacity:.85}
-.fut .fline{position:absolute;left:24px;right:24px;top:236px;height:1px;background:currentColor;opacity:.3}
-.fut .fstats{position:absolute;left:26px;right:26px;top:244px;display:grid;grid-template-columns:1fr 1fr;column-gap:14px;row-gap:4px}
-.fut .fstats>div{display:flex;align-items:baseline;gap:7px;font-size:19px;font-weight:900;font-family:Georgia,serif}
-.fut .fstats>div:nth-child(2n){border-left:1px solid currentColor;padding-left:12px;opacity:.98}
-.fut .fstats>div span{font-size:13px;font-weight:800;font-family:inherit;letter-spacing:.06em;opacity:.8}
-.fut .ffoot{position:absolute;left:0;right:0;top:344px;text-align:center;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+/* ===== Card FUT (escudo TOTY) ===== */
+.futwrap{width:260px;flex-shrink:0;filter:drop-shadow(0 10px 22px rgba(0,0,0,.4))}
+.futwrap.glow{filter:drop-shadow(0 0 5px #F2C11E) drop-shadow(0 0 14px rgba(242,193,30,.8)) drop-shadow(0 10px 22px rgba(0,0,0,.4))}
+.fut{position:relative;width:260px;height:400px;clip-path:polygon(5% 0,95% 0,100% 3.5%,100% 70%,93% 82%,72% 94%,50% 100%,28% 94%,7% 82%,0 70%,0 3.5%)}
+.fut .fut-in{position:absolute;inset:7px;clip-path:polygon(5% 0,95% 0,100% 3.5%,100% 70%,93% 82%,72% 94%,50% 100%,28% 94%,7% 82%,0 70%,0 3.5%);overflow:hidden}
+.fut.b-bronze{background:linear-gradient(160deg,#f0c9a3,#b07a45 45%,#5a3413)}
+.fut.b-prata{background:linear-gradient(160deg,#ffffff,#c5c8d2 45%,#6f7382)}
+.fut.b-ouro{background:linear-gradient(160deg,#fff1b8,#e0ac18 45%,#8a6a0c)}
+.fut.b-especial{background:linear-gradient(160deg,#fff3c4,#F2C11E 40%,#d9a514 60%,#8a1f2f)}
+.fut.s-clube .fut-in{background:linear-gradient(160deg,#8a1f2f 0%,#4a0f1c 35%,#1a2a5e 100%);color:#f3d27a}
+.fut.s-ouro .fut-in{background:linear-gradient(160deg,#fbe8a6,#e9bc2a 45%,#b8870c);color:#3a2c05}
+.fut .ftex{position:absolute;inset:0;background:repeating-linear-gradient(-32deg,rgba(255,255,255,.0) 0 9px,rgba(255,255,255,.06) 9px 11px,rgba(255,255,255,0) 11px 20px,rgba(0,0,0,.08) 20px 23px)}
+.fut .ffoil{position:absolute;inset:0;width:100%;height:100%}
+.fut .fring{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.fut .fbadge{position:absolute;left:50%;top:9px;transform:translateX(-50%);font-size:15px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))}
+.fut .fov{position:absolute;left:20px;top:28px;font-size:46px;font-weight:900;font-family:Georgia,serif;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+.fut .fpos{position:absolute;left:22px;top:78px;font-size:15px;font-weight:800;letter-spacing:.06em}
+.fut .fposalt{position:absolute;left:22px;top:96px;font-size:9.5px;font-weight:800;letter-spacing:.04em;opacity:.8}
+.fut .fflag{position:absolute;left:22px;top:114px;width:34px;height:23px;border-radius:3px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.fut .fcrest{position:absolute;left:21px;top:144px;width:36px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+.fut .fphoto{position:absolute;right:14px;top:24px;width:150px;height:168px;object-fit:cover;object-position:top;border-radius:10px 10px 0 0;-webkit-mask-image:linear-gradient(#000 70%,transparent 100%);mask-image:linear-gradient(#000 70%,transparent 100%)}
+.fut .fphoto.ini{display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:800;background:rgba(255,255,255,.12);color:rgba(255,255,255,.55)}
+.fut.s-ouro .fphoto.ini{background:rgba(255,255,255,.35);color:rgba(0,0,0,.4)}
+.fut .fname{position:absolute;left:0;right:0;top:194px;text-align:center;font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;line-height:1.05;padding:0 12px;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.fut .fpat{position:absolute;left:0;right:0;top:224px;text-align:center;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;opacity:.85}
+.fut .fline{position:absolute;left:30px;right:30px;top:242px;height:1px;background:currentColor;opacity:.45}
+.fut .fstats{position:absolute;left:26px;right:26px;top:247px;display:grid;grid-template-columns:1fr 1fr;column-gap:12px;row-gap:8px}
+.fut .fstats>div{display:flex;align-items:baseline;justify-content:center;gap:8px;font-size:25px;font-weight:900;font-family:Georgia,serif;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+.fut .fstats>div:nth-child(2n){border-left:1px solid currentColor;padding-left:10px}
+.fut .fstats>div span{font-size:14px;font-weight:800;font-family:inherit;letter-spacing:.06em;opacity:.85}
+.fut .fline2{position:absolute;left:30px;right:30px;top:333px;height:1px;background:currentColor;opacity:.45}
+.fut .ffoot{position:absolute;left:0;right:0;top:341px;text-align:center;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.8}
 
 .patrow{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch;justify-content:center}
 .pat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-decoration:none;color:var(--ink);min-width:110px}
@@ -1165,27 +1172,22 @@ async function enviaFotoAtleta(aid,inp){
 const POS_ABREV=p=>{const s=(posicoesDe({posicao:p||''})[0]||'').toLowerCase();
   if(/gol/.test(s))return 'GOL'; if(/zag|fixo/.test(s))return 'ZAG'; if(/ala|lateral/.test(s))return 'ALA'; if(/vol/.test(s))return 'VOL'; if(/mei/.test(s))return 'MEI'; if(/ata|piv/.test(s))return 'ATA'; return s?s.slice(0,3).toUpperCase():'JOG';};
 const ehGoleiro=a=>/gol/i.test(a.posicao||'');
-const OV_PESOS={NOT:.30,FRE:.20,ATQ:.15,DFS:.15,FIS:.10,CLU:.10};
-const OV_NOMES={NOT:'Nota média',FRE:'Frequência',ATQ:'Ataque (gols + assistências por jogo)',DEF:'Defesas (por jogo)',DFS:'Defesa (desarmes, duelos, aéreos, antecipações e jogos sem sofrer gol)',FIS:'Físico (metas do preparador)',CLU:'Pontos do Clube'};
+const OV_PESOS={NOT:.35,FRE:.25,FIS:.20,CLU:.20};
+const OV_NOMES={NOT:'Nota média nos jogos (×10)',FRE:'Frequência em jogos e treinos (%)',FIS:'Nota física (metas do preparador, ×10)',CLU:'Pontos do Clube (em relação ao 1º do ranking)'};
 function ovBrutos(atId){
   const a=at(atId); if(!a)return null;
   const notas=[...db.stats.filter(x=>x.atletaId===atId&&notaConta(x.eventoId)).map(x=>notaDe(x).v),...presencasSemStats(atId).filter(pz=>notaConta(pz.eventoId)).map(()=>7)];
   const NOT=notas.length?notas.reduce((x,y)=>x+y,0)/notas.length*10:null;
   const fq=freqAtleta(atId); const FRE=fq.pct==null?null:fq.pct;
-  const ms=metasDe(atId); const mv=ms?ms.filter(m=>m.nv):[]; const FIS=mv.length?mv.reduce((x,m)=>x+m.nv.estrelas,0)/(mv.length*3)*100:null;
-  const st=db.stats.filter(x=>x.atletaId===atId&&notaConta(x.eventoId)); const j=st.length;
-  const soma=k=>st.reduce((x,s)=>x+(+s[k]||0),0);
-  const atq=j?(soma('gols')+soma('assist'))/j:null;
-  const defs=j?soma('defesas')/j:null;
-  const dfs=j?(soma('desarmes')+soma('duelos')+soma('duelosAereos')+soma('antecipacao')+jogosSemSofrer(atId)*2)/j:null;
+  const NF=notaFisica(atId); const FIS=NF?NF.nota*10:null;
   const CLU=pontosClube(atId).total;
-  return {NOT,FRE,FIS,atq,defs,dfs,CLU,gk:ehGoleiro(a)};
+  return {NOT,FRE,FIS,CLU};
 }
 function ovBase(){
   if(db._ovBase)return db._ovBase;
   const todos=elenco().map(a=>({id:a.id,b:ovBrutos(a.id)}));
   const max=k=>Math.max(0,...todos.map(t=>t.b&&t.b[k]!=null?t.b[k]:0));
-  db._ovBase={todos,maxAtq:max('atq'),maxDefs:max('defs'),maxDfs:max('dfs'),maxClu:max('CLU')};
+  db._ovBase={todos,maxClu:max('CLU')};
   return db._ovBase;
 }
 function overallDe(atId){
@@ -1194,8 +1196,6 @@ function overallDe(atId){
   const attrs=[
     {k:'NOT',v:b.NOT!=null?Math.round(b.NOT):null},
     {k:'FRE',v:b.FRE!=null?Math.round(b.FRE):null},
-    b.gk?{k:'DEF',v:rel(b.defs,B.maxDefs),peso:'ATQ'}:{k:'ATQ',v:rel(b.atq,B.maxAtq)},
-    {k:'DFS',v:rel(b.dfs,B.maxDfs)},
     {k:'FIS',v:b.FIS!=null?Math.round(b.FIS):null},
     {k:'CLU',v:rel(b.CLU,B.maxClu)}];
   let sw=0,sv=0; attrs.forEach(x=>{ if(x.v==null)return; const w=OV_PESOS[x.peso||x.k]; sw+=w; sv+=w*x.v; });
@@ -1203,88 +1203,144 @@ function overallDe(atId){
   const tier=ov>=85?'especial':ov>=75?'ouro':ov>=65?'prata':'bronze';
   return {ov,attrs,tier,score};
 }
-const TIER_NOME={bronze:'🥉 Bronze',prata:'🥈 Prata',ouro:'🥇 Ouro',especial:'💎 Especial',clube:'🛡️ Clube'};
+const TIER_NOME={bronze:'🥉 Bronze',prata:'🥈 Prata',ouro:'🥇 Ouro',especial:'💎 Especial'};
 const FLAG_PA_SVG=`<svg viewBox="0 0 34 23" width="34" height="23" xmlns="http://www.w3.org/2000/svg"><rect width="34" height="23" fill="#C8102E"/><polygon points="0,23 0,15 34,0 34,8" fill="#fff"/><polygon points="17,7.3 18.3,10.2 21.4,10.5 19,12.6 19.8,15.7 17,14 14.2,15.7 15,12.6 12.6,10.5 15.7,10.2" fill="#1C4FA0"/></svg>`;
 function cardOverallElenco(){
   const lista=elenco().map(a=>({a,o:overallDe(a.id)})).sort((x,y)=>y.o.ov-x.o.ov||x.a.nome.localeCompare(y.a.nome));
   if(!lista.length)return '';
   const med=i=>['🥇','🥈','🥉'][i]||`${i+1}º`;
-  return `<div class="card sect" style="border-color:var(--gold)"><div class="spread"><h2>🎮 Overall do elenco</h2><span class="mut" style="font-size:12px">nota 30% · freq 20% · ataque 15% · defesa 15% · físico 10% · clube 10%</span></div>
+  return `<div class="card sect" style="border-color:var(--gold)"><div class="spread"><h2>🎮 Overall do elenco</h2><span class="mut" style="font-size:12px">nota 35% · frequência 25% · físico 20% · clube 20%</span>${gestor()?`<button class="mini gold" onclick="arteElenco()">🖼️ Arte com todos os cards</button>`:''}</div>
   ${lista.map((r,i)=>`<div class="alertline clickable" style="background:var(--bg);padding:6px 10px;cursor:pointer" onclick="verCardJogador('${r.a.id}')"><span class="medal">${med(i)}</span>
     <span style="flex:1">${esc(pnome(r.a.nome))} <span class="pill ${r.o.tier==='especial'?'p-gold':r.o.tier==='ouro'?'p-warn':'p-mut'}" style="font-size:10.5px">${TIER_NOME[r.o.tier]}</span>
     <div class="mut" style="font-size:11px">${r.o.attrs.map(x=>`${x.k} ${x.v??'—'}`).join(' · ')}</div></span><strong style="font-size:20px;font-family:Georgia,serif">${r.o.ov}</strong></div>`).join('')}
   <p class="mut" style="font-size:11.5px;margin:6px 0 0">Bordas: 🥉 até 64 · 🥈 65–74 · 🥇 75–84 · 💎 85+. Toque no nome para abrir o card.</p></div>`;
 }
+const FUT_SHAPE=[[13,0],[247,0],[260,14],[260,280],[242,328],[187,376],[130,400],[73,376],[18,328],[0,280],[0,14]];
+const FUT_FOIL=[[[150,0],[200,0],[176,42]],[[206,0],[247,0],[260,14],[260,34],[228,52]],[[214,64],[260,46],[260,98],[236,92]],[[168,20],[198,32],[182,62],[160,48]],[[238,112],[260,100],[260,152],[246,146]],[[0,150],[30,138],[22,188],[0,198]],[[0,96],[22,108],[12,140],[0,132]],[[40,0],[70,0],[56,24]],[[230,286],[260,270],[260,280],[246,318]],[[0,230],[18,222],[10,262]]];
+const FOIL_SVG=(id)=>`<svg class="ffoil" viewBox="0 0 260 400" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="fg${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff0b8"/><stop offset=".5" stop-color="#e9bc2a"/><stop offset="1" stop-color="#a87c12"/></linearGradient></defs>${FUT_FOIL.map(pg=>`<polygon points="${pg.map(pt=>pt.join(',')).join(' ')}" fill="url(#fg${id})" opacity=".88"/>`).join('')}</svg>`;
+const RING_SVG=(cor)=>`<svg class="fring" viewBox="0 0 260 400" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><polygon points="${FUT_SHAPE.map(([px,py])=>[(130+(px-130)*0.955).toFixed(1),(200+(py-200)*0.962).toFixed(1)].join(',')).join(' ')}" fill="none" stroke="${cor}" stroke-width="1.6" opacity=".9" vector-effect="non-scaling-stroke"/></svg>`;
+const TIER_COR={bronze:'#f0c9a3',prata:'#ffffff',ouro:'#fff1b8',especial:'#fff3c4'};
+const POS_ABREV1=s=>{s=(s||'').toLowerCase(); if(/gol/.test(s))return 'GOL'; if(/zag|fixo/.test(s))return 'ZAG'; if(/ala|lateral/.test(s))return 'ALA'; if(/vol/.test(s))return 'VOL'; if(/mei/.test(s))return 'MEI'; if(/ata|piv/.test(s))return 'ATA'; return s?s.slice(0,3).toUpperCase():'';};
+const posAbrevTodas=a=>[...new Set(posicoesDe(a).map(POS_ABREV1).filter(Boolean))];
 function cardJogador(a,estilo){
-  estilo=estilo||subState.cardEstilo||'auto';
+  estilo=estilo||subState.cardEstilo||'clube';
   const O=overallDe(a.id);
-  const tier=estilo==='clube'?'clube':O.tier;
   const P=pontosClube(a.id), pat=patenteDe(P.total);
   const uni=db.uniformes.find(u=>u.atletaId===a.id);
   const sobren=(()=>{const ps=pnome(a.nome).split(/\s+/);return (a.apelido?a.apelido:ps.length>1?ps[ps.length-1]:ps[0]);})();
-  return `<div class="futwrap ${tier==='especial'?'glow':''}"><div class="fut t-${tier}"><div class="fut-in">
-    <div class="fov">${O.ov}</div><div class="fpos">${POS_ABREV(a.posicao)}</div>
-    <div class="fflag">${FLAG_PA_SVG}</div><div class="fcrest">${CREST(38)}</div>
+  const poss=posAbrevTodas(a); const pos1=poss[0]||'JOG', posAlt=poss.slice(1);
+  const uid=a.id.replace(/[^a-z0-9]/gi,'').slice(0,8);
+  return `<div class="futwrap ${O.tier==='especial'?'glow':''}"><div class="fut b-${O.tier} s-${estilo}"><div class="fut-in">
+    <div class="ftex"></div>${FOIL_SVG(uid)}${RING_SVG(TIER_COR[O.tier])}
+    <div class="fbadge">${TIER_NOME[O.tier].split(' ')[0]}</div>
+    <div class="fov">${O.ov}</div><div class="fpos">${pos1}</div>${posAlt.length?`<div class="fposalt">${posAlt.join(' · ')}</div>`:''}
+    <div class="fflag">${FLAG_PA_SVG}</div><div class="fcrest">${CREST(36)}</div>
     ${a.fotoUrl?`<img class="fphoto" src="${esc(a.fotoUrl)}" alt="${esc(pnome(a.nome))}">`:`<div class="fphoto ini">${ini(a.nome)}</div>`}
     <div class="fname">${esc(sobren)}</div>
     <div class="fpat">${pat.ico} ${pat.nome} · ${P.total} pts</div>
     <div class="fline"></div>
-    <div class="fstats">${[0,3,1,4,2,5].map(i=>O.attrs[i]).map(x=>`<div>${x.v??'—'}<span>${x.k}</span></div>`).join('')}</div>
+    <div class="fstats">${[0,2,1,3].map(i=>O.attrs[i]).map(x=>`<div>${x.v??'—'}<span>${x.k}</span></div>`).join('')}</div>
+    <div class="fline2"></div>
     <div class="ffoot">⚽ ${esc(db.config.time||'')}${uni?' · Nº '+esc(uni.numero):''}</div>
   </div></div></div>`;
 }
 async function geraCardImagem(atId){
   const a=at(atId); if(!a)return null;
-  const estilo=subState.cardEstilo||'auto';
-  const O=overallDe(atId); const tier=estilo==='clube'?'clube':O.tier;
+  const estilo=subState.cardEstilo||'clube';
+  const O=overallDe(atId); const tier=O.tier;
   const P=pontosClube(atId), pat=patenteDe(P.total);
   const uni=db.uniformes.find(u=>u.atletaId===a.id);
   const [escImg,fotoImg]=await Promise.all([carrImg('escudo-t.png'),a.fotoUrl?carrImg(a.fotoUrl,true):Promise.resolve(null)]);
-  const W=520,H=744, cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
-  const shield=(ins)=>{const w=W-2*ins,h=H-2*ins,o=ins; x.beginPath(); x.moveTo(o,o); x.lineTo(o+w,o); x.lineTo(o+w,o+h*.80); x.lineTo(o+w*.93,o+h*.88); x.lineTo(o+w*.72,o+h*.96); x.lineTo(o+w*.5,o+h); x.lineTo(o+w*.28,o+h*.96); x.lineTo(o+w*.07,o+h*.88); x.lineTo(o,o+h*.80); x.closePath();};
-  const TEMAS={
-    bronze:{b:['#e2b58c','#a86f3e','#6b3f1a'],f:['#d9a06a','#b07442','#7c4a22'],ink:'#2f1a08'},
-    prata:{b:['#f4f4f6','#b9bcc6','#7c8090'],f:['#ececf0','#c9ccd6','#9296a3'],ink:'#1f2230'},
-    ouro:{b:['#fff1b8','#e9bc2a','#a87c12'],f:['#f7dd8d','#e9bc2a','#c3921a'],ink:'#3a2c05'},
-    especial:{b:['#ffe680','#F2C11E','#b8870c'],f:['#8a1f2f','#511219','#1C2F5A'],ink:'#f7e8c8',glow:'#F2C11E'},
-    clube:{b:['#F2C11E','#d8a91c','#c3921a'],f:['#8a1f2f','#511219','#27090d'],ink:'#f7e8c8'}};
-  const T=TEMAS[tier]; const ink=T.ink;
-  const grad=(cs)=>{const g=x.createLinearGradient(0,0,W*.45,H);g.addColorStop(0,cs[0]);g.addColorStop(.5,cs[1]);g.addColorStop(1,cs[2]);return g;};
-  // borda (com brilho no especial)
-  x.save(); if(T.glow){x.shadowColor=T.glow;x.shadowBlur=28;} shield(10); x.fillStyle=grad(T.b); x.fill(); x.restore();
-  shield(18); x.fillStyle=grad(T.f); x.fill();
-  x.save(); shield(18); x.clip();
-  // foto (direita) com degradê na base
-  const px=250,py=48,pw=230,ph=290;
-  if(fotoImg){x.save();x.beginPath();x.moveTo(px+18,py);x.lineTo(px+pw-18,py);x.quadraticCurveTo(px+pw,py,px+pw,py+18);x.lineTo(px+pw,py+ph);x.lineTo(px,py+ph);x.lineTo(px,py+18);x.quadraticCurveTo(px,py,px+18,py);x.closePath();x.clip();
+  const W=520,H=800, cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
+  const shape=(ins)=>{const sx=(W-2*ins)/260, sy=(H-2*ins)/400; x.beginPath(); FUT_SHAPE.forEach(([px,py],i)=>{const X=ins+px*sx,Y=ins+py*sy; i?x.lineTo(X,Y):x.moveTo(X,Y);}); x.closePath();};
+  const BORDAS={bronze:['#f0c9a3','#b07a45','#5a3413'],prata:['#ffffff','#c5c8d2','#6f7382'],ouro:['#fff1b8','#e0ac18','#8a6a0c'],especial:['#fff3c4','#F2C11E','#d9a514','#8a1f2f']};
+  const FUNDOS={clube:{f:['#8a1f2f','#4a0f1c','#1a2a5e'],ink:'#f3d27a',escuro:true},ouro:{f:['#fbe8a6','#e9bc2a','#b8870c'],ink:'#3a2c05',escuro:false}};
+  const F=FUNDOS[estilo]||FUNDOS.clube, ink=F.ink;
+  const grad=(cs)=>{const g=x.createLinearGradient(0,0,W*.45,H);cs.forEach((c,i)=>g.addColorStop(i/(cs.length-1),c));return g;};
+  // moldura
+  x.save(); if(tier==='especial'){x.shadowColor='#F2C11E';x.shadowBlur=30;} shape(10); x.fillStyle=grad(BORDAS[tier]); x.fill(); x.restore();
+  shape(24); x.fillStyle=grad(F.f); x.fill();
+  x.save(); shape(24); x.clip();
+  // textura diagonal
+  x.save(); x.translate(W/2,H/2); x.rotate(-32*Math.PI/180); for(let i=-900;i<900;i+=40){ x.fillStyle='rgba(255,255,255,.06)'; x.fillRect(i,-900,4,1800); x.fillStyle='rgba(0,0,0,.09)'; x.fillRect(i+22,-900,6,1800);} x.restore();
+  // lâminas douradas
+  const sx=(W-48)/260, sy=(H-48)/400; const fg=x.createLinearGradient(0,0,W,H); fg.addColorStop(0,'#fff0b8'); fg.addColorStop(.5,'#e9bc2a'); fg.addColorStop(1,'#a87c12');
+  x.globalAlpha=.9; x.fillStyle=fg; FUT_FOIL.forEach(pg=>{x.beginPath(); pg.forEach(([px,py],i)=>{const X=24+px*sx,Y=24+py*sy; i?x.lineTo(X,Y):x.moveTo(X,Y);}); x.closePath(); x.fill();}); x.globalAlpha=1;
+  // filete interno
+  x.strokeStyle=BORDAS[tier][0]; x.globalAlpha=.9; x.lineWidth=2.2; shape(34); x.stroke(); x.globalAlpha=1;
+  // foto
+  const px=250,py=56,pw=230,ph=290;
+  if(fotoImg){x.save();x.beginPath();x.moveTo(px+16,py);x.lineTo(px+pw-16,py);x.quadraticCurveTo(px+pw,py,px+pw,py+16);x.lineTo(px+pw,py+ph);x.lineTo(px,py+ph);x.lineTo(px,py+16);x.quadraticCurveTo(px,py,px+16,py);x.closePath();x.clip();
     const sc=Math.max(pw/fotoImg.width,ph/fotoImg.height);const w2=fotoImg.width*sc,h2=fotoImg.height*sc;x.drawImage(fotoImg,px+(pw-w2)/2,py,w2,h2);x.restore();
-    const fg=x.createLinearGradient(0,py+ph*.62,0,py+ph); fg.addColorStop(0,'rgba(0,0,0,0)'); fg.addColorStop(1,T.f[1]); x.fillStyle=fg; x.fillRect(px-2,py+ph*.62,pw+4,ph*.38+2);
-  } else { x.fillStyle=tier==='especial'||tier==='clube'?'rgba(255,255,255,.15)':'rgba(255,255,255,.35)'; x.beginPath(); x.roundRect?x.roundRect(px,py,pw,ph,18):x.rect(px,py,pw,ph); x.fill();
-    x.fillStyle=tier==='especial'||tier==='clube'?'rgba(255,255,255,.7)':'rgba(0,0,0,.45)'; x.font='800 120px Helvetica'; x.textAlign='center'; x.textBaseline='middle'; x.fillText(ini(a.nome),px+pw/2,py+ph/2); x.textBaseline='alphabetic'; }
-  // coluna esquerda: overall, posição, bandeira, escudo
-  x.fillStyle=ink; x.textAlign='left';
-  x.font='900 92px Georgia'; x.fillText(String(O.ov),44,126);
-  x.font='800 30px Helvetica'; x.fillText(POS_ABREV(a.posicao),48,166);
-  const fx=48,fy=186,fw=68,fh=46; x.fillStyle='#C8102E'; x.fillRect(fx,fy,fw,fh);
+    const fgd=x.createLinearGradient(0,py+ph*.6,0,py+ph); fgd.addColorStop(0,'rgba(0,0,0,0)'); fgd.addColorStop(1,F.f[1]); x.fillStyle=fgd; x.fillRect(px-2,py+ph*.6,pw+4,ph*.4+2);
+  } else { x.fillStyle=F.escuro?'rgba(255,255,255,.12)':'rgba(255,255,255,.35)'; x.beginPath(); x.roundRect?x.roundRect(px,py,pw,ph,16):x.rect(px,py,pw,ph); x.fill();
+    x.fillStyle=F.escuro?'rgba(255,255,255,.6)':'rgba(0,0,0,.4)'; x.font='800 120px Helvetica'; x.textAlign='center'; x.textBaseline='middle'; x.fillText(ini(a.nome),px+pw/2,py+ph/2); x.textBaseline='alphabetic'; }
+  // selo da faixa no topo
+  x.font='28px Helvetica'; x.textAlign='center'; x.fillText(TIER_NOME[tier].split(' ')[0],W/2,48);
+  // coluna esquerda
+  const poss=posAbrevTodas(a); const pos1=poss[0]||'JOG', posAlt=poss.slice(1);
+  x.fillStyle=ink; x.textAlign='left'; x.shadowColor='rgba(0,0,0,.3)'; x.shadowBlur=3; x.shadowOffsetY=1;
+  x.font='900 92px Georgia'; x.fillText(String(O.ov),44,150);
+  x.font='800 30px Helvetica'; x.fillText(pos1,48,190);
+  if(posAlt.length){x.globalAlpha=.8;x.font='800 18px Helvetica';x.fillText(posAlt.join(' · '),48,214);x.globalAlpha=1;}
+  x.shadowColor='transparent';
+  const fx=48,fy=230,fw=68,fh=46; x.fillStyle='#C8102E'; x.fillRect(fx,fy,fw,fh);
   x.fillStyle='#fff'; x.beginPath(); x.moveTo(fx,fy+fh); x.lineTo(fx,fy+fh*.65); x.lineTo(fx+fw,fy); x.lineTo(fx+fw,fy+fh*.35); x.closePath(); x.fill();
   x.fillStyle='#1C4FA0'; (()=>{const cx=fx+fw/2,cy=fy+fh/2,R=9,r=3.8; x.beginPath(); for(let i=0;i<10;i++){const ang=-Math.PI/2+i*Math.PI/5; const rr=i%2?r:R; x.lineTo(cx+rr*Math.cos(ang),cy+rr*Math.sin(ang));} x.closePath(); x.fill();})();
-  if(escImg){x.save();x.shadowColor='rgba(0,0,0,.35)';x.shadowBlur=8;x.shadowOffsetY=3;const h2=78,w2=h2*escImg.width/escImg.height;x.drawImage(escImg,44,248,w2,h2);x.restore();}
+  if(escImg){x.save();x.shadowColor='rgba(0,0,0,.35)';x.shadowBlur=8;x.shadowOffsetY=3;const h2=74,w2=h2*escImg.width/escImg.height;x.drawImage(escImg,46,290,w2,h2);x.restore();}
   // nome
-  x.fillStyle=ink; x.textAlign='center';
+  x.fillStyle=ink; x.textAlign='center'; x.shadowColor='rgba(0,0,0,.3)'; x.shadowBlur=3; x.shadowOffsetY=1;
   const sobren=(()=>{const ps=pnome(a.nome).split(/\s+/);return (a.apelido?a.apelido:ps.length>1?ps[ps.length-1]:ps[0]);})().toUpperCase();
-  let fs=48; x.font='900 '+fs+'px Helvetica'; while(x.measureText(sobren).width>W-90&&fs>24){fs--;x.font='900 '+fs+'px Helvetica';}
-  x.fillText(sobren,W/2,412);
-  x.globalAlpha=.85; x.font='800 17px Helvetica'; x.fillText((pat.ico+' '+pat.nome+' · '+P.total+' PTS').toUpperCase(),W/2,442); x.globalAlpha=1;
-  x.globalAlpha=.3; x.fillRect(52,458,W-104,2); x.globalAlpha=1;
-  // atributos 2 colunas
-  const L=O.attrs.slice(0,3),R=O.attrs.slice(3);
-  const row=(arr,x0,y0)=>arr.forEach((at2,i)=>{const y=y0+i*50; x.textAlign='right'; x.font='900 40px Georgia'; x.fillText(at2.v==null?'—':String(at2.v),x0+72,y); x.textAlign='left'; x.globalAlpha=.85; x.font='800 24px Helvetica'; x.fillText(at2.k,x0+86,y); x.globalAlpha=1;});
-  row(L,70,510); row(R,286,510);
-  x.globalAlpha=.3; x.fillRect(W/2-1,480,2,150); x.globalAlpha=1;
+  let fs=50; x.font='900 '+fs+'px Helvetica'; while(x.measureText(sobren).width>W-110&&fs>24){fs--;x.font='900 '+fs+'px Helvetica';}
+  x.fillText(sobren,W/2,430);
+  x.shadowColor='transparent';
+  x.globalAlpha=.85; x.font='800 17px Helvetica'; x.fillText((pat.ico+' '+pat.nome+' · '+P.total+' PTS').toUpperCase(),W/2,460); x.globalAlpha=1;
+  x.globalAlpha=.45; x.fillRect(60,478,W-120,2); x.globalAlpha=1;
+  // 4 atributos
+  const L=[O.attrs[0],O.attrs[1]],R=[O.attrs[2],O.attrs[3]];
+  x.shadowColor='rgba(0,0,0,.3)'; x.shadowBlur=3; x.shadowOffsetY=1;
+  const row=(arr,x0,y0)=>arr.forEach((at2,i)=>{const y=y0+i*64; x.textAlign='right'; x.font='900 50px Georgia'; x.fillText(at2.v==null?'—':String(at2.v),x0+84,y); x.textAlign='left'; x.globalAlpha=.88; x.font='800 27px Helvetica'; x.fillText(at2.k,x0+98,y); x.globalAlpha=1;});
+  row(L,56,548); row(R,286,548);
+  x.shadowColor='transparent';
+  x.globalAlpha=.45; x.fillRect(W/2-1,506,2,126); x.fillRect(60,648,W-120,2); x.globalAlpha=1;
   // rodapé
-  x.textAlign='center'; x.globalAlpha=.8; x.font='800 16px Helvetica'; x.fillText(('⚽ '+(db.config.time||'')+(uni?' · Nº '+uni.numero:'')).toUpperCase(),W/2,668); x.globalAlpha=1;
+  x.textAlign='center'; x.globalAlpha=.85; x.font='800 16px Helvetica'; x.fillText(('⚽ '+(db.config.time||'')+(uni?' · Nº '+uni.numero:'')).toUpperCase(),W/2,682); x.globalAlpha=1;
   x.restore();
   return await new Promise(res=>cv.toBlob(res,'image/png'));
+}
+const blobToImg=b=>new Promise(res=>{const u=URL.createObjectURL(b);const im=new Image();im.onload=()=>res(im);im.src=u;});
+async function geraArteElenco(){
+  const lista=elenco().map(a=>({a,o:overallDe(a.id)})).sort((x,y)=>y.o.ov-x.o.ov||x.a.nome.localeCompare(y.a.nome));
+  if(!lista.length)return null;
+  const imgs=[]; for(const r of lista){ const b=await geraCardImagem(r.a.id); if(b)imgs.push(await blobToImg(b)); }
+  const escImg=await carrImg('escudo-t.png');
+  const n=imgs.length, cols=n<=4?n:n<=9?3:n<=16?4:5, rows=Math.ceil(n/cols);
+  const cw=300, ch=Math.round(cw*800/520), gap=22, pad=40, head=190, foot=70;
+  const W=pad*2+cols*cw+(cols-1)*gap, H=head+rows*(ch+gap)-gap+foot+pad;
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
+  const g=x.createLinearGradient(0,0,W*.3,H); g.addColorStop(0,'#8a1f2f'); g.addColorStop(.6,'#511219'); g.addColorStop(1,'#1C2F5A'); x.fillStyle=g; x.fillRect(0,0,W,H);
+  if(escImg){const h2=110,w2=h2*escImg.width/escImg.height;x.drawImage(escImg,pad,38,w2,h2);}
+  x.fillStyle='#F2C11E'; x.textAlign='left'; x.font='900 54px Helvetica'; x.fillText('ELENCO '+(db.config.time||'').toUpperCase(),pad+130,92);
+  x.fillStyle='#f7e8c8'; x.font='600 24px Helvetica'; x.fillText('Cards da temporada '+hoje().slice(0,4)+' · ordenados pelo overall · '+dbr(hoje()),pad+130,132);
+  imgs.forEach((im,i)=>{const c=i%cols, r=Math.floor(i/cols); x.drawImage(im,pad+c*(cw+gap),head+r*(ch+gap),cw,ch);});
+  x.fillStyle='rgba(247,232,200,.7)'; x.textAlign='center'; x.font='600 18px Helvetica'; x.fillText('Overall = nota 35% · frequência 25% · físico 20% · pontos do clube 20%  —  gerado pelo sistema do clube',W/2,H-pad+10);
+  return await new Promise(res=>cv.toBlob(res,'image/png'));
+}
+async function arteElenco(){
+  toast('Gerando a arte com todos os cards… (pode levar alguns segundos)');
+  const b=await geraArteElenco(); if(!b){toast('⚠️ Sem jogadores para montar a arte');return;}
+  const url=URL.createObjectURL(b); window._arteElenco=b;
+  modal(`<h2>🖼️ Arte do elenco</h2><p class="mut">${elenco().length} cards · estilo ${(subState.cardEstilo||'clube')==='clube'?'cores do clube':'dourado'} (troque o estilo em qualquer card antes de gerar)</p>
+  <img src="${url}" style="width:100%;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.25)">
+  <div class="row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
+    <button class="mini gold" onclick="baixar('elenco-cards.png',window._arteElenco,'image/png');toast('⬇ Arte baixada')">⬇ Baixar</button>
+    <button class="mini gold" onclick="compartilhaBlob(window._arteElenco,'elenco-cards.png','Elenco — '+db.config.time)">📤 Enviar (WhatsApp)</button>
+    <button class="sec" onclick="fecha()">Fechar</button></div>`);
+}
+async function compartilhaBlob(b,nome,titulo){
+  const file=new File([b],nome,{type:'image/png'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){ try{await navigator.share({files:[file],title:titulo});}catch(_){} }
+  else { baixar(nome,b,'image/png'); toast('Envio direto não suportado neste aparelho — baixei a imagem para você anexar'); }
 }
 async function baixarCard(atId){
   toast('Gerando o card…');
@@ -1310,18 +1366,18 @@ async function copiarCard(atId){
 }
 function verCardJogador(id){
   const a=at(id); if(!a)return;
-  const est=subState.cardEstilo||'auto';
+  const est=subState.cardEstilo||'clube';
   const podeFoto=me.role==='diretoria'||id===me.id;
   const O=overallDe(id);
-  modal(`<h2>🪪 Card do jogador</h2>
+  modal(`<h2>🪪 Card do jogador <span class="pill ${O.tier==='especial'?'p-gold':'p-mut'}" style="font-size:11px;vertical-align:middle">borda ${TIER_NOME[O.tier]}</span></h2>
   <div class="row" style="justify-content:center;margin:6px 0 14px">
-    <button class="mini ${est==='auto'?'':'sec'}" onclick="subState.cardEstilo='auto';verCardJogador('${id}')">🎮 Pelo overall (${TIER_NOME[O.tier]})</button>
     <button class="mini ${est==='clube'?'':'sec'}" onclick="subState.cardEstilo='clube';verCardJogador('${id}')">🛡️ Cores do clube</button>
+    <button class="mini ${est==='ouro'?'':'sec'}" onclick="subState.cardEstilo='ouro';verCardJogador('${id}')">🏆 Dourado</button>
   </div>
   <div style="display:flex;justify-content:center;padding:10px 0">${cardJogador(a,est)}</div>
   <details style="margin-top:6px"><summary class="mut" style="cursor:pointer;font-size:12.5px">🎮 Como o overall ${O.ov} é calculado</summary>
   ${O.attrs.map(x=>`<div class="alertline" style="background:var(--bg);padding:5px 10px"><div style="flex:1;font-size:13px"><strong>${x.k}</strong> — ${OV_NOMES[x.k]} <span class="mut">(peso ${Math.round(OV_PESOS[x.peso||x.k]*100)}%)</span></div><strong>${x.v??'—'}</strong></div>`).join('')}
-  <p class="mut" style="font-size:12px;margin:6px 0 0">Atributos sem dado não contam (o peso vai para os demais). Escala final de 50 a 99 · bordas: 🥉 até 64 · 🥈 65–74 · 🥇 75–84 · 💎 85+ (brilho especial).</p></details>
+  <p class="mut" style="font-size:12px;margin:6px 0 0">Atributos sem dado não contam (o peso vai para os demais). Escala final de 50 a 99 · a <strong>borda</strong> do card segue o overall: 🥉 até 64 · 🥈 65–74 · 🥇 75–84 · 💎 85+ (brilho especial).</p></details>
   ${(()=>{const jn=[...db.stats.filter(x=>x.atletaId===id&&notaConta(x.eventoId)).map(x=>({e:byId(db.eventos,x.eventoId),s:x})),
     ...presencasSemStats(id).filter(pz=>notaConta(pz.eventoId)).map(pz=>({e:byId(db.eventos,pz.eventoId),s:{}}))].filter(x=>x.e).sort((x,y)=>x.e.data.localeCompare(y.e.data)).slice(-10);
   return jn.length?`<div style="margin-top:14px"><label>📈 Evolução da nota — últimos ${jn.length} jogos (🤖 = nota do sistema)</label>
@@ -1838,6 +1894,23 @@ const METAS_PREP=[
   {k:'gordura',ico:'🔥',nome:'% de gordura',unid:'%',sent:'down',meta:14,param:'Meta: 14% (considerando idade e perfil)',val:v=>numV(v.gordura)},
   {k:'yoyo',ico:'🏃',nome:'Yo-yo test',unid:'',sent:'up',param:'abaixo do nível 4 insuficiente · nível 4 bom · 5 ótimo · 6 excelente',val:v=>yoyoNivelDe(v),fmt:(n,v)=>`nível ${fmtNivel(n)}${v&&yoyoDistDe(v)!=null?` <span class="mut" style="font-size:11px">· ${yoyoDistDe(v)} m · VO2 ${yoyoVo2(yoyoDistDe(v))}</span>`:''}`},
   {k:'salto',ico:'🦵',nome:'Salto horizontal',unid:' cm',sent:'up',param:'1,00 m insuficiente · 1,50 regular · 1,70 bom · 2,00 ótimo · +2 m excelente',val:v=>melhorSalto(v)}];
+/* Nota contínua 0–10 por indicador (piso = 0, meta = 10; evolução dá bônus) */
+const REGUA_FIS={gordura:{piso:26,meta:14,sent:'down'},yoyo:{piso:1,meta:21,sent:'up'},salto:{piso:100,meta:200,sent:'up'}};
+const yoyoVoltas=n=>n==null?null:(Math.floor(n)-1)*4+Math.round((n-Math.floor(n))*10); // 1.1→1 … 1.4→4, 2.1→5 … 6.1→21
+function notaIndicador(k,n){ if(n==null)return null; const r=REGUA_FIS[k]; const v=k==='yoyo'?yoyoVoltas(n):n;
+  const t=r.sent==='down'?(r.piso-v)/(r.piso-r.meta):(v-r.piso)/(r.meta-r.piso); return Math.round(Math.max(0,Math.min(1,t))*100)/10; }
+function notaFisica(atId){
+  const avs=db.avaliacoes.filter(v=>v.atletaId===atId).sort((a,b)=>String(a.data).localeCompare(String(b.data)));
+  if(!avs.length)return null;
+  const atual=avs[avs.length-1], ant=avs.length>1?avs[avs.length-2]:null;
+  const itens=METAS_PREP.map(m=>{const n=m.val(atual); const nota=notaIndicador(m.k,n); const antN=ant?m.val(ant):null;
+    const melhorou=(n!=null&&antN!=null)?(m.sent==='down'?n<antN:n>antN):false;
+    return {k:m.k,ico:m.ico,nome:m.nome,n,nota,antN,melhorou,nv:nivelMeta(m.k,n)};}).filter(i=>i.n!=null);
+  if(!itens.length)return null;
+  const base=Math.round(itens.reduce((x,i)=>x+i.nota,0)/itens.length*10)/10;
+  const bonus=Math.min(1.5,itens.filter(i=>i.melhorou).length*0.5);
+  return {nota:Math.min(10,Math.round((base+bonus)*10)/10),base,bonus,itens,data:atual.data,temAnterior:!!ant};
+}
 function nivelMeta(k,n){
   if(n==null)return null;
   if(k==='gordura')return n<=14?{nivel:'Na meta',estrelas:3,txt:'✅ meta de 14% atingida'}:{nivel:'Acima da meta',estrelas:n<=16?2:n<=18?1:0,txt:`faltam ${(n-14).toFixed(1)} p.p. para a meta`};
@@ -1857,16 +1930,18 @@ function htmlMetasPrep(atId,pdf){
   const ms=metasDe(atId);
   const a=at(atId);
   if(!ms)return pdf?'':`<div class="card sect"><h2>🎯 Metas do preparador</h2><p class="mut">Sem avaliação física lançada ainda — faça a avaliação para ver suas metas.</p>${legendaMetas()}</div>`;
-  const total=ms.filter(m=>m.nv).reduce((x,m)=>x+m.nv.estrelas,0), maxT=ms.filter(m=>m.nv).length*3;
-  const linhas=ms.map(m=>`<tr><td><strong>${m.ico} ${m.nome}</strong><div class="mut" style="font-size:11px">${m.param}</div></td>
-    <td data-l="Marca atual">${m.n!=null?`<strong>${m.fmt?m.fmt(m.n,m.av):m.n+m.unid}</strong>`:'<span class="mut">não avaliado</span>'}</td>
-    <td data-l="Situação">${m.nv?`${pillNivel(m.nv)}<div class="mut" style="font-size:11px">${m.nv.txt}</div>`:'—'}</td></tr>`).join('');
+  const NF=notaFisica(atId);
+  const notaDe2=k=>NF?NF.itens.find(i=>i.k===k):null;
+  const linhas=ms.map(m=>{const it=notaDe2(m.k);return `<tr><td><strong>${m.ico} ${m.nome}</strong><div class="mut" style="font-size:11px">${m.param}</div></td>
+    <td data-l="Marca atual">${m.n!=null?`<strong>${m.fmt?m.fmt(m.n,m.av):m.n+m.unid}</strong>${it&&it.antN!=null?`<div class="mut" style="font-size:11px">${it.melhorou?'📈 melhorou':'anterior'}: ${m.k==='yoyo'?'nível '+fmtNivel(it.antN):it.antN+m.unid}</div>`:''}`:'<span class="mut">não avaliado</span>'}</td>
+    <td data-l="Nota">${it?`<strong style="font-size:17px;font-family:Georgia,serif">${it.nota.toFixed(1)}</strong>${it.melhorou?' <span class="pill p-ok" style="font-size:10px">+0,5 evolução</span>':''}`:'—'}</td>
+    <td data-l="Situação">${m.nv?`${pillNivel(m.nv)}<div class="mut" style="font-size:11px">${m.nv.txt}</div>`:'—'}</td></tr>`;}).join('');
   if(pdf)return `<h2>🎯 Metas do preparador físico</h2><p class="sub">Parâmetros definidos pela comissão técnica · última avaliação em ${dbr(ms[0].data)}</p>
-    <table><tr><th>Indicador / parâmetro</th><th>Marca atual</th><th>Situação</th></tr>${linhas}</table>
-    ${maxT?`<p><strong>Pontuação geral das metas: ${total.toFixed(1)} de ${maxT}</strong></p>`:''}`;
-  return `<div class="card sect"><div class="spread"><h2>🎯 Metas do preparador</h2>${maxT?`<span class="pill p-gold">⭐ ${total.toFixed(1)} / ${maxT}</span>`:''}</div>
-  <p class="mut" style="margin-top:0;font-size:12.5px">Parâmetros definidos pelo preparador físico · última avaliação em ${dbr(ms[0].data)}</p>
-  <div class="tblwrap"><table class="cardz"><tr><th>Indicador</th><th>Marca atual</th><th>Situação</th></tr>${linhas}</table></div>
+    <table><tr><th>Indicador / parâmetro</th><th>Marca atual</th><th>Nota (0–10)</th><th>Situação</th></tr>${linhas}</table>
+    ${NF?`<p><strong>Nota física: ${NF.nota.toFixed(1)}</strong> (média dos indicadores ${NF.base.toFixed(1)}${NF.bonus?' + evolução '+NF.bonus.toFixed(1):''})</p>`:''}`;
+  return `<div class="card sect"><div class="spread"><h2>🎯 Metas do preparador</h2>${NF?`<span class="pill p-gold" style="font-size:15px">Nota física ${NF.nota.toFixed(1)}</span>`:''}</div>
+  <p class="mut" style="margin-top:0;font-size:12.5px">Parâmetros do preparador físico · última avaliação em ${dbr(ms[0].data)}${NF&&NF.bonus?` · <span style="color:var(--ok);font-weight:700">+${NF.bonus.toFixed(1)} de evolução</span>`:''}${NF&&!NF.temAnterior?' · na próxima avaliação, cada indicador que melhorar dá +0,5 na nota e +10 Pontos do Clube':''}</p>
+  <div class="tblwrap"><table class="cardz"><tr><th>Indicador</th><th>Marca atual</th><th>Nota</th><th>Situação</th></tr>${linhas}</table></div>
   ${legendaMetas()}</div>`;
 }
 function legendaMetas(){
@@ -1874,7 +1949,8 @@ function legendaMetas(){
   <p class="mut" style="font-size:12.5px;margin:6px 0 0">🔥 <strong>% de gordura</strong> — meta única de <strong>14%</strong>.<br>
   🏃 <strong>Yo-yo test</strong> — o nível tem 4 voltas (1.1, 1.2, 1.3, 1.4 → 2.1 …). Abaixo do nível 4 insuficiente · nível 4 bom · 5 ótimo · 6 excelente. A distância percorrida (m) é lançada à parte e gera o <strong>VO2 máx estimado</strong> pela fórmula do Yo-yo IR1: distância × 0,0084 + 36,4 (ml/kg/min).<br>
   🦵 <strong>Salto horizontal</strong> — 1,00 m insuficiente · 1,50 m regular · 1,70 m bom · 2,00 m ótimo · acima de 2 m excelente.<br>
-  ⭐ A pontuação geral soma até 3 estrelas por indicador (máximo 9).</p></details>`;
+  📐 <strong>Nota de 0 a 10 por indicador</strong>: piso vale 0 e meta vale 10, em régua contínua — gordura 26% → 14% · Yo-yo nível 1.1 → 6.1 · salto 100 cm → 200 cm. Quem está melhor pontua melhor, mesmo abaixo da meta.<br>
+  📈 <strong>Nota física</strong> = média dos indicadores + 0,5 por indicador que melhorou desde a avaliação anterior (máx. +1,5; teto 10). Cada indicador melhorado também rende +10 Pontos do Clube. A nota física entra no card como FIS.</p></details>`;
 }
 function cardEvolucao(atId,titulo){
   const avs=db.avaliacoes.filter(v=>v.atletaId===atId).sort((a,b)=>String(a.data).localeCompare(String(b.data)));
@@ -1905,19 +1981,20 @@ function cardEvolucao(atId,titulo){
   if(!blocos.length)return '';
   return `<div class="card sect"><h2>${titulo||'📈 Minha evolução'}</h2><p class="mut" style="margin-top:0;font-size:12.5px">${avs.length} avaliações · de ${dbr(avs[0].data)} a ${dbr(avs[avs.length-1].data)} · as linhas marcam as metas do preparador</p>${blocos.join('')}</div>`;
 }
+function verPontosFis(atId){ const a=at(atId); if(!a)return; modal(`<h2>📐 ${esc(pnome(a.nome))}</h2>${htmlMetasPrep(atId)}<div class="row"><button class="sec" onclick="fecha()">Fechar</button></div>`); }
 function cardRankingMetas(){
   const lista=elenco().map(a=>({a,ms:metasDe(a.id)})).filter(r=>r.ms);
   if(!lista.length)return '';
-  const geral=lista.map(r=>({a:r.a,pts:r.ms.filter(m=>m.nv).reduce((x,m)=>x+m.nv.estrelas,0),n:r.ms.filter(m=>m.nv).length})).filter(r=>r.n).sort((x,y)=>y.pts-x.pts||x.a.nome.localeCompare(y.a.nome));
+  const geral=lista.map(r=>({a:r.a,nf:notaFisica(r.a.id)})).filter(r=>r.nf).sort((x,y)=>y.nf.nota-x.nf.nota||x.a.nome.localeCompare(y.a.nome));
   const med=i=>['🥇','🥈','🥉'][i]||`${i+1}º`;
   const col=m=>{const rk=lista.map(r=>({a:r.a,m:r.ms.find(x=>x.k===m.k)})).filter(r=>r.m.n!=null).sort((x,y)=>m.sent==='down'?x.m.n-y.m.n:y.m.n-x.m.n);
     if(!rk.length)return '';
     return `<div><div class="mut" style="font-size:12px;font-weight:700;text-transform:uppercase;margin:8px 0 4px">${m.ico} ${m.nome}</div>
-    ${rk.map((r,i)=>`<div class="alertline clickable" style="background:var(--bg);padding:6px 10px;cursor:pointer" onclick="subState.avalId='${r.a.id}';renderTab()"><span class="medal">${med(i)}</span><span style="flex:1">${esc(pnome(r.a.nome))}</span><strong>${m.k==='yoyo'?'nível '+fmtNivel(r.m.n)+(yoyoDistDe(r.m.av)!=null?' · '+yoyoDistDe(r.m.av)+' m':''):r.m.n+m.unid}</strong> ${pillNivel(r.m.nv)}</div>`).join('')}</div>`;};
+    ${rk.map((r,i)=>`<div class="alertline clickable" style="background:var(--bg);padding:6px 10px;cursor:pointer" onclick="${me.role==='atleta'?`verPontosFis('${r.a.id}')`:`subState.avalId='${r.a.id}';renderTab()`}"><span class="medal">${med(i)}</span><span style="flex:1">${esc(pnome(r.a.nome))}</span><strong>${m.k==='yoyo'?'nível '+fmtNivel(r.m.n)+(yoyoDistDe(r.m.av)!=null?' · '+yoyoDistDe(r.m.av)+' m':''):r.m.n+m.unid}</strong> ${pillNivel(r.m.nv)}</div>`).join('')}</div>`;};
   return `<div class="card sect" style="border-color:var(--gold)"><h2>🏆 Ranking das metas do preparador</h2>
   <p class="mut" style="margin-top:0;font-size:12.5px">Última avaliação de cada atleta · toque no nome para abrir.</p>
-  ${geral.length?`<div class="mut" style="font-size:12px;font-weight:700;text-transform:uppercase;margin:8px 0 4px">⭐ Geral (estrelas somadas)</div>
-  ${geral.slice(0,10).map((r,i)=>`<div class="alertline clickable" style="background:var(--gold-soft);padding:6px 10px;cursor:pointer" onclick="subState.avalId='${r.a.id}';renderTab()"><span class="medal">${med(i)}</span><span style="flex:1">${esc(pnome(r.a.nome))}</span><strong>${r.pts.toFixed(1)} / ${r.n*3}</strong></div>`).join('')}`:''}
+  ${geral.length?`<div class="mut" style="font-size:12px;font-weight:700;text-transform:uppercase;margin:8px 0 4px">📐 Nota física (0–10)</div>
+  ${geral.slice(0,10).map((r,i)=>`<div class="alertline clickable" style="background:var(--gold-soft);padding:6px 10px;cursor:pointer" onclick="${me.role==='atleta'?`verPontosFis('${r.a.id}')`:`subState.avalId='${r.a.id}';renderTab()`}"><span class="medal">${med(i)}</span><span style="flex:1">${esc(pnome(r.a.nome))}${r.nf.bonus?` <span class="pill p-ok" style="font-size:10px">📈 +${r.nf.bonus.toFixed(1)}</span>`:''}</span><strong style="font-size:17px;font-family:Georgia,serif">${r.nf.nota.toFixed(1)}</strong></div>`).join('')}`:''}
   <div class="grid g3">${METAS_PREP.map(col).join('')}</div>
   ${legendaMetas()}</div>`;
 }
@@ -2337,6 +2414,9 @@ function pontosPerfil(atId){
   }
   const nAv=db.avaliacoes.filter(v=>v.atletaId===atId).length;
   if(nAv){ pts+=nAv*25; det.push({txt:'📋 Avaliações físicas realizadas',calc:nAv+'× 25',pts:nAv*25}); }
+  if(nAv>=2){ const avsA=db.avaliacoes.filter(v=>v.atletaId===atId).sort((x,y)=>String(x.data).localeCompare(String(y.data))); let melh=0;
+    for(let i=1;i<avsA.length;i++) METAS_PREP.forEach(m=>{const n=m.val(avsA[i]),an=m.val(avsA[i-1]); if(n!=null&&an!=null&&(m.sent==='down'?n<an:n>an))melh++;});
+    if(melh){ pts+=melh*10; det.push({txt:'📈 Indicadores físicos melhorados',calc:melh+'× 10',pts:melh*10}); } }
   else miss.push({txt:'📋 Fazer a avaliação física',pts:25});
   const saudeOk=a.consent&&a.consent.aceito&&a.saude&&(a.saude.sangue||a.saude.emergencia||a.saude.plano||a.saude.alergias);
   if(saudeOk){ pts+=30; det.push({txt:'🩺 Ficha de saúde + termo LGPD',calc:'',pts:30}); }
