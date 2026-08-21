@@ -322,7 +322,7 @@ async function carregaTudo(){
   db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,convidado:p.convidado||null,status:p.status}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
     status:c.status==='pago'?'pago':(String(c.venc)<hoje()?'atrasado':'pendente'),pagoEm:c.pago_em?String(c.pago_em):null,forma:c.forma_pagamento||'',pagamentos:c.pagamentos||[],origem:c.origem||'',lote:c.origem_lote||''}));
-  db.avaliacoes=avaliacoes.map(v=>({id:v.id,atletaId:v.atleta_id,data:String(v.data),peso:v.peso,altura:v.altura,gordura:v.gordura,pesoGordura:v.peso_gordura||'',pesoMagro:v.peso_magro||'',massaMuscular:v.massa_muscular||'',vo2:v.vo2||'',salto1:v.salto1||'',salto2:v.salto2||'',salto3:v.salto3||'',forca:v.forca||'',resistencia:v.resistencia||'',notas:v.notas}));
+  db.avaliacoes=avaliacoes.map(v=>({id:v.id,atletaId:v.atleta_id,data:String(v.data),peso:v.peso,altura:v.altura,gordura:v.gordura,pesoGordura:v.peso_gordura||'',pesoMagro:v.peso_magro||'',massaMuscular:v.massa_muscular||'',vo2:v.vo2||'',yoyo:v.yoyo||'',salto1:v.salto1||'',salto2:v.salto2||'',salto3:v.salto3||'',forca:v.forca||'',resistencia:v.resistencia||'',notas:v.notas}));
   db.metas=metas.map(m=>({id:m.id,atletaId:m.atleta_id,desc:m.descricao,prazo:m.prazo?String(m.prazo):'',status:m.status}));
   db.stats=stats.map(s=>({id:s.id,eventoId:s.evento_id,atletaId:s.atleta_id,convidado:s.convidado||'',minutos:s.minutos,gols:s.gols,assist:s.assist,amarelos:s.amarelos,vermelho:s.vermelho,desarmes:s.desarmes,duelos:s.duelos,passes:s.passes,antecipacao:s.antecipacao||0,duelosAereos:s.duelos_aereos||0,chutesGol:s.chutes_gol||0,defesas:s.defesas||0,passesErrados:s.passes_errados||0,duelosPerdidos:s.duelos_perdidos||0,bolasPerdidas:s.bolas_perdidas||0,faltasCometidas:s.faltas_cometidas||0,chutesErrados:s.chutes_errados||0,golsSofridos:s.gols_sofridos||0,penaltisPerdidos:s.penaltis_perdidos||0,penaltisCometidos:s.penaltis_cometidos||0,golsContra:s.gols_contra||0,nota:s.nota,obs:s.obs}));
   db.uniformes=uniformes.map(u=>({id:u.id,descricao:u.descricao,numero:u.numero,tamanho:u.tamanho,status:u.status,atletaId:u.atleta_id,entregueEm:u.entregue_em,aceitoEm:u.aceito_em,pecas:u.pecas||{camisa:'estoque',short:'estoque',meiao:'estoque'},fornecedor:u.fornecedor||'',convidado:u.convidado||'',convFone:u.convidado_fone||'',goleiro:!!u.goleiro,cor:u.cor||''}));
@@ -1730,9 +1730,9 @@ function tAval(){
     const avs=db.avaliacoes.filter(v=>v.atletaId===sel).sort((a,b)=>b.data.localeCompare(a.data));
     const mts=db.metas.filter(m=>m.atletaId===sel);
     corpo=`<div class="card sect"><div class="spread"><h2>📈 Avaliações${souAtleta?' — minhas':''}</h2><div class="row" style="gap:6px">${avs.length?`<button class="mini gold" onclick="pdfAvaliacaoAtleta('${sel}')">📄 Relatório</button>`:''}${podeEditar?`<button class="mini" onclick="formAval('${sel}')">+ Nova avaliação</button>`:''}</div></div>
-    <div class="tblwrap"><table class="cardz"><tr><th>Data</th><th>Peso (kg)</th><th>Altura (m)</th><th>IMC</th><th>% Gordura</th><th>Peso gordura (kg)</th><th>Peso magro (kg)</th><th>% Massa musc.</th><th>🫁 VO2</th><th>🦵 Impulsão</th><th>💪 Força</th><th>🏃 Resist.</th><th>Notas</th><th></th></tr>
+    <div class="tblwrap"><table class="cardz"><tr><th>Data</th><th>Peso (kg)</th><th>Altura (m)</th><th>IMC</th><th>% Gordura</th><th>Peso gordura (kg)</th><th>Peso magro (kg)</th><th>% Massa musc.</th><th>🫁 VO2</th><th>🏃 Yo-yo</th><th>🦵 Salto horiz.</th><th>💪 Força</th><th>🏃 Resist.</th><th>Notas</th><th></th></tr>
     ${avs.length?avs.map(v=>{const imc=v.peso&&v.altura?(v.peso/(v.altura*v.altura)).toFixed(1):'—';
-      return `<tr><td data-l="Data"><strong>${dbr(v.data)}</strong></td><td data-l="Peso (kg)">${esc(v.peso)}</td><td data-l="Altura (m)">${esc(v.altura)}</td><td data-l="IMC">${imc}</td><td data-l="% Gordura">${esc(v.gordura||'—')}</td><td data-l="Peso gordura (kg)">${esc(v.pesoGordura||'—')}</td><td data-l="Peso magro (kg)">${esc(v.pesoMagro||'—')}</td><td data-l="% Massa muscular">${esc(v.massaMuscular||'—')}</td><td data-l="🫁 VO2 máx">${esc(v.vo2||'—')}</td><td data-l="🦵 Impulsão (melhor)">${(()=>{const m=melhorSalto(v);return m!=null?`<strong>${m} cm</strong><div class="mut" style="font-size:10.5px">${[v.salto1,v.salto2,v.salto3].filter(Boolean).join(' · ')}</div>`:'—';})()}</td><td data-l="💪 Força">${esc(v.forca||'—')}</td><td data-l="🏃 Resistência">${esc(v.resistencia||'—')}</td><td data-l="Notas">${esc(v.notas||'')}</td><td>${podeEditar?`<button class="mini sec" onclick="formAval('${sel}','${v.id}')">✏️</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="14" class="mut">Sem avaliações.</td></tr>'}</table></div></div>
+      return `<tr><td data-l="Data"><strong>${dbr(v.data)}</strong></td><td data-l="Peso (kg)">${esc(v.peso)}</td><td data-l="Altura (m)">${esc(v.altura)}</td><td data-l="IMC">${imc}</td><td data-l="% Gordura">${esc(v.gordura||'—')}</td><td data-l="Peso gordura (kg)">${esc(v.pesoGordura||'—')}</td><td data-l="Peso magro (kg)">${esc(v.pesoMagro||'—')}</td><td data-l="% Massa muscular">${esc(v.massaMuscular||'—')}</td><td data-l="🫁 VO2 máx">${esc(v.vo2||'—')}</td><td data-l="🏃 Yo-yo">${v.yoyo?`<strong>${esc(v.yoyo)}</strong> ${pillNivel(nivelMeta('yoyo',numV(v.yoyo)))}`:'—'}</td><td data-l="🦵 Salto horizontal (melhor)">${(()=>{const m=melhorSalto(v);return m!=null?`<strong>${m} cm</strong> ${pillNivel(nivelMeta('salto',m))}<div class="mut" style="font-size:10.5px">${[v.salto1,v.salto2,v.salto3].filter(Boolean).join(' · ')}</div>`:'—';})()}</td><td data-l="💪 Força">${esc(v.forca||'—')}</td><td data-l="🏃 Resistência">${esc(v.resistencia||'—')}</td><td data-l="Notas">${esc(v.notas||'')}</td><td>${podeEditar?`<button class="mini sec" onclick="formAval('${sel}','${v.id}')">✏️</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="15" class="mut">Sem avaliações.</td></tr>'}</table></div></div>
     ${avs.length>=2?(()=>{const comp=compareAvs(avs);
     return `<div class="card sect"><h2>⚖️ Comparativo das avaliações</h2>
     <p class="mut">Atual (${dbr(avs[0].data)}) comparada com a anterior${avs[1]?' ('+dbr(avs[1].data)+')':''} e com a primeira (${dbr(avs[avs.length-1].data)}).</p>
@@ -1740,13 +1740,76 @@ function tAval(){
     ${comp.map(m=>`<tr><td><strong>${m.lb}</strong></td><td data-l="1ª avaliação">${m.ini??'—'}</td><td data-l="Anterior">${m.ant??'—'}</td><td data-l="Atual"><strong>${m.atual??'—'}</strong></td>
       <td data-l="Δ vs anterior">${fmtDelta(m.d1,m.sent,'var(--ok)','var(--bad)','var(--ink2)')}</td><td data-l="Δ desde o início">${fmtDelta(m.d2,m.sent,'var(--ok)','var(--bad)','var(--ink2)')}</td></tr>`).join('')}</table></div>
     <p class="mut" style="font-size:12px;margin-top:6px">Verde = evolução favorável · vermelho = atenção · peso e IMC são neutros.</p></div>`;})():''}
-    <div class="card"><div class="spread"><h2>🎯 Metas</h2>${podeEditar?`<button class="mini" onclick="formMeta('${sel}')">+ Nova meta</button>`:''}</div>
+    ${htmlMetasPrep(sel)}
+    <div class="card"><div class="spread"><h2>📌 Metas individuais</h2>${podeEditar?`<button class="mini" onclick="formMeta('${sel}')">+ Nova meta</button>`:''}</div>
     ${mts.length?mts.map(m=>`<div class="alertline" style="background:var(--bg)"><div style="flex:1"><strong>${esc(m.desc)}</strong><div class="mut">Prazo: ${dbr(m.prazo)}</div></div>${statusMeta(m)}
     ${podeEditar&&m.status!=='atingida'?`<button class="mini sec" onclick="metaOk('${m.id}')">Marcar atingida</button>`:''}
     ${podeEditar?`<button class="mini sec" onclick="delMeta('${m.id}')">✕</button>`:''}</div>`).join(''):'<p class="mut">Sem metas cadastradas.</p>'}</div>`;
   }
-  return `${statusQuadro}${souAtleta?'':`<div class="card sect"><label style="margin-top:0">Atleta</label>
+  return `${statusQuadro}${souAtleta?'':cardRankingMetas()}${souAtleta?'':`<div class="card sect"><label style="margin-top:0">Atleta</label>
   <select onchange="subState.avalId=this.value;renderTab()"><option value="">— selecionar —</option>${ats.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.nome)}</option>`).join('')}</select></div>`}${corpo}`;
+}
+/* ===== Metas do preparador físico (parâmetros fixos) ===== */
+const numV=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isNaN(n)?null:n;};
+const NIVEIS=['Insuficiente','Regular','Bom','Ótimo','Excelente'];
+const COR_NIVEL={Insuficiente:'p-bad',Regular:'p-warn',Bom:'p-mut',Ótimo:'p-ok','Excelente':'p-gold','Na meta':'p-ok','Acima da meta':'p-warn'};
+const METAS_PREP=[
+  {k:'gordura',ico:'🔥',nome:'% de gordura',unid:'%',sent:'down',meta:14,param:'Meta: 14% (considerando idade e perfil)',val:v=>numV(v.gordura)},
+  {k:'yoyo',ico:'🏃',nome:'Yo-yo test',unid:'',sent:'up',param:'< 4.0 insuficiente · 4.0 bom · 5.0 ótimo · 6.0+ excelente',val:v=>numV(v.yoyo)},
+  {k:'salto',ico:'🦵',nome:'Salto horizontal',unid:' cm',sent:'up',param:'1,00 m insuficiente · 1,50 regular · 1,70 bom · 2,00 ótimo · +2 m excelente',val:v=>melhorSalto(v)}];
+function nivelMeta(k,n){
+  if(n==null)return null;
+  if(k==='gordura')return n<=14?{nivel:'Na meta',estrelas:3,txt:'✅ meta de 14% atingida'}:{nivel:'Acima da meta',estrelas:n<=16?2:n<=18?1:0,txt:`faltam ${(n-14).toFixed(1)} p.p. para a meta`};
+  if(k==='yoyo'){const nv=n>=6?'Excelente':n>=5?'Ótimo':n>=4?'Bom':'Insuficiente';const est={Insuficiente:0,Bom:1,Ótimo:2,Excelente:3}[nv];
+    const prox=n<4?[4,'bom']:n<5?[5,'ótimo']:n<6?[6,'excelente']:null;return {nivel:nv,estrelas:est,txt:prox?`faltam ${(prox[0]-n).toFixed(1)} para ${prox[1]}`:'🏆 nível máximo'};}
+  if(k==='salto'){const nv=n>200?'Excelente':n>=200?'Ótimo':n>=170?'Bom':n>=150?'Regular':'Insuficiente';const est={Insuficiente:0,Regular:0.75,Bom:1.5,Ótimo:2.25,Excelente:3}[nv];
+    const prox=n<150?[150,'regular']:n<170?[170,'bom']:n<200?[200,'ótimo']:n<=200?[201,'excelente']:null;return {nivel:nv,estrelas:est,txt:prox?`faltam ${prox[0]-n} cm para ${prox[1]}`:'🏆 nível máximo'};}
+  return null;
+}
+const pillNivel=nv=>nv?`<span class="pill ${COR_NIVEL[nv.nivel]||'p-mut'}" style="font-size:10.5px">${nv.nivel}</span>`:'';
+function ultimaAval(atId){ return db.avaliacoes.filter(v=>v.atletaId===atId).sort((a,b)=>String(b.data).localeCompare(String(a.data)))[0]||null; }
+function metasDe(atId){
+  const av=ultimaAval(atId); if(!av)return null;
+  return METAS_PREP.map(m=>{const n=m.val(av);const nv=nivelMeta(m.k,n);return {...m,n,nv,data:av.data};});
+}
+function htmlMetasPrep(atId,pdf){
+  const ms=metasDe(atId);
+  const a=at(atId);
+  if(!ms)return pdf?'':`<div class="card sect"><h2>🎯 Metas do preparador</h2><p class="mut">Sem avaliação física lançada ainda — faça a avaliação para ver suas metas.</p>${legendaMetas()}</div>`;
+  const total=ms.filter(m=>m.nv).reduce((x,m)=>x+m.nv.estrelas,0), maxT=ms.filter(m=>m.nv).length*3;
+  const linhas=ms.map(m=>`<tr><td><strong>${m.ico} ${m.nome}</strong><div class="mut" style="font-size:11px">${m.param}</div></td>
+    <td data-l="Marca atual">${m.n!=null?`<strong>${m.n}${m.unid}</strong>`:'<span class="mut">não avaliado</span>'}</td>
+    <td data-l="Situação">${m.nv?`${pillNivel(m.nv)}<div class="mut" style="font-size:11px">${m.nv.txt}</div>`:'—'}</td></tr>`).join('');
+  if(pdf)return `<h2>🎯 Metas do preparador físico</h2><p class="sub">Parâmetros definidos pela comissão técnica · última avaliação em ${dbr(ms[0].data)}</p>
+    <table><tr><th>Indicador / parâmetro</th><th>Marca atual</th><th>Situação</th></tr>${linhas}</table>
+    ${maxT?`<p><strong>Pontuação geral das metas: ${total.toFixed(1)} de ${maxT}</strong></p>`:''}`;
+  return `<div class="card sect"><div class="spread"><h2>🎯 Metas do preparador</h2>${maxT?`<span class="pill p-gold">⭐ ${total.toFixed(1)} / ${maxT}</span>`:''}</div>
+  <p class="mut" style="margin-top:0;font-size:12.5px">Parâmetros definidos pelo preparador físico · última avaliação em ${dbr(ms[0].data)}</p>
+  <div class="tblwrap"><table class="cardz"><tr><th>Indicador</th><th>Marca atual</th><th>Situação</th></tr>${linhas}</table></div>
+  ${legendaMetas()}</div>`;
+}
+function legendaMetas(){
+  return `<details style="margin-top:8px"><summary class="mut" style="cursor:pointer;font-size:12.5px">📏 Como funciona a classificação</summary>
+  <p class="mut" style="font-size:12.5px;margin:6px 0 0">🔥 <strong>% de gordura</strong> — meta única de <strong>14%</strong>.<br>
+  🏃 <strong>Yo-yo test</strong> (4 corridas de 15 m, base do VO2 máx) — abaixo de 4.0 insuficiente · a partir de 4.0 bom · 5.0 ótimo · 6.0+ excelente.<br>
+  🦵 <strong>Salto horizontal</strong> — 1,00 m insuficiente · 1,50 m regular · 1,70 m bom · 2,00 m ótimo · acima de 2 m excelente.<br>
+  ⭐ A pontuação geral soma até 3 estrelas por indicador (máximo 9).</p></details>`;
+}
+function cardRankingMetas(){
+  const lista=elenco().map(a=>({a,ms:metasDe(a.id)})).filter(r=>r.ms);
+  if(!lista.length)return '';
+  const geral=lista.map(r=>({a:r.a,pts:r.ms.filter(m=>m.nv).reduce((x,m)=>x+m.nv.estrelas,0),n:r.ms.filter(m=>m.nv).length})).filter(r=>r.n).sort((x,y)=>y.pts-x.pts||x.a.nome.localeCompare(y.a.nome));
+  const med=i=>['🥇','🥈','🥉'][i]||`${i+1}º`;
+  const col=m=>{const rk=lista.map(r=>({a:r.a,m:r.ms.find(x=>x.k===m.k)})).filter(r=>r.m.n!=null).sort((x,y)=>m.sent==='down'?x.m.n-y.m.n:y.m.n-x.m.n);
+    if(!rk.length)return '';
+    return `<div><div class="mut" style="font-size:12px;font-weight:700;text-transform:uppercase;margin:8px 0 4px">${m.ico} ${m.nome}</div>
+    ${rk.map((r,i)=>`<div class="alertline clickable" style="background:var(--bg);padding:6px 10px;cursor:pointer" onclick="subState.avalId='${r.a.id}';renderTab()"><span class="medal">${med(i)}</span><span style="flex:1">${esc(pnome(r.a.nome))}</span><strong>${r.m.n}${m.unid}</strong> ${pillNivel(r.m.nv)}</div>`).join('')}</div>`;};
+  return `<div class="card sect" style="border-color:var(--gold)"><h2>🏆 Ranking das metas do preparador</h2>
+  <p class="mut" style="margin-top:0;font-size:12.5px">Última avaliação de cada atleta · toque no nome para abrir.</p>
+  ${geral.length?`<div class="mut" style="font-size:12px;font-weight:700;text-transform:uppercase;margin:8px 0 4px">⭐ Geral (estrelas somadas)</div>
+  ${geral.slice(0,10).map((r,i)=>`<div class="alertline clickable" style="background:var(--gold-soft);padding:6px 10px;cursor:pointer" onclick="subState.avalId='${r.a.id}';renderTab()"><span class="medal">${med(i)}</span><span style="flex:1">${esc(pnome(r.a.nome))}</span><strong>${r.pts.toFixed(1)} / ${r.n*3}</strong></div>`).join('')}`:''}
+  <div class="grid g3">${METAS_PREP.map(col).join('')}</div>
+  ${legendaMetas()}</div>`;
 }
 const melhorSalto=v=>{const ns=[v.salto1,v.salto2,v.salto3].map(x=>parseFloat(String(x??'').replace(',','.'))).filter(n=>!isNaN(n));return ns.length?Math.max(...ns):null;};
 function compareAvs(avsDesc){
@@ -1754,7 +1817,7 @@ function compareAvs(avsDesc){
   const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isNaN(n)?null:n;};
   const imcDe=v=>{const p=num(v.peso),a=num(v.altura);return p&&a?+(p/(a*a)).toFixed(1):null;};
   const M=[['Peso (kg)',v=>num(v.peso),'neutro'],['IMC',imcDe,'neutro'],['% Gordura',v=>num(v.gordura),'down'],
-    ['Peso gordura (kg)',v=>num(v.pesoGordura),'down'],['Peso magro (kg)',v=>num(v.pesoMagro),'up'],['% Massa muscular',v=>num(v.massaMuscular),'up'],['🫁 VO2 máx (ml/kg/min)',v=>num(v.vo2),'up'],['🦵 Impulsão — melhor salto (cm)',v=>melhorSalto(v),'up']];
+    ['Peso gordura (kg)',v=>num(v.pesoGordura),'down'],['Peso magro (kg)',v=>num(v.pesoMagro),'up'],['% Massa muscular',v=>num(v.massaMuscular),'up'],['🫁 VO2 máx (ml/kg/min)',v=>num(v.vo2),'up'],['🏃 Yo-yo test (nível)',v=>num(v.yoyo),'up'],['🦵 Salto horizontal — melhor (cm)',v=>melhorSalto(v),'up']];
   return M.map(([lb,f,sent])=>{
     const a=f(atual), vAnt=ant?f(ant):null, vIni=prim!==atual?f(prim):null;
     return {lb,atual:a,ant:vAnt,ini:vIni,
@@ -1804,11 +1867,13 @@ function pdfAvaliacaoAtleta(atId){
   ${grafico('🔥 Evolução do % de gordura',v=>v.gordura,'#B3372E')}
   ${grafico('💪 Evolução do % de massa muscular',v=>v.massaMuscular,'#2E7D4F')}
   ${grafico('🫁 Evolução do VO2 máx (ml/kg/min)',v=>v.vo2,'#1C4FA0')}
-  ${grafico('🦵 Evolução da impulsão — melhor salto (cm)',v=>melhorSalto(v),'#A86A12')}
+  ${grafico('🏃 Evolução do Yo-yo test (nível)',v=>v.yoyo,'#8a1f2f')}
+  ${grafico('🦵 Evolução do salto horizontal — melhor (cm)',v=>melhorSalto(v),'#A86A12')}
+  ${htmlMetasPrep(atId,true)}
   <h2>📋 Histórico completo</h2>
-  <table><tr><th>Data</th><th>Peso</th><th>Altura</th><th>IMC</th><th>% Gord.</th><th>P. gordura</th><th>P. magro</th><th>% M. musc.</th><th>🫁 VO2</th><th>🦵 Saltos</th><th>💪 Força</th><th>🏃 Resist.</th><th>Notas</th></tr>
+  <table><tr><th>Data</th><th>Peso</th><th>Altura</th><th>IMC</th><th>% Gord.</th><th>P. gordura</th><th>P. magro</th><th>% M. musc.</th><th>🫁 VO2</th><th>🏃 Yo-yo</th><th>🦵 Saltos</th><th>💪 Força</th><th>🏃 Resist.</th><th>Notas</th></tr>
   ${avsAsc.map(v=>{const imc=v.peso&&v.altura?(v.peso/(v.altura*v.altura)).toFixed(1):'—';
-    return `<tr><td><strong>${dbr(v.data)}</strong></td><td>${esc(v.peso||'—')}</td><td>${esc(v.altura||'—')}</td><td>${imc}</td><td>${esc(v.gordura||'—')}</td><td>${esc(v.pesoGordura||'—')}</td><td>${esc(v.pesoMagro||'—')}</td><td>${esc(v.massaMuscular||'—')}</td><td>${esc(v.vo2||'—')}</td><td>${(()=>{const m=melhorSalto(v);return m!=null?`<strong>${m}</strong> (${[v.salto1,v.salto2,v.salto3].filter(Boolean).join('/')})`:'—';})()}</td><td>${esc(v.forca||'—')}</td><td>${esc(v.resistencia||'—')}</td><td>${esc(v.notas||'')}</td></tr>`;}).join('')}</table>`,
+    return `<tr><td><strong>${dbr(v.data)}</strong></td><td>${esc(v.peso||'—')}</td><td>${esc(v.altura||'—')}</td><td>${imc}</td><td>${esc(v.gordura||'—')}</td><td>${esc(v.pesoGordura||'—')}</td><td>${esc(v.pesoMagro||'—')}</td><td>${esc(v.massaMuscular||'—')}</td><td>${esc(v.vo2||'—')}</td><td>${esc(v.yoyo||'—')}</td><td>${(()=>{const m=melhorSalto(v);return m!=null?`<strong>${m}</strong> (${[v.salto1,v.salto2,v.salto3].filter(Boolean).join('/')})`:'—';})()}</td><td>${esc(v.forca||'—')}</td><td>${esc(v.resistencia||'—')}</td><td>${esc(v.notas||'')}</td></tr>`;}).join('')}</table>`,
   `Avaliação física — ${pnome(a.nome)}`);
 }
 function formAval(aid,id){
@@ -1824,25 +1889,33 @@ function formAval(aid,id){
   <div><label>% Massa muscular</label><input id="v_mmusc" type="number" step="0.1" value="${v?esc(v.massaMuscular||''):''}"></div>
   <div><label>🫁 VO2 máx (ml/kg/min)</label><input id="v_vo2" type="number" step="0.1" placeholder="Ex.: 42.5" value="${v?esc(v.vo2||''):''}"></div>
   </div>
-  <label style="margin-top:14px">🦵 Impulsão — teste de salto (3 tentativas, em cm)</label>
+  <label style="margin-top:14px">🦵 Salto horizontal — 3 tentativas, em cm (meta: 150 regular · 170 bom · 200 ótimo · +200 excelente)</label>
   <div class="grid g3">
   <div><label>Salto 1</label><input id="v_s1" type="number" step="0.5" value="${v?esc(v.salto1||''):''}"></div>
   <div><label>Salto 2</label><input id="v_s2" type="number" step="0.5" value="${v?esc(v.salto2||''):''}"></div>
   <div><label>Salto 3</label><input id="v_s3" type="number" step="0.5" value="${v?esc(v.salto3||''):''}"></div>
   </div>
   <div class="grid g2">
+  <div><label>🏃 Yo-yo test (nível)</label><input id="v_yoyo" type="number" step="0.1" value="${v?esc(v.yoyo||''):''}" placeholder="Ex.: 4.5 (4 corridas de 15 m)"></div>
   <div><label>💪 Teste de força</label><input id="v_forca" value="${v?esc(v.forca||''):''}" placeholder="Ex.: Flexões 1 min: 32"></div>
-  <div><label>🏃 Teste de resistência</label><input id="v_resist" value="${v?esc(v.resistencia||''):''}" placeholder="Ex.: Cooper 12 min: 2.400 m"></div>
+  <div><label>🏃 Outro teste de resistência</label><input id="v_resist" value="${v?esc(v.resistencia||''):''}" placeholder="Ex.: Cooper 12 min: 2.400 m"></div>
   </div>
+  <p class="mut" style="font-size:12px;margin:4px 0 0">Yo-yo: abaixo de 4.0 insuficiente · 4.0 bom · 5.0 ótimo · 6.0+ excelente. % de gordura: meta 14%.</p>
   <label>Notas</label><textarea id="v_notas">${v?esc(v.notas||''):''}</textarea>
   <div class="row" style="margin-top:14px"><button onclick="salvaAval('${aid}','${id||''}')">Salvar</button>
   ${v?`<button class="bad" onclick="delAval('${id}')">🗑 Excluir</button>`:''}
   <button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
 async function salvaAval(aid,id){
-  let dados={atleta_id:aid,data:fval('v_data')||hoje(),peso:fval('v_peso'),altura:fval('v_alt'),gordura:fval('v_gord'),peso_gordura:fval('v_pgord'),peso_magro:fval('v_pmagro'),massa_muscular:fval('v_mmusc'),vo2:fval('v_vo2'),salto1:fval('v_s1'),salto2:fval('v_s2'),salto3:fval('v_s3'),forca:fval('v_forca'),resistencia:fval('v_resist'),notas:fval('v_notas')};
+  let dados={atleta_id:aid,data:fval('v_data')||hoje(),peso:fval('v_peso'),altura:fval('v_alt'),gordura:fval('v_gord'),peso_gordura:fval('v_pgord'),peso_magro:fval('v_pmagro'),massa_muscular:fval('v_mmusc'),vo2:fval('v_vo2'),yoyo:fval('v_yoyo'),salto1:fval('v_s1'),salto2:fval('v_s2'),salto3:fval('v_s3'),forca:fval('v_forca'),resistencia:fval('v_resist'),notas:fval('v_notas')};
   const op=d=>id?sb.from('avaliacoes').update(d).eq('id',id).select():sb.from('avaliacoes').insert(d).select();
   let {data:res,error}=await op(dados);
+  if(error&&/yoyo/.test(error.message||'')){
+    delete dados.yoyo;
+    const {data:r2,error:e2}=await op(dados);
+    if(e2){toast('⚠️ '+e2.message);return;}
+    res=r2; error=null; toast('⚠️ Salvo sem o Yo-yo test — rode o SQL v21 no Supabase');
+  }
   if(error&&/peso_gordura|peso_magro|massa_muscular|salto1|salto2|salto3|forca|resistencia/.test(error.message||'')){
     delete dados.peso_gordura; delete dados.peso_magro; delete dados.massa_muscular; delete dados.salto1; delete dados.salto2; delete dados.salto3; delete dados.forca; delete dados.resistencia;
     const {data:r2,error:e2}=await op(dados);
@@ -6504,6 +6577,7 @@ function tMeu(){
   ${cardNovidadesTaticas()}
   ${cardAcordos(true)}
   ${cardMeusPontos()}
+  ${htmlMetasPrep(me.id)}
   ${cardRankingClube()}
   <div class="grid g5 sect">
     <div class="card stat clickable" onclick="vai('presencas')"><div class="n">${pct===null?'—':pct+'%'}</div><div class="l">Minha frequência →</div></div>
