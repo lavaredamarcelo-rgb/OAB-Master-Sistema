@@ -2246,6 +2246,22 @@ function pontosPerfil(atId){
   const acordoOk=db.cobrancas.filter(c=>c.atletaId===atId&&ehAcordo(c)&&c.status==='pago').length;
   if(acordoOk){ pts+=acordoOk*20; det.push({txt:'🤝 Parcelas de acordo pagas',calc:acordoOk+'× 20',pts:acordoOk*20}); }
   if(db.cobrancas.some(c=>c.atletaId===atId&&ehMensal(c)&&c.status!=='pago')) miss.push({txt:'💰 Pagar a mensalidade até o vencimento (vale a cada mês)',pts:40});
+  if(a.isentoMens){
+    // Isento de mensalidade (ex.: goleiro): o "dever do mês" é presença — 75% dos dias de atividade com chamada feita
+    const porMes={}, hj=hoje(), mesAtual=hj.slice(0,7);
+    db.eventos.filter(e=>(ehJogoTipo(e.tipo)||ehTreinoTipo(e.tipo))&&e.data<=hj).forEach(e=>{
+      if(!db.presencas.some(x=>x.eventoId===e.id))return; // sem chamada, o dia não conta
+      const m=e.data.slice(0,7); const o=porMes[m]??={dias:new Set(),pres:new Set(),reg:false};
+      o.dias.add(e.data);
+      const pz=db.presencas.find(x=>x.eventoId===e.id&&x.atletaId===atId);
+      if(pz){ o.reg=true; if(['presente','atraso'].includes(pz.status))o.pres.add(e.data); }
+    });
+    let ok=0, andamento=null;
+    Object.entries(porMes).forEach(([m,o])=>{ if(!o.reg)return; const pct=o.pres.size/o.dias.size; if(m===mesAtual)andamento={pres:o.pres.size,dias:o.dias.size,pct}; if(pct>=0.75)ok++; });
+    if(ok){ pts+=ok*40; det.push({txt:'🧤 Compromisso do mês cumprido (isento: 75% de presença)',calc:ok+'× 40',pts:ok*40}); }
+    if(!andamento) miss.push({txt:'🧤 Compromisso do mês: presença em 75% das atividades (vale a cada mês, no lugar da mensalidade)',pts:40});
+    else if(andamento.pct<0.75) miss.push({txt:`🧤 Compromisso do mês: presença em 75% das atividades — ${andamento.pres} de ${andamento.dias} dia${andamento.dias>1?'s':''} até agora`,pts:40});
+  }
   const nAv=db.avaliacoes.filter(v=>v.atletaId===atId).length;
   if(nAv){ pts+=nAv*25; det.push({txt:'📋 Avaliações físicas realizadas',calc:nAv+'× 25',pts:nAv*25}); }
   else miss.push({txt:'📋 Fazer a avaliação física',pts:25});
