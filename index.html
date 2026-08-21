@@ -1377,7 +1377,8 @@ function verCardJogador(id){
   <div style="display:flex;justify-content:center;padding:10px 0">${cardJogador(a,est)}</div>
   <details style="margin-top:6px"><summary class="mut" style="cursor:pointer;font-size:12.5px">🎮 Como o overall ${O.ov} é calculado</summary>
   ${O.attrs.map(x=>`<div class="alertline" style="background:var(--bg);padding:5px 10px"><div style="flex:1;font-size:13px"><strong>${x.k}</strong> — ${OV_NOMES[x.k]} <span class="mut">(peso ${Math.round(OV_PESOS[x.peso||x.k]*100)}%)</span></div><strong>${x.v??'—'}</strong></div>`).join('')}
-  <p class="mut" style="font-size:12px;margin:6px 0 0">Atributos sem dado não contam (o peso vai para os demais). Escala final de 50 a 99 · a <strong>borda</strong> do card segue o overall: 🥉 até 64 · 🥈 65–74 · 🥇 75–84 · 💎 85+ (brilho especial).</p></details>
+  <p style="font-size:12.5px;margin:8px 0 0"><strong>Conta:</strong> média dos ${O.attrs.filter(x=>x.v!=null).length} atributos = <strong>${O.score.toFixed(1)}</strong> → 50 + ${O.score.toFixed(1)} × 0,49 = <strong>${O.ov}</strong></p>
+  <p class="mut" style="font-size:12px;margin:6px 0 0">Atributos sem dado não contam (divide-se só pelos que existem). A média vira a escala de 50 a 99 · a <strong>borda</strong> do card segue o overall: 🥉 até 64 · 🥈 65–74 · 🥇 75–84 · 💎 85+ (brilho especial).</p></details>
   ${(()=>{const jn=[...db.stats.filter(x=>x.atletaId===id&&notaConta(x.eventoId)).map(x=>({e:byId(db.eventos,x.eventoId),s:x})),
     ...presencasSemStats(id).filter(pz=>notaConta(pz.eventoId)).map(pz=>({e:byId(db.eventos,pz.eventoId),s:{}}))].filter(x=>x.e).sort((x,y)=>x.e.data.localeCompare(y.e.data)).slice(-10);
   return jn.length?`<div style="margin-top:14px"><label>📈 Evolução da nota — últimos ${jn.length} jogos (🤖 = nota do sistema)</label>
