@@ -3713,16 +3713,47 @@ function tPres(){
   const minhas=me.role==='atleta'?db.presencas.filter(p=>p.atletaId===me.id).map(p=>({p,e:byId(db.eventos,p.eventoId)})).filter(x=>x.e).sort((x,y)=>y.e.data.localeCompare(x.e.data)):[];
   return `${quadro}
   <div class="card sect"><h2>🏅 Ranking de participação</h2>
-  <p class="mut">Quem mais comparece a jogos e treinos (presenças + atrasos contam como comparecimento).</p>
+  <p class="mut">Quem mais comparece a jogos e treinos (presenças + atrasos contam como comparecimento). Toque no atleta para ver a ficha completa, dia a dia.</p>
   ${comDados.length?`<div class="tblwrap"><table class="cardz"><tr><th></th><th>Atleta</th><th>Jogos</th><th>Treinos</th><th>Frequência</th></tr>
-  ${comDados.map((r,i)=>`<tr><td class="medal">${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º'}</td><td><strong>${esc(r.a.nome)}</strong></td><td data-l="Jogos">${r.jg}</td><td data-l="Treinos">${r.tr}</td><td data-l="Frequência"><strong>${r.pct}%</strong></td></tr>`).join('')}</table></div>`:'<p class="mut">Nenhuma chamada registrada ainda.</p>'}</div>
+  ${comDados.map((r,i)=>`<tr class="clickable" style="cursor:pointer" onclick="verFreqAtleta('${r.a.id}')"><td class="medal">${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º'}</td><td><strong>${esc(r.a.nome)}</strong> <span class="mut" style="font-size:11px">›</span></td><td data-l="Jogos">${r.jg}</td><td data-l="Treinos">${r.tr}</td><td data-l="Frequência"><strong>${r.pct}%</strong></td></tr>`).join('')}</table></div>`:'<p class="mut">Nenhuma chamada registrada ainda.</p>'}</div>
   <div class="card"><h2>📊 Faltas e atrasos</h2>
   ${comDados.length?`<div class="tblwrap"><table class="cardz"><tr><th>Atleta</th><th>Faltas</th><th>Atrasos</th><th>Justificadas</th><th>Situação</th></tr>
-  ${rank.filter(r=>r.f||r.at_||r.j).map(r=>`<tr><td><strong>${esc(r.a.nome)}</strong></td><td data-l="Faltas">${r.f}</td><td data-l="Atrasos">${r.at_}</td><td data-l="Justificadas">${r.j}</td><td data-l="Situação">${db.config.limiteFaltas>0?(r.f>=db.config.limiteFaltas?'<span class="pill p-bad">Limite excedido</span>':'<span class="pill p-ok">Regular</span>'):'<span class="mut">—</span>'}</td></tr>`).join('')||'<tr><td colspan="5" class="mut">Nenhuma falta ou atraso. 👏</td></tr>'}</table></div>
+  ${rank.filter(r=>r.f||r.at_||r.j).map(r=>`<tr class="clickable" style="cursor:pointer" onclick="verFreqAtleta('${r.a.id}')"><td><strong>${esc(r.a.nome)}</strong> <span class="mut" style="font-size:11px">›</span></td><td data-l="Faltas">${r.f}</td><td data-l="Atrasos">${r.at_}</td><td data-l="Justificadas">${r.j}</td><td data-l="Situação">${db.config.limiteFaltas>0?(r.f>=db.config.limiteFaltas?'<span class="pill p-bad">Limite excedido</span>':'<span class="pill p-ok">Regular</span>'):'<span class="mut">—</span>'}</td></tr>`).join('')||'<tr><td colspan="5" class="mut">Nenhuma falta ou atraso. 👏</td></tr>'}</table></div>
   <div class="row" style="margin-top:12px"><button class="mini" onclick="pdfFrequencia()">📄 Relatório de frequência (PDF)</button><button class="sec mini" onclick="csvFaltas()">⬇ Planilha (CSV)</button></div>`:'<p class="mut">Nenhum registro ainda.</p>'}</div>
   ${minhas.length?`<div class="card" style="margin-top:14px"><h2>🗂️ Meu histórico</h2>
   <div class="tblwrap"><table><tr><th>Data</th><th>Compromisso</th><th>Situação</th></tr>
   ${minhas.map(x=>`<tr><td>${dbr(x.e.data)}</td><td>${esc(x.e.titulo)}</td><td>${x.p.status==='presente'?'<span class="pill p-ok">Presente</span>':x.p.status==='falta'?'<span class="pill p-bad">Falta</span>':`<span class="pill p-warn">${lbl[x.p.status]}</span>`}</td></tr>`).join('')}</table></div></div>`:''}`;
+}
+function verFreqAtleta(atId){
+  const a=at(atId); if(!a)return;
+  const lbl={presente:['Presente','p-ok','✅'],atraso:['Atraso','p-warn','⏰'],justificada:['Justificada','p-warn','📝'],falta:['Falta','p-bad','❌']};
+  const evs=db.eventos.filter(e=>(ehJogoTipo(e.tipo)||ehTreinoTipo(e.tipo))&&e.data<=hoje()&&db.presencas.some(x=>x.eventoId===e.id))
+    .sort((x,y)=>y.data.localeCompare(x.data));
+  const linhas=evs.map(e=>{const pz=db.presencas.find(x=>x.eventoId===e.id&&x.atletaId===atId);
+    return {e,st:pz?pz.status:'sem'};});
+  const cont={presente:0,atraso:0,justificada:0,falta:0,sem:0};
+  linhas.forEach(l=>cont[l.st]++);
+  const fq=freqAtleta(atId);
+  const filtro=subState.freqFiltro||'todos';
+  const chip=(k,txt,cls)=>`<button class="mini ${filtro===k?'':'sec'}" onclick="subState.freqFiltro='${k}';verFreqAtleta('${atId}')">${txt}</button>`;
+  const vis=linhas.filter(l=>filtro==='todos'||l.st===filtro);
+  modal(`<h2>🗂️ Frequência — ${esc(pnome(a.nome))}</h2>
+  <div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 10px">
+    <span class="pill p-ok">✅ ${cont.presente} presenças</span>
+    <span class="pill p-warn">⏰ ${cont.atraso} atrasos</span>
+    <span class="pill p-warn">📝 ${cont.justificada} justificadas</span>
+    <span class="pill p-bad">❌ ${cont.falta} faltas</span>
+    ${cont.sem?`<span class="pill p-mut">➖ ${cont.sem} sem registro</span>`:''}
+    <span class="pill p-gold">📊 ${fq.pct==null?'—':fq.pct+'%'} de frequência</span>
+  </div>
+  ${cont.sem?`<p class="mut" style="font-size:12px;margin:0 0 8px">➖ "Sem registro" = a chamada daquele dia foi feita, mas ${esc(pnome(a.nome))} não foi marcado — confira se faltou marcar.</p>`:''}
+  <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:8px">${chip('todos','Tudo')}${chip('presente','✅ Presenças')}${chip('atraso','⏰ Atrasos')}${chip('justificada','📝 Justificadas')}${chip('falta','❌ Faltas')}${cont.sem?chip('sem','➖ Sem registro'):''}</div>
+  <div class="tblwrap" style="max-height:46vh;overflow-y:auto"><table class="cardz"><tr><th>Data</th><th>Compromisso</th><th>Situação</th></tr>
+  ${vis.length?vis.map(l=>`<tr><td data-l="Data"><strong>${dbr(l.e.data)}</strong></td><td data-l="Compromisso">${tipoEvIco(l.e.tipo)} ${esc(l.e.titulo)}</td>
+    <td data-l="Situação">${l.st==='sem'?'<span class="pill p-mut">➖ Sem registro</span>':`<span class="pill ${lbl[l.st][1]}">${lbl[l.st][2]} ${lbl[l.st][0]}</span>`}</td></tr>`).join(''):'<tr><td colspan="3" class="mut">Nada nesse filtro.</td></tr>'}
+  </table></div>
+  <p class="mut" style="font-size:11.5px;margin:8px 0 0">${linhas.length} dias com chamada feita. Para corrigir um registro, abra o evento na Frequência e ajuste a chamada.</p>
+  <div class="row" style="margin-top:12px"><button class="sec" onclick="subState.freqFiltro='todos';fecha()">Fechar</button></div>`);
 }
 async function marca(ev,aid,st){
   const isConv=String(aid).startsWith('conv_');
