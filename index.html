@@ -3878,18 +3878,18 @@ function tFinBalanco(){
   <div style="margin-bottom:16px">
     <div class="mut" style="font-size:12px;margin-bottom:6px;font-weight:bold">📅 MÊS ATUAL (${mesAtual})</div>
     <div class="grid g3">
-      <div class="card stat"><div class="n" style="color:var(--ok)">${brl(totalRecMes)}</div><div class="l">Receitas (mês)</div></div>
+      <div class="card stat"><div class="n" style="color:var(--ok)">${brl(totalRecMes+totalMensMes)}</div><div class="l">Receitas (mês)</div><div class="mut" style="font-size:10.5px">💳 mensalidades ${brl(totalMensMes)} · 💵 outras ${brl(totalRecMes)}</div></div>
       <div class="card stat"><div class="n" style="color:var(--bad)">${brl(totalDesMes)}</div><div class="l">Despesas (mês)</div></div>
-      <div class="card stat" style="background:${saldoMes>=0?'var(--ok-soft)':'var(--bad-soft)'}"><div class="n" style="color:${saldoMes>=0?'var(--ok)':'var(--bad)'}">${brl(saldoMes)}</div><div class="l">Saldo (mês)</div></div>
+      <div class="card stat" style="background:${saldoMes>=0?'var(--ok-soft)':'var(--bad-soft)'}"><div class="n" style="color:${saldoMes>=0?'var(--ok)':'var(--bad)'}">${brl(saldoMes)}</div><div class="l">Saldo (mês)</div><div class="mut" style="font-size:10.5px">inclui saldo inicial ${brl(db.config.saldoIni)}</div></div>
     </div>
   </div>
 
   <div>
     <div class="mut" style="font-size:12px;margin-bottom:6px;font-weight:bold">📊 ANO ATUAL (${ano})</div>
     <div class="grid g3">
-      <div class="card stat"><div class="n" style="color:var(--ok)">${brl(totalRecAno)}</div><div class="l">Receitas (ano)</div></div>
+      <div class="card stat"><div class="n" style="color:var(--ok)">${brl(totalRecAno+totalMensAno)}</div><div class="l">Receitas (ano)</div><div class="mut" style="font-size:10.5px">💳 mensalidades ${brl(totalMensAno)} · 💵 outras ${brl(totalRecAno)}</div></div>
       <div class="card stat"><div class="n" style="color:var(--bad)">${brl(totalDesAno)}</div><div class="l">Despesas (ano)</div></div>
-      <div class="card stat" style="background:${saldoAno>=0?'var(--ok-soft)':'var(--bad-soft)'}"><div class="n" style="color:${saldoAno>=0?'var(--ok)':'var(--bad)'}">${brl(saldoAno)}</div><div class="l">Saldo (ano)</div></div>
+      <div class="card stat" style="background:${saldoAno>=0?'var(--ok-soft)':'var(--bad-soft)'}"><div class="n" style="color:${saldoAno>=0?'var(--ok)':'var(--bad)'}">${brl(saldoAno)}</div><div class="l">Saldo (ano)</div><div class="mut" style="font-size:10.5px">inclui saldo inicial ${brl(db.config.saldoIni)}</div></div>
     </div>
   </div>
   </div>
