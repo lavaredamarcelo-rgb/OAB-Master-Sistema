@@ -834,7 +834,7 @@ function maisMenu(){
   <button class="sec mini" onclick="fecha();recarrega();toast('Dados atualizados')">🔄 Atualizar</button>
   <span style="flex:1"></span><button class="bad mini" onclick="sairAuth()">🚪 Sair</button></div>`);
 }
-function vai(t,push=true){ if(!NAV[me.role].includes(t))return; if(push&&t!==tab)navHist.push(tab); if(navHist.length>25)navHist.shift(); tab=t; subState={}; if(typeof selCob!=='undefined'){selCob.clear();selDesp.clear();} renderTab();
+function vai(t,push=true){ if(!NAV[me.role].includes(t)){ if(NAV[me.role].includes('meu')&&t!=='meu'){vai('meu',push);} return; } if(push&&t!==tab)navHist.push(tab); if(navHist.length>25)navHist.shift(); tab=t; subState={}; if(typeof selCob!=='undefined'){selCob.clear();selDesp.clear();} renderTab();
   document.querySelectorAll('.navb').forEach(b=>b.classList.toggle('on',b.textContent.trim()===NAVLBL[t][1]));
   document.querySelectorAll('.bb').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); }
 function voltar(){ if(!navHist.length)return; vai(navHist.pop(),false); }
@@ -1636,9 +1636,27 @@ function slotsDocs(aid,podeAnexar){
     ${podeAnexar?`<button class="mini ${files.length?'sec':''}" onclick="anexaCat('${aid}','${esc(cat)}')">📎 Anexar</button>`:''}</div>`;
   }).join('');
 }
+async function comprimeImagem(f){
+  const ehImg=/^image\//.test(f.type)||/\.(heic|heif|jpg|jpeg|png|webp)$/i.test(f.name);
+  if(!ehImg||f.size<=2.5*1048576)return f;
+  try{
+    const url=URL.createObjectURL(f);
+    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url;});
+    const max=2200, sc=Math.min(1,max/Math.max(img.width,img.height));
+    const cv=document.createElement('canvas'); cv.width=Math.round(img.width*sc); cv.height=Math.round(img.height*sc);
+    cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+    const bl=await new Promise(r=>cv.toBlob(r,'image/jpeg',.85));
+    URL.revokeObjectURL(url);
+    if(!bl||bl.size>=f.size)return f;
+    return new File([bl],f.name.replace(/\.\w+$/,'')+'.jpg',{type:'image/jpeg'});
+  }catch(_){ return f; }
+}
 function anexaCat(aid,cat){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='.pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx';
-  inp.onchange=()=>upFile(inp,10,async f=>{
+  inp.onchange=()=>upFile(inp,40,async f=>{
+    toast('Enviando…');
+    f=await comprimeImagem(f);
+    if(f.size>10*1048576){toast('⚠️ Arquivo grande demais mesmo após compressão (máx. 10 MB) — envie um PDF menor ou uma foto');return;}
     await enviaArquivo(f,'geral',aid,cat);
     log('docs',`${me.nome} anexou "${f.name}" (${cat})${aid!==me.id?' ao arquivo de '+nomeAt(aid):''}`);
     await recarrega(); toast(cat+' anexado ✔');
@@ -6987,7 +7005,7 @@ function tMeu(){
   <div class="sect">${cardDiretoria()}</div>
   <div class="card"><div class="spread"><h2>📁 Meus documentos</h2>
   ${db.arquivos.some(d=>d.atletaId===me.id)?`<button class="mini sec" onclick="baixarZipPessoa('${me.id}')">⬇ Baixar todos (ZIP)</button>`:''}</div>
-  <p class="mut">Cada documento tem sua gaveta: toque em <strong>📎 Anexar</strong> no tipo certo (PDF ou foto, máx. 10 MB). Visíveis para você e para a diretoria — é daqui que saem os documentos para as inscrições nos campeonatos.</p>
+  <p class="mut">Cada documento tem sua gaveta: toque em <strong>📎 Anexar</strong> no tipo certo (PDF ou foto — fotos grandes são comprimidas automaticamente). Visíveis para você e para a diretoria — é daqui que saem os documentos para as inscrições nos campeonatos.</p>
   ${slotsDocs(me.id,true)}</div>
   </div>`;
 }
