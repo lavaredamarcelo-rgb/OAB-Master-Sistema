@@ -2415,12 +2415,15 @@ function pontosCampo(atId,mesPrefix){
   if(pjus)det.push({txt:'📝 Faltas justificadas',calc:pjus+'× 3',pts:pjus*3});
   const evsMes=e=>!mesPrefix||e.data.startsWith(mesPrefix);
   const craques=db.eventos.filter(e=>evsMes(e)&&(()=>{const c=craqueDo(e.id);return c&&c.id===atId;})()).length;
-  if(craques){ pts+=craques*15; det.push({txt:'🌟 Craque do Jogo (eleito)',calc:craques+'× 15',pts:craques*15}); }
-  const notasAltas=db.stats.filter(x=>x.atletaId===atId&&notaConta(x.eventoId)&&(()=>{const e=byId(db.eventos,x.eventoId);return e&&evsMes(e);})()&&notaDe(x).v>=8).length;
-  if(notasAltas){ pts+=notasAltas*10; det.push({txt:'⭐ Notas 8+ em jogos',calc:notasAltas+'× 10',pts:notasAltas*10}); }
+  if(craques){ pts+=craques*20; det.push({txt:'🌟 Craque do Jogo (eleito)',calc:craques+'× 20',pts:craques*20}); }
+  let n8=0,n9=0,n10=0;
+  db.stats.filter(x=>x.atletaId===atId&&notaConta(x.eventoId)&&(()=>{const e=byId(db.eventos,x.eventoId);return e&&evsMes(e);})()).forEach(x=>{const v=notaDe(x).v; if(v>=10)n10++; else if(v>=9)n9++; else if(v>=8)n8++;});
+  if(n8){ pts+=n8*5; det.push({txt:'⭐ Notas 8 a 8,9 em jogos',calc:n8+'× 5',pts:n8*5}); }
+  if(n9){ pts+=n9*10; det.push({txt:'🌟 Notas 9 a 9,9 em jogos',calc:n9+'× 10',pts:n9*10}); }
+  if(n10){ pts+=n10*20; det.push({txt:'👑 Notas 10 em jogos',calc:n10+'× 20',pts:n10*20}); }
   const mur=db.eventos.filter(e=>evsMes(e)&&ehJogoTipo(e.tipo)&&e.placarNos!=null&&Number(e.placarDeles)===0)
     .filter(e=>db.presencas.some(x=>x.eventoId===e.id&&x.atletaId===atId&&['presente','atraso'].includes(x.status))||db.stats.some(x=>x.eventoId===e.id&&x.atletaId===atId)).length;
-  if(mur){ pts+=mur*5; det.push({txt:'🧱 Jogos sem sofrer gol',calc:mur+'× 5',pts:mur*5}); }
+  if(mur){ pts+=mur*15; det.push({txt:'🧱 Jogos sem sofrer gol',calc:mur+'× 15',pts:mur*15}); }
   return {pts:Math.round(pts),det};
 }
 function pontosPerfil(atId){
@@ -2428,10 +2431,10 @@ function pontosPerfil(atId){
   const a=at(atId); if(!a)return {pts:0,det:[],miss:[]};
   let pts=0; const det=[],miss=[];
   const mensDia=db.cobrancas.filter(c=>c.atletaId===atId&&ehMensal(c)&&c.status==='pago'&&c.pagoEm&&String(c.pagoEm)<=String(c.venc)).length;
-  if(mensDia){ pts+=mensDia*40; det.push({txt:'💰 Mensalidades pagas em dia',calc:mensDia+'× 40',pts:mensDia*40}); }
+  if(mensDia){ pts+=mensDia*45; det.push({txt:'💰 Mensalidades pagas em dia',calc:mensDia+'× 45',pts:mensDia*45}); }
   const acordoOk=db.cobrancas.filter(c=>c.atletaId===atId&&ehAcordo(c)&&c.status==='pago').length;
   if(acordoOk){ pts+=acordoOk*20; det.push({txt:'🤝 Parcelas de acordo pagas',calc:acordoOk+'× 20',pts:acordoOk*20}); }
-  if(db.cobrancas.some(c=>c.atletaId===atId&&ehMensal(c)&&c.status!=='pago')) miss.push({txt:'💰 Pagar a mensalidade até o vencimento (vale a cada mês)',pts:40});
+  if(db.cobrancas.some(c=>c.atletaId===atId&&ehMensal(c)&&c.status!=='pago')) miss.push({txt:'💰 Pagar a mensalidade até o vencimento (vale a cada mês)',pts:45});
   if(a.isentoMens){
     // Isento de mensalidade (ex.: goleiro): o "dever do mês" é presença — 75% dos dias de atividade com chamada feita
     const porMes={}, hj=hoje(), mesAtual=hj.slice(0,7);
@@ -2444,9 +2447,9 @@ function pontosPerfil(atId){
     });
     let ok=0, andamento=null;
     Object.entries(porMes).forEach(([m,o])=>{ if(!o.reg)return; const pct=o.pres.size/o.dias.size; if(m===mesAtual)andamento={pres:o.pres.size,dias:o.dias.size,pct}; if(pct>=0.75)ok++; });
-    if(ok){ pts+=ok*40; det.push({txt:'🧤 Compromisso do mês cumprido (isento: 75% de presença)',calc:ok+'× 40',pts:ok*40}); }
-    if(!andamento) miss.push({txt:'🧤 Compromisso do mês: presença em 75% das atividades (vale a cada mês, no lugar da mensalidade)',pts:40});
-    else if(andamento.pct<0.75) miss.push({txt:`🧤 Compromisso do mês: presença em 75% das atividades — ${andamento.pres} de ${andamento.dias} dia${andamento.dias>1?'s':''} até agora`,pts:40});
+    if(ok){ pts+=ok*45; det.push({txt:'🧤 Compromisso do mês cumprido (isento: 75% de presença)',calc:ok+'× 45',pts:ok*45}); }
+    if(!andamento) miss.push({txt:'🧤 Compromisso do mês: presença em 75% das atividades (vale a cada mês, no lugar da mensalidade)',pts:45});
+    else if(andamento.pct<0.75) miss.push({txt:`🧤 Compromisso do mês: presença em 75% das atividades — ${andamento.pres} de ${andamento.dias} dia${andamento.dias>1?'s':''} até agora`,pts:45});
   }
   const nAv=db.avaliacoes.filter(v=>v.atletaId===atId).length;
   if(nAv){ pts+=nAv*25; det.push({txt:'📋 Avaliações físicas realizadas',calc:nAv+'× 25',pts:nAv*25}); }
