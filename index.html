@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='12/09 · craques na tela';
+const BUILD='12/09b · craque corrigido';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -345,8 +345,8 @@ async function carregaTudo(){
     sb.from('balanco_receitas').select('*').order('data',{ascending:false}).then(r=>r.data||[]),
     sb.from('uniforme_numeros_historico').select('*').order('quando',{ascending:false}).then(r=>r.data||[]),
     sb.from('craque_votos').select('*').then(r=>r.data||[]),
-    sb.from('convocacoes').select('*').order('quando',{ascending:false}).then(r=>r.error?null:(r.data||[])),
-    sb.rpc('contagem_craque_todos').then(r=>r.data||[])
+    sb.rpc('contagem_craque_todos').then(r=>r.data||[]),
+    sb.from('convocacoes').select('*').order('quando',{ascending:false}).then(r=>r.error?null:(r.data||[]))
   ]);
   db={}; window._ultimaCarga=Date.now();
   db.atletas=perfis.map(mapAtleta);
