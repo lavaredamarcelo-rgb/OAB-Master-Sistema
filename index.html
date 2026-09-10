@@ -2436,9 +2436,11 @@ function pontosCampo(atId,mesPrefix){
   if(n8){ pts+=n8*5; det.push({txt:'⭐ Notas 8 a 8,9 em jogos',calc:n8+'× 5',pts:n8*5}); }
   if(n9){ pts+=n9*10; det.push({txt:'🌟 Notas 9 a 9,9 em jogos',calc:n9+'× 10',pts:n9*10}); }
   if(n10){ pts+=n10*20; det.push({txt:'👑 Notas 10 em jogos',calc:n10+'× 20',pts:n10*20}); }
-  const mur=db.eventos.filter(e=>evsMes(e)&&ehJogoTipo(e.tipo)&&e.placarNos!=null&&Number(e.placarDeles)===0)
-    .filter(e=>db.presencas.some(x=>x.eventoId===e.id&&x.atletaId===atId&&['presente','atraso'].includes(x.status))||db.stats.some(x=>x.eventoId===e.id&&x.atletaId===atId)).length;
-  if(mur){ pts+=mur*10; det.push({txt:'🧱 Jogos sem sofrer gol',calc:mur+'× 10',pts:mur*10}); }
+  const aMur=at(atId);
+  const setorDefensivo=aMur&&posAbrevTodas(aMur).some(pz2=>['GOL','ZAG','ALA','VOL'].includes(pz2));
+  const mur=setorDefensivo?db.eventos.filter(e=>evsMes(e)&&ehJogoTipo(e.tipo)&&e.placarNos!=null&&Number(e.placarDeles)===0)
+    .filter(e=>db.presencas.some(x=>x.eventoId===e.id&&x.atletaId===atId&&['presente','atraso'].includes(x.status))||db.stats.some(x=>x.eventoId===e.id&&x.atletaId===atId)).length:0;
+  if(mur){ pts+=mur*10; det.push({txt:'🧱 Jogos sem sofrer gol (setor defensivo)',calc:mur+'× 10',pts:mur*10}); }
   return {pts:Math.round(pts),det};
 }
 function pontosPerfil(atId){
