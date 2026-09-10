@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='12/09c · atrasos na convocação';
+const BUILD='12/09d · atrasos p/ comissão';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -324,7 +324,7 @@ function log(tipo,texto){ sb.from('logs').insert({tipo,texto,quem:me?me.nome:'si
 function mapAtleta(r){ return {id:r.id,nome:r.nome,apelido:r.apelido||'',fone:r.fone,email:r.email,oab:r.oab,posicao:r.posicao,role:r.role,ativo:r.ativo,pendente:!r.aprovado,fundador:!!r.fundador,cargo:r.cargo||'',cadastroManual:!!r.cadastro_manual,isentoMens:!!r.isento_mensalidade,fotoUrl:r.foto_url||'',
   consent:{aceito:r.consent_status==='aceito',recusado:r.consent_status==='recusado',revogado:r.consent_status==='revogado',quando:fdt(r.consent_quando),versao:r.consent_versao||TERMO_LGPD_V},saude:{}}; }
 async function carregaTudo(){
-  const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist,craquevotos,craquetotais,convs]=await Promise.all([
+  const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist,craquevotos,craquetotais,convs,atrasosG]=await Promise.all([
     q(sb.from('perfis').select('*').order('nome')),
     q(sb.from('saude').select('*')),
     q(sb.from('eventos').select('*').order('data')),
@@ -346,13 +346,15 @@ async function carregaTudo(){
     sb.from('uniforme_numeros_historico').select('*').order('quando',{ascending:false}).then(r=>r.data||[]),
     sb.from('craque_votos').select('*').then(r=>r.data||[]),
     sb.rpc('contagem_craque_todos').then(r=>r.data||[]),
-    sb.from('convocacoes').select('*').order('quando',{ascending:false}).then(r=>r.error?null:(r.data||[]))
+    sb.from('convocacoes').select('*').order('quando',{ascending:false}).then(r=>r.error?null:(r.data||[])),
+    sb.rpc('atrasos_por_atleta').then(r=>r.data||[])
   ]);
   db={}; window._ultimaCarga=Date.now();
   db.atletas=perfis.map(mapAtleta);
   saude.forEach(s=>{ const a=at(s.atleta_id); if(a)a.saude={sangue:s.sangue,plano:s.plano,alergias:s.alergias,medicamentos:s.medicamentos,condicoes:s.condicoes,emergencia:s.emergencia,lesoes:s.lesoes,obs:s.obs,lesoesLista:s.lesoes_lista||[],obsLista:s.obs_lista||[]}; });
   db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),dataFim:e.data_fim?String(e.data_fim):'',hora:e.hora,horaFim:e.hora_fim||'',local:e.local,obs:e.obs,adversario:e.adversario||'',placarNos:e.placar_nos??null,placarDeles:e.placar_deles??null,statsTime:e.stats_time||{}}));
   db.craqueVotos=(craquevotos||[]).map(v=>({id:v.id,eventoId:v.evento_id,votanteId:v.votante_id,votoId:v.voto_id}));
+  db.atrasosGestao={}; (atrasosG||[]).forEach(r=>db.atrasosGestao[r.atleta_id]={qtd:Number(r.qtd),total:Number(r.total)});
   db.convocacoes=convs===null?null:convs.map(c=>({id:c.id,titulo:c.titulo,eventoId:c.evento_id,data:c.data?String(c.data):'',dataFim:c.data_fim?String(c.data_fim):'',maxAtletas:c.max_atletas||null,subs:c.substituicoes||[],hora:c.hora||'',local:c.local||'',concentracao:c.concentracao||'',uniforme:c.uniforme||'',obs:c.obs||'',convocados:c.convocados||[],conf:c.confirmacoes||{},status:c.status,criadoPor:c.criado_por||'',quando:c.quando}));
   db.craqueTotais=(craquetotais||[]).map(t=>({eventoId:t.evento_id,votoId:t.voto_id,votos:Number(t.votos)||0}));
   db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,convidado:p.convidado||null,status:p.status}));
@@ -3248,9 +3250,11 @@ function infoAtletaConv(a){
   const notas=[...st.map(x=>notaDe(x).v),...presencasSemStats(a.id).filter(pz=>notaConta(pz.eventoId)).map(()=>7)];
   const md=notas.length?(notas.reduce((x,y)=>x+y,0)/notas.length).toFixed(1):'—';
   let pend=0; try{ pend=pendencias(a).length; }catch(_){}
-  const atras=db.cobrancas.filter(c=>c.atletaId===a.id&&c.status==='atrasado');
-  const vAtras=atras.reduce((x,c)=>x+Number(valorDe(c))-pagoParcial(c),0);
-  return `<span class="mut" style="font-size:11px">freq ${fq.pct==null?'—':fq.pct+'%'} · ⭐ ${md} · 🎮 ${o.ov}${atras.length?` · <strong style="color:var(--bad)">💰 ${atras.length} mensal./cobr. em atraso (${brl(vAtras)})</strong>`:''}${pend&&!atras.length?' · <span style="color:var(--warn)">⚠️ '+pend+' pendência'+(pend>1?'s':'')+'</span>':''}</span>`;
+  let nAtras=0,vAtras=0;
+  const rg=(db.atrasosGestao||{})[a.id];
+  if(rg){ nAtras=rg.qtd; vAtras=rg.total; }
+  else { const atras=db.cobrancas.filter(c=>c.atletaId===a.id&&c.status==='atrasado'); nAtras=atras.length; vAtras=atras.reduce((x,c)=>x+Number(valorDe(c))-pagoParcial(c),0); }
+  return `<span class="mut" style="font-size:11px">freq ${fq.pct==null?'—':fq.pct+'%'} · ⭐ ${md} · 🎮 ${o.ov}${nAtras?` · <strong style="color:var(--bad)">💰 ${nAtras} mensal./cobr. em atraso (${brl(vAtras)})</strong>`:''}${pend&&!nAtras?' · <span style="color:var(--warn)">⚠️ '+pend+' pendência'+(pend>1?'s':'')+'</span>':''}</span>`;
 }
 function atualizaContConv(){
   const sel=subState.convSel||new Set();
