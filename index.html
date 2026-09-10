@@ -352,7 +352,7 @@ async function carregaTudo(){
   saude.forEach(s=>{ const a=at(s.atleta_id); if(a)a.saude={sangue:s.sangue,plano:s.plano,alergias:s.alergias,medicamentos:s.medicamentos,condicoes:s.condicoes,emergencia:s.emergencia,lesoes:s.lesoes,obs:s.obs,lesoesLista:s.lesoes_lista||[],obsLista:s.obs_lista||[]}; });
   db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),dataFim:e.data_fim?String(e.data_fim):'',hora:e.hora,horaFim:e.hora_fim||'',local:e.local,obs:e.obs,adversario:e.adversario||'',placarNos:e.placar_nos??null,placarDeles:e.placar_deles??null,statsTime:e.stats_time||{}}));
   db.craqueVotos=(craquevotos||[]).map(v=>({id:v.id,eventoId:v.evento_id,votanteId:v.votante_id,votoId:v.voto_id}));
-  db.convocacoes=convs===null?null:convs.map(c=>({id:c.id,titulo:c.titulo,eventoId:c.evento_id,data:c.data?String(c.data):'',hora:c.hora||'',local:c.local||'',concentracao:c.concentracao||'',uniforme:c.uniforme||'',obs:c.obs||'',convocados:c.convocados||[],conf:c.confirmacoes||{},status:c.status,criadoPor:c.criado_por||'',quando:c.quando}));
+  db.convocacoes=convs===null?null:convs.map(c=>({id:c.id,titulo:c.titulo,eventoId:c.evento_id,data:c.data?String(c.data):'',dataFim:c.data_fim?String(c.data_fim):'',maxAtletas:c.max_atletas||null,subs:c.substituicoes||[],hora:c.hora||'',local:c.local||'',concentracao:c.concentracao||'',uniforme:c.uniforme||'',obs:c.obs||'',convocados:c.convocados||[],conf:c.confirmacoes||{},status:c.status,criadoPor:c.criado_por||'',quando:c.quando}));
   db.craqueTotais=(craquetotais||[]).map(t=>({eventoId:t.evento_id,votoId:t.voto_id,votos:Number(t.votos)||0}));
   db.presencas=presencas.map(p=>({eventoId:p.evento_id,atletaId:p.atleta_id,convidado:p.convidado||null,status:p.status}));
   db.cobrancas=cobrancas.map(c=>({id:c.id,atletaId:c.atleta_id,convidado:c.convidado||'',desc:c.descricao,valor:c.valor,venc:String(c.venc),
@@ -3192,8 +3192,8 @@ function cardConvocacoes(){
   const linha=c=>{const tot=c.convocados.length, ok=Object.values(c.conf).filter(x=>x.ok).length, nao=Object.values(c.conf).filter(x=>!x.ok).length;
     return `<div class="alertline clickable" style="background:var(--bg);cursor:pointer" onclick="verConvocacao('${c.id}')">
     <span>${c.status==='rascunho'?'📝':c.status==='publicada'?'📣':'🏁'}</span>
-    <div style="flex:1"><strong>${esc(c.titulo)}</strong>${c.data?` <span class="mut">· ${dbr(c.data)}</span>`:''}
-      <div class="mut" style="font-size:11.5px">${tot} convocado${tot!==1?'s':''}${c.status==='publicada'?` · ✅ ${ok} confirmaram${nao?` · ❌ ${nao} não podem`:''} · ⏳ ${tot-ok-nao}`:''}${c.status==='rascunho'?' · rascunho (só a comissão vê)':''}${c.status==='encerrada'?' · encerrada':''}</div></div>
+    <div style="flex:1"><strong>${esc(c.titulo)}</strong>${c.data?` <span class="mut">· ${dbr(c.data)}${c.dataFim?' a '+dbr(c.dataFim):''}</span>`:''}
+      <div class="mut" style="font-size:11.5px">${tot}${c.maxAtletas?'/'+c.maxAtletas:''} convocado${tot!==1?'s':''}${c.status==='publicada'?` · ✅ ${ok} confirmaram${nao?` · ❌ ${nao} não podem`:''} · ⏳ ${tot-ok-nao}`:''}${c.status==='rascunho'?' · rascunho (só a comissão vê)':''}${c.status==='encerrada'?' · encerrada':''}</div></div>
     <span class="mut" style="font-size:11px">›</span></div>`;};
   const maisConv=elenco().map(a=>({a,n:nConvocacoes(a.id)})).filter(r=>r.n>0).sort((x,y)=>y.n-x.n).slice(0,3);
   return `<div class="card"><div class="spread"><h2>📣 Convocações</h2>${podeEditar?`<button class="mini gold" onclick="formConvocacao()">+ Nova convocação</button>`:''}</div>
@@ -3212,36 +3212,54 @@ function infoAtletaConv(a){
 }
 function atualizaContConv(){
   const sel=subState.convSel||new Set();
-  const porG={}; elenco().forEach(a=>{ if(sel.has(a.id)){const g=grupoPos(a); porG[g]=(porG[g]||0)+1;} });
+  const porG={}; sel.forEach(id=>{const a=at(id); if(a){const g=(subState.convPos||{})[id]||grupoPos(a); porG[g]=(porG[g]||0)+1;}});
   const el=document.getElementById('conv_cont');
-  if(el)el.innerHTML=`<strong>${sel.size}</strong> convocado${sel.size!==1?'s':''}${sel.size?' — '+POS_GRUPOS.filter(([g])=>porG[g]).map(([g])=>porG[g]+' '+g).join(' · '):''}`;
+  const max=subState.convMax;
+  if(el)el.innerHTML=`<strong>${sel.size}${max?' / '+max:''}</strong> convocado${sel.size!==1?'s':''}${max&&sel.size>=max?' — limite cheio':''}${sel.size?' — '+POS_GRUPOS.filter(([g])=>porG[g]).map(([g])=>porG[g]+' '+g).join(' · '):''}`;
   POS_GRUPOS.forEach(([g])=>{ const e2=document.getElementById('conv_g_'+g); if(e2)e2.textContent=porG[g]?`${porG[g]} ✓`:''; });
 }
-function toggleConv(id){ const sel=subState.convSel; sel.has(id)?sel.delete(id):sel.add(id); atualizaContConv(); }
+function toggleConvPos(id,g,inp){
+  const sel=subState.convSel;
+  if(inp.checked){
+    const max=subState.convMax;
+    if(max&&sel.size>=max){ inp.checked=false; toast('⚠️ Limite do campeonato atingido: '+max+' convocados — substitua alguém para incluir outro'); return; }
+    sel.add(id); subState.convPos[id]=g;
+  } else { sel.delete(id); delete subState.convPos[id]; }
+  document.querySelectorAll(`input[data-aid="${id}"]`).forEach(el=>{ const meu=el===inp; el.disabled=inp.checked&&!meu; if(!inp.checked)el.checked=false; });
+  document.querySelectorAll(`label[data-aid="${id}"]`).forEach(l=>{const c=l.querySelector('input'); l.style.opacity=(inp.checked&&c!==inp)?'.35':'';});
+  atualizaContConv();
+}
 function formConvocacao(id){
   const c=id?convDe(id):null;
   subState.convSel=new Set(c?c.convocados.map(x=>x.atletaId):[]);
+  subState.convPos={}; if(c)c.convocados.forEach(x=>subState.convPos[x.atletaId]=x.posicao);
+  subState.convMax=c?c.maxAtletas:null;
   const busca=(subState.convBusca||'').toLowerCase();
   const futuros=db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.data>=hoje()).sort((x,y)=>x.data.localeCompare(y.data));
   const grupos=POS_GRUPOS.map(([g,lbl])=>{
-    const ats=elenco().filter(a=>grupoPos(a)===g).filter(a=>!busca||a.nome.toLowerCase().includes(busca)||(a.apelido||'').toLowerCase().includes(busca));
+    const ats=elenco().filter(a=>g==='JOG'?!posAbrevTodas(a).length:posAbrevTodas(a).includes(g)).filter(a=>!busca||a.nome.toLowerCase().includes(busca)||(a.apelido||'').toLowerCase().includes(busca));
     if(!ats.length)return '';
     return `<div style="margin-top:10px"><div class="mut" style="font-size:12px;font-weight:700;text-transform:uppercase">${lbl} <span id="conv_g_${g}" style="color:var(--ok)"></span></div>
-    ${ats.map(a=>`<label style="display:flex;align-items:center;gap:8px;margin:4px 0;text-transform:none;font-weight:400;font-size:14px;color:var(--ink)">
-      <input type="checkbox" class="chk_conv" value="${a.id}" ${subState.convSel.has(a.id)?'checked':''} onchange="toggleConv('${a.id}')" style="width:auto">
-      <span style="flex:1"><strong>${esc(pnome(a.nome))}</strong>${posAbrevTodas(a).length>1?` <span class="mut" style="font-size:10.5px">também ${posAbrevTodas(a).slice(1).join('/')}</span>`:''}<br>${infoAtletaConv(a)}</span></label>`).join('')}</div>`;
+    ${ats.map(a=>{const marcadoAqui=subState.convSel.has(a.id)&&(subState.convPos[a.id]||grupoPos(a))===g;
+      const travado=subState.convSel.has(a.id)&&!marcadoAqui;
+      return `<label data-aid="${a.id}" style="display:flex;align-items:center;gap:8px;margin:4px 0;text-transform:none;font-weight:400;font-size:14px;color:var(--ink);${travado?'opacity:.35':''}">
+      <input type="checkbox" class="chk_conv" data-aid="${a.id}" value="${a.id}" ${marcadoAqui?'checked':''} ${travado?'disabled':''} onchange="toggleConvPos('${a.id}','${g}',this)" style="width:auto">
+      <span style="flex:1"><strong>${esc(pnome(a.nome))}</strong>${travado?` <span class="mut" style="font-size:10.5px">já convocado como ${subState.convPos[a.id]||grupoPos(a)}</span>`:''}<br>${infoAtletaConv(a)}</span></label>`;}).join('')}</div>`;
   }).join('');
   modal(`<h2>${c?'✏️ Editar':'📣 Nova'} convocação</h2>
   <label>Campeonato / jogo *</label><input id="cv_tit" value="${c?esc(c.titulo):''}" placeholder="Ex.: Copa OAB 2026 — 1ª fase">
   ${futuros.length?`<label>Vincular a um evento da agenda (opcional)</label><select id="cv_ev"><option value="">— nenhum —</option>${futuros.map(e=>`<option value="${e.id}" ${c&&c.eventoId===e.id?'selected':''}>${dbr(e.data)} — ${esc(e.titulo)}</option>`).join('')}</select>`:'<input type="hidden" id="cv_ev" value="">'}
   <div class="grid g2">
-  <div><label>Data</label><input id="cv_data" type="date" value="${c?c.data:''}"></div>
+  <div><label>Início / data do jogo</label><input id="cv_data" type="date" value="${c?c.data:''}"></div>
+  <div><label>Fim do campeonato (período)</label><input id="cv_dataf" type="date" value="${c?c.dataFim:''}"></div>
+  <div><label>Nº máximo de convocados <span class="mut" style="text-transform:none;font-weight:400">(regulamento)</span></label><input id="cv_max" type="number" min="1" value="${c&&c.maxAtletas?c.maxAtletas:''}" placeholder="Ex.: 28" oninput="subState.convMax=Number(this.value)||null;atualizaContConv()"></div>
   <div><label>Horário do jogo</label><input id="cv_hora" value="${c?esc(c.hora):''}" placeholder="Ex.: 9h"></div>
   <div><label>Local</label><input id="cv_local" value="${c?esc(c.local):''}" placeholder="Ex.: Arena X"></div>
   <div><label>Concentração</label><input id="cv_conc" value="${c?esc(c.concentracao):''}" placeholder="Ex.: 8h no local"></div>
   </div>
   <label>Uniforme do dia</label><input id="cv_uni" value="${c?esc(c.uniforme):''}" placeholder="Ex.: Vinho (levar o branco de reserva)">
   <label>Observações</label><textarea id="cv_obs">${c?esc(c.obs):''}</textarea>
+  <p class="mut" style="font-size:11.5px;margin:4px 0 0">💡 Só o nome do campeonato é obrigatório — a diretoria pode criar o compromisso (dados + nº máximo) e salvar o rascunho para o treinador convocar. Tudo é editável enquanto não for encerrada.</p>
   <div class="spread" style="margin-top:14px"><label style="margin:0">Convocados — por posição</label>
   <input placeholder="🔎 buscar" value="${esc(subState.convBusca||'')}" style="max-width:140px" oninput="subState.convBusca=this.value;const v=this.value;const p=this.selectionStart;formConvocacao('${id||''}');setTimeout(()=>{const i=[...document.querySelectorAll('input')].find(x=>x.placeholder&&x.placeholder.includes('buscar'));if(i){i.focus();i.setSelectionRange(p,p);}},0)">
   </div>
@@ -3258,11 +3276,18 @@ async function salvaConvocacao(id,publicar){
   const sel=subState.convSel||new Set();
   if(publicar&&!sel.size){toast('Selecione ao menos um convocado antes de publicar');return;}
   const c=id?convDe(id):null;
-  const convocados=[...sel].map(aid=>{const a=at(aid);return {atletaId:aid,posicao:a?grupoPos(a):'JOG'};});
-  const dados={titulo:tit,evento_id:fval('cv_ev')||null,data:fval('cv_data')||null,hora:fval('cv_hora'),local:fval('cv_local'),concentracao:fval('cv_conc'),uniforme:fval('cv_uni'),obs:fval('cv_obs'),convocados,
+  const max=Number(fval('cv_max'))||null;
+  if(max&&sel.size>max){toast(`⚠️ São ${sel.size} convocados para um limite de ${max} — remova ${sel.size-max}`);return;}
+  const convocados=[...sel].map(aid=>{const a=at(aid);return {atletaId:aid,posicao:(subState.convPos||{})[aid]||(a?grupoPos(a):'JOG')};});
+  let dados={titulo:tit,evento_id:fval('cv_ev')||null,data:fval('cv_data')||null,data_fim:fval('cv_dataf')||null,max_atletas:max,hora:fval('cv_hora'),local:fval('cv_local'),concentracao:fval('cv_conc'),uniforme:fval('cv_uni'),obs:fval('cv_obs'),convocados,
     status:publicar?'publicada':(c?c.status:'rascunho'),criado_por:me.nome};
-  const op=id?sb.from('convocacoes').update(dados).eq('id',id).select():sb.from('convocacoes').insert(dados).select();
-  const {data:res,error}=await op;
+  const op=d=>id?sb.from('convocacoes').update(d).eq('id',id).select():sb.from('convocacoes').insert(d).select();
+  let {data:res,error}=await op(dados);
+  if(error&&/data_fim|max_atletas|substituicoes/.test(error.message||'')){
+    delete dados.data_fim; delete dados.max_atletas;
+    const r2=await op(dados); res=r2.data; error=r2.error;
+    if(!error)toast('⚠️ Salva sem período/limite — rode o SQL v24 no Supabase');
+  }
   if(error){toast('⚠️ '+(/convocacoes|confirmar_convocacao|schema cache/.test(error.message||'')?'Rode o SQL v23 no Supabase para ativar as convocações':error.message));return;}
   if(id&&(!res||!res.length)){toast('⚠️ O banco recusou — verifique sua permissão');return;}
   const novoId=id||(res&&res[0]&&res[0].id);
@@ -3284,7 +3309,8 @@ function verConvocacao(id){
     return `<div style="margin-top:8px"><div class="mut" style="font-size:11.5px;font-weight:700;text-transform:uppercase">${lbl}</div>
     ${lista.map(x=>{const cf=c.conf[x.atletaId];
       return `<div class="alertline" style="background:var(--bg);padding:5px 10px"><div style="flex:1;font-size:13.5px"><strong>${esc(pnome(nomeAt(x.atletaId)))}</strong>${cf&&!cf.ok&&cf.motivo&&(podeEditar||x.atletaId===me.id)?`<div class="mut" style="font-size:11px">"${esc(cf.motivo)}"</div>`:''}</div>
-      ${c.status==='rascunho'?'':cf?(cf.ok?'<span class="pill p-ok">✅ confirmado</span>':'<span class="pill p-bad">❌ não pode</span>'):'<span class="pill p-mut">⏳ aguardando</span>'}</div>`;}).join('')}</div>`;
+      ${c.status==='rascunho'?'':cf?(cf.ok?'<span class="pill p-ok">✅ confirmado</span>':'<span class="pill p-bad">❌ não pode</span>'):'<span class="pill p-mut">⏳ aguardando</span>'}
+      ${podeEditar&&c.status!=='encerrada'?`<button class="mini sec" title="Substituir" onclick="formSubstituir('${c.id}','${x.atletaId}')">🔁</button>`:''}</div>`;}).join('')}</div>`;
   }).join('');
   modal(`<h2>${c.status==='rascunho'?'📝':c.status==='publicada'?'📣':'🏁'} ${esc(c.titulo)}</h2>
   <div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 8px">
@@ -3292,12 +3318,14 @@ function verConvocacao(id){
     <span class="pill p-mut">${tot} convocados</span>
     ${c.status!=='rascunho'?`<span class="pill p-ok">✅ ${ok}</span><span class="pill p-bad">❌ ${nao}</span><span class="pill p-mut">⏳ ${tot-ok-nao}</span>`:''}
   </div>
-  <p style="margin:4px 0">${c.data?`📅 <strong>${dbr(c.data)}</strong>`:''}${c.hora?` · ⏰ ${esc(c.hora)}`:''}${c.local?`<br>📍 ${esc(c.local)}`:''}${c.concentracao?`<br>🕐 Concentração: ${esc(c.concentracao)}`:''}${c.uniforme?`<br>👕 Uniforme: ${esc(c.uniforme)}`:''}${c.obs?`<br>📝 ${esc(c.obs)}`:''}</p>
+  <p style="margin:4px 0">${c.data?`📅 <strong>${dbr(c.data)}${c.dataFim?' a '+dbr(c.dataFim):''}</strong>`:''}${c.maxAtletas?` · 🎫 ${tot} de ${c.maxAtletas} vagas`:''}${c.hora?` · ⏰ ${esc(c.hora)}`:''}${c.local?`<br>📍 ${esc(c.local)}`:''}${c.concentracao?`<br>🕐 Concentração: ${esc(c.concentracao)}`:''}${c.uniforme?`<br>👕 Uniforme: ${esc(c.uniforme)}`:''}${c.obs?`<br>📝 ${esc(c.obs)}`:''}</p>
   ${souConv&&c.status==='publicada'?(minha?`<div class="alertline ${minha.ok?'al-ok':'al-bad'}">${minha.ok?'✅ Você confirmou presença!':'❌ Você avisou que não pode.'} <button class="mini sec" onclick="confirmaConv('${c.id}',${minha.ok?'false':'true'})">mudar</button></div>`:
     `<div class="alertline al-warn"><div style="flex:1"><strong>Você foi convocado!</strong> Confirme sua presença:</div>
     <button class="mini" style="background:var(--ok);border-color:var(--ok)" onclick="confirmaConv('${c.id}',true)">✅ Estarei lá</button>
     <button class="mini bad" onclick="confirmaConv('${c.id}',false)">❌ Não posso</button></div>`):''}
   ${grupos}
+  ${c.subs&&c.subs.length?`<details style="margin-top:10px"><summary class="mut" style="cursor:pointer;font-size:12.5px">🔁 Substituições registradas (${c.subs.length})</summary>
+  ${c.subs.map(sx=>`<div class="alertline" style="background:var(--bg);padding:5px 10px;font-size:12.5px"><div style="flex:1">${esc(pnome(nomeAt(sx.saiu)))} ➜ <strong>${esc(pnome(nomeAt(sx.entrou)))}</strong>${sx.motivo?` <span class="mut">· ${esc(sx.motivo)}</span>`:''}<div class="mut" style="font-size:10.5px">${dbr(String(sx.quando).slice(0,10))} · por ${esc(sx.quem||'')}</div></div></div>`).join('')}</details>`:''}
   <div class="row" style="margin-top:14px;flex-wrap:wrap">
   ${podeEditar&&c.status!=='encerrada'?`<button class="mini" onclick="fecha();formConvocacao('${c.id}')">✏️ Editar</button>`:''}
   ${podeEditar&&c.status==='rascunho'?`<button class="mini gold" onclick="publicaConvocacao('${c.id}')">📣 Publicar</button>`:''}
@@ -3324,6 +3352,36 @@ function delConvocacao(id){
     log('taticas','Convocação excluída: '+(c?c.titulo:id)); await recarrega(); toast('🗑 Convocação excluída');
   });
 }
+function formSubstituir(convId,saiId){
+  const c=convDe(convId); if(!c)return;
+  const fora=elenco().filter(a=>!c.convocados.some(x=>x.atletaId===a.id));
+  if(!fora.length){toast('Todo o elenco já está convocado');return;}
+  const grupos=POS_GRUPOS.map(([g,lbl])=>{
+    const ats=fora.filter(a=>g==='JOG'?!posAbrevTodas(a).length:grupoPos(a)===g);
+    return ats.length?`<optgroup label="${lbl}">${ats.map(a=>`<option value="${a.id}">${esc(pnome(a.nome))} (${posAbrevTodas(a).join('/')||'—'})</option>`).join('')}</optgroup>`:'';
+  }).join('');
+  modal(`<h2>🔁 Substituir ${esc(pnome(nomeAt(saiId)))}</h2>
+  <label>Quem entra no lugar</label><select id="sb_novo">${grupos}</select>
+  <label>Motivo (opcional)</label><input id="sb_motivo" placeholder="Ex.: lesão, trabalho, suspensão…">
+  <p class="mut" style="font-size:12px">A troca fica registrada no histórico da convocação e o novo convocado é avisado para confirmar presença.</p>
+  <div class="row" style="margin-top:12px"><button class="gold" onclick="aplicaSubstituicao('${convId}','${saiId}')">🔁 Substituir</button><button class="sec" onclick="verConvocacao('${convId}')">Voltar</button></div>`);
+}
+async function aplicaSubstituicao(convId,saiId){
+  const c=convDe(convId); const novoId=fval('sb_novo'); if(!c||!novoId)return;
+  const novo=at(novoId); const slot=c.convocados.find(x=>x.atletaId===saiId);
+  const posNovo=novo&&posAbrevTodas(novo).includes(slot?slot.posicao:'')?slot.posicao:(novo?grupoPos(novo):'JOG');
+  const convocados=c.convocados.map(x=>x.atletaId===saiId?{atletaId:novoId,posicao:posNovo}:x);
+  const subs=[...(c.subs||[]),{saiu:saiId,entrou:novoId,motivo:fval('sb_motivo'),quando:new Date().toISOString(),quem:me.nome}];
+  let {data:res,error}=await sb.from('convocacoes').update({convocados,substituicoes:subs}).eq('id',convId).select();
+  if(error&&/substituicoes/.test(error.message||'')){
+    const r2=await sb.from('convocacoes').update({convocados}).eq('id',convId).select(); res=r2.data; error=r2.error;
+    if(!error)toast('⚠️ Troca feita sem registro no histórico — rode o SQL v24');
+  }
+  if(error||!res||!res.length){toast('⚠️ Não consegui substituir'+(error?': '+error.message:''));return;}
+  log('taticas',`Convocação ${c.titulo}: ${nomeAt(saiId)} substituído por ${nomeAt(novoId)}`);
+  if(c.status==='publicada')enviarPush('📣 '+db.config.time,'Você entrou na convocação: '+c.titulo+' — confirme presença no sistema');
+  await recarrega(); toast('🔁 Substituição registrada'); verConvocacao(convId);
+}
 function confirmaConv(id,ok){
   if(ok)return enviaConfirmacao(id,true,'');
   modal(`<h2>❌ Não vou poder ir</h2><p class="mut">Avise o motivo para o treinador poder chamar um substituto (opcional):</p>
@@ -3341,7 +3399,7 @@ function whatsConvocacao(id){
     const lista=c.convocados.filter(x=>x.posicao===g);
     return lista.length?`*${lbl.replace(/^[^ ]+ /,'')}:* ${lista.map(x=>pnome(nomeAt(x.atletaId))).join(', ')}`:'';
   }).filter(Boolean).join('\n');
-  const msg=`📣 *CONVOCAÇÃO — ${db.config.time}*\n\n🏆 ${c.titulo}\n${c.data?'📅 '+dbr(c.data)+(c.hora?' às '+c.hora:'')+'\n':''}${c.local?'📍 '+c.local+'\n':''}${c.concentracao?'🕐 Concentração: '+c.concentracao+'\n':''}${c.uniforme?'👕 Uniforme: '+c.uniforme+'\n':''}\n${grupos}\n${c.obs?'\n📝 '+c.obs+'\n':''}\n✅ *Confirme sua presença no sistema* → Meu espaço\n🔗 ${location.origin}\n\nVamos com tudo! 💪⚽`;
+  const msg=`📣 *CONVOCAÇÃO — ${db.config.time}*\n\n🏆 ${c.titulo}\n${c.data?'📅 '+dbr(c.data)+(c.dataFim?' a '+dbr(c.dataFim):'')+(c.hora?' às '+c.hora:'')+'\n':''}${c.local?'📍 '+c.local+'\n':''}${c.concentracao?'🕐 Concentração: '+c.concentracao+'\n':''}${c.uniforme?'👕 Uniforme: '+c.uniforme+'\n':''}\n${grupos}\n${c.obs?'\n📝 '+c.obs+'\n':''}\n✅ *Confirme sua presença no sistema* → Meu espaço\n🔗 ${location.origin}\n\nVamos com tudo! 💪⚽`;
   modalWhats('Convocação',msg);
 }
 function pdfConvocacao(id){
@@ -3353,7 +3411,8 @@ function pdfConvocacao(id){
   abreRelatorio(`<h1>📣 Convocação Oficial</h1>
   <p class="sub">${esc(db.config.time)} — ${esc(c.titulo)}</p>
   <div class="cards">
-    ${c.data?`<div class="card"><div class="n">${dbr(c.data)}</div><div class="l">Data${c.hora?' · '+esc(c.hora):''}</div></div>`:''}
+    ${c.data?`<div class="card"><div class="n">${dbr(c.data)}${c.dataFim?' — '+dbr(c.dataFim):''}</div><div class="l">${c.dataFim?'Período':'Data'}${c.hora?' · '+esc(c.hora):''}</div></div>`:''}
+    ${c.maxAtletas?`<div class="card"><div class="n">${c.maxAtletas}</div><div class="l">Limite do regulamento</div></div>`:''}
     <div class="card"><div class="n">${c.convocados.length}</div><div class="l">Convocados</div></div>
     ${c.status!=='rascunho'?`<div class="card"><div class="n ok">${Object.values(c.conf).filter(x=>x.ok).length}</div><div class="l">Confirmados</div></div>`:''}
   </div>
@@ -3363,6 +3422,7 @@ function pdfConvocacao(id){
   ${c.obs?`<p>📝 ${esc(c.obs)}</p>`:''}
   <h2>Relação de atletas convocados</h2>
   <table><tr><th>Posição</th><th>Atletas</th></tr>${grupos}</table>
+  ${c.subs&&c.subs.length?`<h2>🔁 Substituições</h2><table><tr><th>Saiu</th><th>Entrou</th><th>Motivo</th><th>Data</th></tr>${c.subs.map(sx=>`<tr><td>${esc(nomeAt(sx.saiu))}</td><td><strong>${esc(nomeAt(sx.entrou))}</strong></td><td>${esc(sx.motivo||'—')}</td><td>${dbr(String(sx.quando).slice(0,10))}</td></tr>`).join('')}</table>`:''}
   <p style="margin-top:30px">Belém/PA, ${dbr(hoje())}.</p>
   <p style="margin-top:40px;text-align:center">___________________________________<br><strong>Comissão Técnica — ${esc(db.config.time)}</strong></p>`,
   `Convocação — ${c.titulo}`);
