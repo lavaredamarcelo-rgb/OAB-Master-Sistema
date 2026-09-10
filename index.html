@@ -231,6 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
+const BUILD='12/09 · craques na tela';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -571,6 +572,7 @@ function telaLogin(msg){
     <label>E-mail</label><input id="l_email" type="email" autocomplete="email">
     <label>Senha</label><input id="l_senha" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginGo()">
     <button id="btn_entrar" style="width:100%;margin-top:18px" onclick="loginGo()">Entrar</button>
+    <p class="mut" style="text-align:center;font-size:10px;margin-top:10px">versão ${BUILD}</p>
     <button class="sec" style="width:100%;margin-top:10px" onclick="telaCadastro()">🆕 Primeiro acesso — criar minha conta</button>
     <p style="text-align:center;margin-top:12px"><a href="#" onclick="esqueciSenha();return false" class="mut">Esqueci minha senha</a></p>
     <p class="mut" style="margin-top:8px">Acesso exclusivo dos membros do OAB/PA Master. Para criar a conta é preciso o <strong>código do time</strong> (peça à diretoria) e novos atletas passam pela aprovação da diretoria.</p>
@@ -986,6 +988,7 @@ function tPainel(){
   ${cardAcordos(false)}
   ${cardRankingClube()}
   <div class="row sect"><button class="gold mini" onclick="verCardJogador(me.id)">🪪 Meu card de jogador</button><button class="sec mini" onclick="pdfDossieAtleta(me.id)">📄 Meu dossiê (PDF)</button></div>
+  <p class="mut" style="font-size:10px;text-align:center;margin-top:14px">versão ${BUILD}</p>
   <div class="grid g4 sect">
     <div class="card stat ${me.role==='diretoria'?'clickable':''}" ${me.role==='diretoria'?`onclick="vai('atletas')"`:''}><div class="n">${elenco().length}</div><div class="l">Jogadores ativos</div></div>
     <div class="card stat clickable" onclick="vai('agenda')"><div class="n">${prox.length?dbr(prox[0].data):'—'}</div><div class="l">Próximo compromisso →</div></div>
@@ -7309,6 +7312,8 @@ function tMeu(){
   ${db.arquivos.some(d=>d.atletaId===me.id)?`<button class="mini sec" onclick="baixarZipPessoa('${me.id}')">⬇ Baixar todos (ZIP)</button>`:''}</div>
   <p class="mut">Cada documento tem sua gaveta: toque em <strong>📎 Anexar</strong> no tipo certo (PDF ou foto — fotos grandes são comprimidas automaticamente). Visíveis para você e para a diretoria — é daqui que saem os documentos para as inscrições nos campeonatos.</p>
   ${slotsDocs(me.id,true)}</div>
+  <div class="row sect"><button class="sec mini" onclick="pdfDossieAtleta(me.id)">📄 Meu dossiê completo (PDF)</button></div>
+  <p class="mut" style="font-size:10px;text-align:center;margin-top:10px">versão ${BUILD}</p>
   </div>`;
 }
 
