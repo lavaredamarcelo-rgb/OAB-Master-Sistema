@@ -1221,6 +1221,21 @@ function overallDe(atId){
 }
 const TIER_NOME={bronze:'🥉 Bronze',prata:'🥈 Prata',ouro:'🥇 Ouro',especial:'💎 Especial'};
 const FLAG_PA_SVG=`<svg viewBox="0 0 34 23" width="34" height="23" xmlns="http://www.w3.org/2000/svg"><rect width="34" height="23" fill="#C8102E"/><polygon points="0,23 0,15 34,0 34,8" fill="#fff"/><polygon points="17,7.3 18.3,10.2 21.4,10.5 19,12.6 19.8,15.7 17,14 14.2,15.7 15,12.6 12.6,10.5 15.7,10.2" fill="#1C4FA0"/></svg>`;
+function cardCraquesJogo(){
+  const jogos=db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.data<=hoje()).sort((x,y)=>y.data.localeCompare(x.data))
+    .map(e=>({e,c:craqueDo(e.id)})).filter(x=>x.c);
+  if(!jogos.length)return '';
+  const cont={}; jogos.forEach(x=>cont[x.c.id]=(cont[x.c.id]||0)+1);
+  const rk=Object.entries(cont).sort((x,y)=>y[1]-x[1]||nomeAt(x[0]).localeCompare(nomeAt(y[0])));
+  return `<div class="card sect" style="border-color:var(--gold)"><h2>🌟 Craques do Jogo — eleitos pelo elenco</h2>
+  <div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 8px">${rk.slice(0,3).map(([id,n],i)=>`<span class="pill ${i===0?'p-gold':'p-mut'}">${['👑','🥈','🥉'][i]} ${esc(pnome(nomeAt(id)))} — ${n}×</span>`).join('')}</div>
+  ${jogos.map(x=>`<div class="alertline clickable" style="background:var(--bg);cursor:pointer" onclick="subState.despEv='${x.e.id}';renderTab()">
+    <span>${x.e.tipo==='jogo'?'🏆':'🤝'}</span>
+    <div style="flex:1"><strong>${esc(pnome(nomeAt(x.c.id)))}</strong> <span class="mut" style="font-size:11.5px">— ${x.c.votos} de ${x.c.total} votos</span>
+    <div class="mut" style="font-size:11px">${dbr(x.e.data)} · ${esc(x.e.titulo)}${x.e.placarNos!=null?' · '+x.e.placarNos+'×'+x.e.placarDeles:''}</div></div>
+    <span class="mut" style="font-size:11px">›</span></div>`).join('')}
+  <p class="mut" style="font-size:11.5px;margin:6px 0 0">Toque num jogo para abrir os detalhes e a votação dele.</p></div>`;
+}
 function cardOverallElenco(){
   const lista=elenco().map(a=>({a,o:overallDe(a.id)})).sort((x,y)=>y.o.ov-x.o.ov||x.a.nome.localeCompare(y.a.nome));
   if(!lista.length)return '';
@@ -2965,6 +2980,7 @@ function tDesemp(){
     <button class="mini sec" onclick="modalComparar()">⚖️ Comparar atletas</button>
     <button class="mini sec" onclick="resumoMes()">📊 Destaques do mês (WhatsApp)</button>
   </div>
+  ${cardCraquesJogo()}
   ${cardOverallElenco()}
   <div class="grid g2 sect">
     <div class="card"><h2>⚽ Artilharia</h2>${rank(a=>a.g)}</div>
