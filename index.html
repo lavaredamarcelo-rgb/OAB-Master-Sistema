@@ -2364,6 +2364,7 @@ function presencasSemStats(atId,cat){
     return !db.stats.some(x=>x.eventoId===p.eventoId&&x.atletaId===atId);
   });
 }
+const ehSetorDef=atId=>{const a=at(atId);return !!a&&posAbrevTodas(a).some(pz=>['GOL','ZAG','ALA','VOL'].includes(pz));};
 function jogosSemSofrer(atId,cat){
   cat=cat||'todos';
   return db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.placarNos!=null&&Number(e.placarDeles)===0)
@@ -2436,9 +2437,7 @@ function pontosCampo(atId,mesPrefix){
   if(n8){ pts+=n8*5; det.push({txt:'⭐ Notas 8 a 8,9 em jogos',calc:n8+'× 5',pts:n8*5}); }
   if(n9){ pts+=n9*10; det.push({txt:'🌟 Notas 9 a 9,9 em jogos',calc:n9+'× 10',pts:n9*10}); }
   if(n10){ pts+=n10*20; det.push({txt:'👑 Notas 10 em jogos',calc:n10+'× 20',pts:n10*20}); }
-  const aMur=at(atId);
-  const setorDefensivo=aMur&&posAbrevTodas(aMur).some(pz2=>['GOL','ZAG','ALA','VOL'].includes(pz2));
-  const mur=setorDefensivo?db.eventos.filter(e=>evsMes(e)&&ehJogoTipo(e.tipo)&&e.placarNos!=null&&Number(e.placarDeles)===0)
+  const mur=ehSetorDef(atId)?db.eventos.filter(e=>evsMes(e)&&ehJogoTipo(e.tipo)&&e.placarNos!=null&&Number(e.placarDeles)===0)
     .filter(e=>db.presencas.some(x=>x.eventoId===e.id&&x.atletaId===atId&&['presente','atraso'].includes(x.status))||db.stats.some(x=>x.eventoId===e.id&&x.atletaId===atId)).length:0;
   if(mur){ pts+=mur*10; det.push({txt:'🧱 Jogos sem sofrer gol (setor defensivo)',calc:mur+'× 10',pts:mur*10}); }
   return {pts:Math.round(pts),det};
@@ -2602,12 +2601,12 @@ function pdfPremios(){
     if(ext){ const g=agg[at2.id]??={g:0,as:0,df:0,des:0,fc:0,ca:0,cv:0,j:0,notas:[]}; g.j+=ext; for(let i=0;i<extN;i++)g.notas.push(7); } });
   const L=Object.entries(agg); if(!L.length){toast('Nenhuma estatística ainda');return;}
   const media=a=>a.notas.length?a.notas.reduce((x,y)=>x+y,0)/a.notas.length:0;
-  const top=f=>[...L].sort((x,y)=>f(y[1])-f(x[1]))[0];
+  const top=f=>{const o=[...L].filter(([,a])=>f(a)>0).sort((x,y)=>f(y[1])-f(x[1])); if(!o.length)return null; const m=f(o[0][1]); return o.filter(([,a])=>f(a)===m); };
   const minJ=Math.min(3,Math.max(...L.map(([,a])=>a.j)));
   const eleg=[...L].filter(([,a])=>a.j>=minJ);
-  const craque=[...eleg].sort((x,y)=>media(y[1])-media(x[1]))[0];
-  const fair=[...eleg].sort((x,y)=>(x[1].fc+x[1].ca*2+x[1].cv*5)-(y[1].fc+y[1].ca*2+y[1].cv*5)||y[1].j-x[1].j)[0];
-  const linha=(tit,ent,val)=>ent&&ent[1]?`<tr><td><strong>${tit}</strong></td><td><strong>${esc(nomeAt(ent[0]))}</strong></td><td>${val(ent[1])}</td></tr>`:'';
+  const craque=(()=>{const o=[...eleg].sort((x,y)=>media(y[1])-media(x[1])); if(!o.length)return null; const m=media(o[0][1]); return o.filter(([,a])=>Math.abs(media(a)-m)<0.001); })();
+  const fair=(()=>{const sc=a=>a.fc+a.ca*2+a.cv*5; const o=[...eleg].sort((x,y)=>sc(x[1])-sc(y[1])||y[1].j-x[1].j); if(!o.length)return null; const m=sc(o[0][1]); return o.filter(([,a])=>sc(a)===m); })();
+  const linha=(tit,ents,val)=>ents&&ents.length?`<tr><td><strong>${tit}</strong>${ents.length>1?' <span style="font-size:10px;color:#8a8f99">(empate)</span>':''}</td><td><strong>${ents.map(e=>esc(nomeAt(e[0]))).join('<br>')}</strong></td><td>${val(ents[0][1])}</td></tr>`:'';
   abreRelatorio(`<h1>🏅 Prêmios da Temporada</h1>
   <p class="sub">${esc(db.config.time)} — ${new Date().getFullYear()} · notas não confirmadas usam a sugestão do sistema 🤖</p>
   <table><tr><th>Prêmio</th><th>Atleta</th><th>Números</th></tr>
@@ -2616,10 +2615,12 @@ function pdfPremios(){
   ${linha('🧤 Luva de Ouro',top(a=>a.df),a=>a.df+' defesas')}
   ${linha('🛡️ Xerife',top(a=>a.des),a=>a.des+' desarmes')}
   ${linha('🤝 Fair Play',fair,a=>`${a.fc} falta${a.fc===1?'':'s'} · ${a.ca}🟨 ${a.cv}🟥`)}
-  ${(()=>{const l=elenco().map(a2=>({a:a2,p:pontosCampo(a2.id).pts})).sort((x,y)=>y.p-x.p)[0];
-    return l&&l.p?`<tr><td><strong>🏅 Mais Participativo</strong></td><td><strong>${esc(l.a.nome)}</strong></td><td>${l.p} pontos de campo${(()=>{const pat=patenteDe(pontosClube(l.a.id).total);return ' · '+pat.ico+' '+pat.nome;})()}</td></tr>`:'';})()}
-  ${(()=>{const m=elenco().map(a=>({id:a.id,v:jogosSemSofrer(a.id)})).sort((x,y)=>y.v-x.v)[0];
-    return m&&m.v?`<tr><td><strong>🧱 Muralha</strong></td><td><strong>${esc(nomeAt(m.id))}</strong></td><td>${m.v} jogo${m.v>1?'s':''} sem sofrer gol</td></tr>`:'';})()}
+  ${(()=>{const ord=elenco().map(a2=>({a:a2,p:pontosCampo(a2.id).pts})).filter(r=>r.p>0).sort((x,y)=>y.p-x.p);
+    if(!ord.length)return ''; const emp=ord.filter(r=>r.p===ord[0].p);
+    return `<tr><td><strong>🏅 Mais Participativo</strong>${emp.length>1?' <span style="font-size:10px;color:#8a8f99">(empate)</span>':''}</td><td><strong>${emp.map(r=>esc(r.a.nome)).join('<br>')}</strong></td><td>${ord[0].p} pontos de campo</td></tr>`;})()}
+  ${(()=>{const ord=elenco().filter(a=>ehSetorDef(a.id)).map(a=>({id:a.id,v:jogosSemSofrer(a.id)})).filter(r=>r.v>0).sort((x,y)=>y.v-x.v);
+    if(!ord.length)return ''; const emp=ord.filter(r=>r.v===ord[0].v);
+    return `<tr><td><strong>🧱 Muralha</strong>${emp.length>1?' <span style="font-size:10px;color:#8a8f99">(empate)</span>':''}</td><td><strong>${emp.map(r=>esc(nomeAt(r.id))).join('<br>')}</strong></td><td>${ord[0].v} jogo${ord[0].v>1?'s':''} sem sofrer gol (setor defensivo)</td></tr>`;})()}
   ${linha('🌟 Craque da Temporada',craque,a=>'nota média '+media(a).toFixed(2)+' em '+a.j+' partida'+(a.j>1?'s':''))}
   </table>
   <p style="font-size:11.5px;color:#8a8f99">Craque e Fair Play exigem pelo menos ${minJ} partida(s) com estatística lançada.</p>`,`Prêmios — ${db.config.time}`);
@@ -2663,20 +2664,21 @@ function resumoMes(){
   const agg={}; sts.forEach(x=>{const a=agg[x.atletaId]??={g:0,as:0,df:0,notas:[]};a.g+=+x.gols||0;a.as+=+x.assist||0;a.df+=+x.defesas||0;if(notaConta(x.eventoId))a.notas.push(notaDe(x).v);});
   const L=Object.entries(agg);
   const nm=a=>a.notas.reduce((x,y)=>x+y,0)/a.notas.length;
-  const topG=[...L].sort((x,y)=>y[1].g-x[1].g)[0], topA=[...L].sort((x,y)=>y[1].as-x[1].as)[0], topN=[...L].sort((x,y)=>nm(y[1])-nm(x[1]))[0];
+  const topTodos=(f)=>{const o=[...L].filter(([,a])=>f(a)>0).sort((x,y)=>f(y[1])-f(x[1])); if(!o.length)return null; const m=f(o[0][1]); return o.filter(([,a])=>Math.abs(f(a)-m)<0.001); };
+  const topG=topTodos(a=>a.g), topA=topTodos(a=>a.as), topN=topTodos(a=>a.notas.length?nm(a):0);
   const v=jogosMes.filter(e=>e.placarNos>e.placarDeles).length, emp=jogosMes.filter(e=>e.placarNos===e.placarDeles).length, dd=jogosMes.filter(e=>e.placarNos<e.placarDeles).length;
   const msg=`📊 *${db.config.time} — Destaques de ${MESES_NOME[Number(mes.slice(5))-1]}*
 
 `
     +(jogosMes.length?`🏆 Campanha do mês: ${v}V · ${emp}E · ${dd}D
 `:'')
-    +(topG&&topG[1].g?`⚽ Artilheiro: ${pnome(nomeAt(topG[0]))} (${topG[1].g} gol${topG[1].g>1?'s':''})
+    +(topG?`⚽ Artilheiro${topG.length>1?'s (empate)':''}: ${topG.map(e=>pnome(nomeAt(e[0]))).join(' e ')} (${topG[0][1].g} gol${topG[0][1].g>1?'s':''})
 `:'')
-    +(topA&&topA[1].as?`🅰️ Garçom: ${pnome(nomeAt(topA[0]))} (${topA[1].as})
+    +(topA?`🅰️ Garç${topA.length>1?'ons (empate)':'om'}: ${topA.map(e=>pnome(nomeAt(e[0]))).join(' e ')} (${topA[0][1].as})
 `:'')
-    +(topN?`🌟 Melhor nota: ${pnome(nomeAt(topN[0]))} (${nm(topN[1]).toFixed(1)})
+    +(topN?`🌟 Melhor nota${topN.length>1?' (empate)':''}: ${topN.map(e=>pnome(nomeAt(e[0]))).join(' e ')} (${nm(topN[0][1]).toFixed(1)})
 `:'')
-    +((()=>{const l=elenco().map(a2=>({a:a2,p:pontosCampo(a2.id,mes).pts})).sort((x,y)=>y.p-x.p)[0];return l&&l.p?`🏅 Mais participativo: ${pnome(l.a.nome)} (${l.p} pts)
+    +((()=>{const ord=elenco().map(a2=>({a:a2,p:pontosCampo(a2.id,mes).pts})).filter(r=>r.p>0).sort((x,y)=>y.p-x.p);const emp=ord.filter(r=>r.p===(ord[0]&&ord[0].p));return emp.length?`🏅 Mais participativo${emp.length>1?'s (empate)':''}: ${emp.map(r=>pnome(r.a.nome)).join(' e ')} (${ord[0].p} pts)
 `:'';})())
     +`
 Sigam firmes, ${'@'}todos! 💪⚽`;
@@ -2996,8 +2998,10 @@ function tDesemp(){
     <div class="card"><h2>🎯 Chutes no gol</h2>${rank(a=>a.ch)}</div>
     <div class="card"><h2>🧤 Defesas</h2>${rank(a=>a.df)}</div>
     <div class="card"><h2>🧱 Muralha — jogos sem sofrer gol</h2>${(()=>{
-      const l=elenco().map(a=>({id:a.id,v:jogosSemSofrer(a.id,cat)})).filter(r=>r.v>0).sort((x,y)=>y.v-x.v).slice(0,5);
-      return l.map((r,i)=>`<div class="alertline" style="background:var(--bg)"><span class="medal">${['🥇','🥈','🥉','4º','5º'][i]}</span><span style="flex:1">${esc(pnome(nomeAt(r.id)))}</span><strong>${r.v}</strong></div>`).join('')||'<p class="mut">Sem registros — precisa de placar lançado com 0 sofrido e chamada feita.</p>';})()}</div>
+      const ord=elenco().filter(a=>ehSetorDef(a.id)).map(a=>({id:a.id,v:jogosSemSofrer(a.id,cat)})).filter(r=>r.v>0).sort((x,y)=>y.v-x.v);
+      const corte=ord.length>5?ord[4].v:0; const l=ord.filter((r,i)=>i<5||r.v===corte);
+      const med=(r,i)=>{const emp=ord.filter(x=>x.v===r.v); const pos=ord.findIndex(x=>x.v===r.v); return emp.length>1?(pos+1)+'º=':['🥇','🥈','🥉','4º','5º'][i]||(i+1)+'º';};
+      return l.map((r,i)=>`<div class="alertline" style="background:var(--bg)"><span class="medal">${med(r,i)}</span><span style="flex:1">${esc(pnome(nomeAt(r.id)))}</span><strong>${r.v}</strong></div>`).join('')||'<p class="mut">Sem registros — precisa de placar lançado com 0 sofrido e chamada feita.</p>';})()}</div>
   </div>
   <div class="card"><div class="spread"><h2 style="margin:0">📊 Totais da temporada ${cat==='jogo'?'<span class="pill p-gold">🏆 oficiais</span>':cat==='amistoso'?'<span class="pill p-warn">🤝 amistosos</span>':cat==='treino'?'<span class="pill p-mut">🏃 treinos</span>':''}</h2><button class="mini gold" onclick="pdfTotaisTemporada()">📄 PDF completo</button></div>
   ${Object.keys(agg).length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:10px;margin-top:10px">
