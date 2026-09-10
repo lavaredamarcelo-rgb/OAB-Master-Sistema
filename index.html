@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='12/09d · atrasos p/ comissão';
+const BUILD='12/09e · upload reforçado';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -408,8 +408,15 @@ function upFile(inp,maxMB,cb){ const f=inp.files[0]; if(!f)return; if(f.size>max
 async function enviaArquivo(f,escopo,atletaId,categoria,extra){
   const pasta=escopo==='tatica'?'tatica':escopo==='financeiro'?'financeiro':(atletaId||me.id);
   const path=`${pasta}/${uid()}-${f.name.replace(/[^\w.\-]+/g,'_')}`;
-  const {error}=await sb.storage.from('arquivos').upload(path,f);
-  if(error){toast('⚠️ Envio falhou: '+error.message);throw error;}
+  // Lê o arquivo para a memória antes de enviar (fotos na nuvem do Google Fotos
+  // chegam como "atalho" e derrubam o upload com Failed to fetch)
+  let corpo=f;
+  try{ corpo=await f.arrayBuffer(); }
+  catch(_){ toast('⚠️ Não consegui ler o arquivo — se a foto está no Google Fotos, abra-a na galeria primeiro (para baixar) e tente de novo'); throw new Error('read'); }
+  const up=()=>sb.storage.from('arquivos').upload(path,corpo,{contentType:f.type||'application/octet-stream'});
+  let {error}=await up();
+  if(error&&/failed to fetch|network|load failed/i.test(error.message||'')){ toast('Conexão oscilou — tentando de novo…'); await new Promise(r=>setTimeout(r,1500)); ({error}=await up()); }
+  if(error){toast('⚠️ Envio falhou: '+error.message+' — confira a internet e tente novamente');throw error;}
   let dados={atleta_id:escopo==='tatica'||escopo==='financeiro'?null:(atletaId||me.id),escopo,categoria:categoria||'Outro',nome:f.name,path,mime:f.type,tam:f.size,quem:me.nome,titulo:(extra&&extra.titulo)||'',descricao:(extra&&extra.descricao)||''};
   let {error:e1}=await sb.from('documentos').insert(dados);
   if(e1&&/titulo|descricao/.test(e1.message||'')){
