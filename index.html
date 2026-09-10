@@ -347,7 +347,7 @@ async function carregaTudo(){
     sb.from('convocacoes').select('*').order('quando',{ascending:false}).then(r=>r.error?null:(r.data||[])),
     sb.rpc('contagem_craque_todos').then(r=>r.data||[])
   ]);
-  db={};
+  db={}; window._ultimaCarga=Date.now();
   db.atletas=perfis.map(mapAtleta);
   saude.forEach(s=>{ const a=at(s.atleta_id); if(a)a.saude={sangue:s.sangue,plano:s.plano,alergias:s.alergias,medicamentos:s.medicamentos,condicoes:s.condicoes,emergencia:s.emergencia,lesoes:s.lesoes,obs:s.obs,lesoesLista:s.lesoes_lista||[],obsLista:s.obs_lista||[]}; });
   db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),dataFim:e.data_fim?String(e.data_fim):'',hora:e.hora,horaFim:e.hora_fim||'',local:e.local,obs:e.obs,adversario:e.adversario||'',placarNos:e.placar_nos??null,placarDeles:e.placar_deles??null,statsTime:e.stats_time||{}}));
@@ -386,7 +386,11 @@ async function carregaTudo(){
   db.debitos=[];
   const eu=at(me.id); if(eu)me=Object.assign(eu,{});
 }
-async function recarrega(){ await carregaTudo(); renderTab(); }
+async function recarrega(){ await carregaTudo(); window._ultimaCarga=Date.now(); renderTab(); }
+async function atualizaSeVelho(){ try{ if(document.hidden||!me||!db)return; if(Date.now()-(window._ultimaCarga||0)<5*60*1000)return; window._ultimaCarga=Date.now(); await carregaTudo(); renderTab(); toast('🔄 Dados atualizados'); }catch(_){} }
+document.addEventListener('visibilitychange',atualizaSeVelho);
+window.addEventListener('focus',atualizaSeVelho);
+setInterval(atualizaSeVelho,10*60*1000);
 
 /* ================= ARQUIVOS (Storage) ================= */
 function upFile(inp,maxMB,cb){ const f=inp.files[0]; if(!f)return; if(f.size>maxMB*1048576){toast(`Arquivo grande demais (máx. ${maxMB} MB)`);inp.value='';return;} cb(f); inp.value=''; }
@@ -3187,7 +3191,7 @@ const nConvocacoes=atId=>(db.convocacoes||[]).filter(c=>c.status!=='rascunho'&&c
 function cardConvocacoes(){
   if(db.convocacoes===null)return gestor()?`<div class="card"><h2>📣 Convocações</h2><p class="mut">⚠️ Para ativar, rode o <strong>SQL v23</strong> no Supabase (peço ao Marcelo).</p></div>`:'';
   const podeEditar=gestor();
-  const cs=db.convocacoes.filter(c=>podeEditar||c.status!=='rascunho');
+  const cs=db.convocacoes.filter(c=>podeEditar||c.status!=='rascunho'||c.criadoPor===me.nome);
   const ativas=cs.filter(c=>c.status!=='encerrada'), antigas=cs.filter(c=>c.status==='encerrada');
   const linha=c=>{const tot=c.convocados.length, ok=Object.values(c.conf).filter(x=>x.ok).length, nao=Object.values(c.conf).filter(x=>!x.ok).length;
     return `<div class="alertline clickable" style="background:var(--bg);cursor:pointer" onclick="verConvocacao('${c.id}')">
@@ -3239,12 +3243,12 @@ function formConvocacao(id){
   const grupos=POS_GRUPOS.map(([g,lbl])=>{
     const ats=elenco().filter(a=>g==='JOG'?!posAbrevTodas(a).length:posAbrevTodas(a).includes(g)).filter(a=>!busca||a.nome.toLowerCase().includes(busca)||(a.apelido||'').toLowerCase().includes(busca));
     if(!ats.length)return '';
-    return `<div style="margin-top:10px"><div class="mut" style="font-size:12px;font-weight:700;text-transform:uppercase">${lbl} <span id="conv_g_${g}" style="color:var(--ok)"></span></div>
+    return `<details open style="margin-top:10px"><summary style="cursor:pointer;font-size:12px;font-weight:700;text-transform:uppercase;color:var(--ink2)">${lbl} <span class="pill p-mut" style="font-size:10px">${ats.length}</span> <span id="conv_g_${g}" style="color:var(--ok)"></span></summary>
     ${ats.map(a=>{const marcadoAqui=subState.convSel.has(a.id)&&(subState.convPos[a.id]||grupoPos(a))===g;
       const travado=subState.convSel.has(a.id)&&!marcadoAqui;
       return `<label data-aid="${a.id}" style="display:flex;align-items:center;gap:8px;margin:4px 0;text-transform:none;font-weight:400;font-size:14px;color:var(--ink);${travado?'opacity:.35':''}">
       <input type="checkbox" class="chk_conv" data-aid="${a.id}" value="${a.id}" ${marcadoAqui?'checked':''} ${travado?'disabled':''} onchange="toggleConvPos('${a.id}','${g}',this)" style="width:auto">
-      <span style="flex:1"><strong>${esc(pnome(a.nome))}</strong>${travado?` <span class="mut" style="font-size:10.5px">já convocado como ${subState.convPos[a.id]||grupoPos(a)}</span>`:''}<br>${infoAtletaConv(a)}</span></label>`;}).join('')}</div>`;
+      <span style="flex:1"><strong>${esc(pnome(a.nome))}</strong>${travado?` <span class="mut" style="font-size:10.5px">já convocado como ${subState.convPos[a.id]||grupoPos(a)}</span>`:''}<br>${infoAtletaConv(a)}</span></label>`;}).join('')}</details>`;
   }).join('');
   modal(`<h2>${c?'✏️ Editar':'📣 Nova'} convocação</h2>
   <label>Campeonato / jogo *</label><input id="cv_tit" value="${c?esc(c.titulo):''}" placeholder="Ex.: Copa OAB 2026 — 1ª fase">
@@ -3306,11 +3310,12 @@ function verConvocacao(id){
   const grupos=POS_GRUPOS.map(([g,lbl])=>{
     const lista=c.convocados.filter(x=>x.posicao===g);
     if(!lista.length)return '';
-    return `<div style="margin-top:8px"><div class="mut" style="font-size:11.5px;font-weight:700;text-transform:uppercase">${lbl}</div>
+    const okG=lista.filter(x=>c.conf[x.atletaId]&&c.conf[x.atletaId].ok).length;
+    return `<details open style="margin-top:8px"><summary style="cursor:pointer;font-size:12px;font-weight:700;text-transform:uppercase;color:var(--ink2)">${lbl} <span class="pill p-mut" style="font-size:10px">${lista.length}</span>${c.status!=='rascunho'&&okG?` <span class="pill p-ok" style="font-size:10px">✅ ${okG}</span>`:''}</summary>
     ${lista.map(x=>{const cf=c.conf[x.atletaId];
       return `<div class="alertline" style="background:var(--bg);padding:5px 10px"><div style="flex:1;font-size:13.5px"><strong>${esc(pnome(nomeAt(x.atletaId)))}</strong>${cf&&!cf.ok&&cf.motivo&&(podeEditar||x.atletaId===me.id)?`<div class="mut" style="font-size:11px">"${esc(cf.motivo)}"</div>`:''}</div>
       ${c.status==='rascunho'?'':cf?(cf.ok?'<span class="pill p-ok">✅ confirmado</span>':'<span class="pill p-bad">❌ não pode</span>'):'<span class="pill p-mut">⏳ aguardando</span>'}
-      ${podeEditar&&c.status!=='encerrada'?`<button class="mini sec" title="Substituir" onclick="formSubstituir('${c.id}','${x.atletaId}')">🔁</button>`:''}</div>`;}).join('')}</div>`;
+      ${podeEditar&&c.status!=='encerrada'?`<button class="mini sec" title="Substituir" onclick="formSubstituir('${c.id}','${x.atletaId}')">🔁</button>`:''}</div>`;}).join('')}</details>`;
   }).join('');
   modal(`<h2>${c.status==='rascunho'?'📝':c.status==='publicada'?'📣':'🏁'} ${esc(c.titulo)}</h2>
   <div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 8px">
