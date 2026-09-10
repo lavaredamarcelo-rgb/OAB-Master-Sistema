@@ -2423,7 +2423,7 @@ function pontosCampo(atId,mesPrefix){
   if(n10){ pts+=n10*20; det.push({txt:'👑 Notas 10 em jogos',calc:n10+'× 20',pts:n10*20}); }
   const mur=db.eventos.filter(e=>evsMes(e)&&ehJogoTipo(e.tipo)&&e.placarNos!=null&&Number(e.placarDeles)===0)
     .filter(e=>db.presencas.some(x=>x.eventoId===e.id&&x.atletaId===atId&&['presente','atraso'].includes(x.status))||db.stats.some(x=>x.eventoId===e.id&&x.atletaId===atId)).length;
-  if(mur){ pts+=mur*15; det.push({txt:'🧱 Jogos sem sofrer gol',calc:mur+'× 15',pts:mur*15}); }
+  if(mur){ pts+=mur*10; det.push({txt:'🧱 Jogos sem sofrer gol',calc:mur+'× 10',pts:mur*10}); }
   return {pts:Math.round(pts),det};
 }
 function pontosPerfil(atId){
