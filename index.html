@@ -387,7 +387,15 @@ async function carregaTudo(){
   const eu=at(me.id); if(eu)me=Object.assign(eu,{});
 }
 async function recarrega(){ await carregaTudo(); window._ultimaCarga=Date.now(); renderTab(); }
-async function atualizaSeVelho(){ try{ if(document.hidden||!me||!db)return; if(Date.now()-(window._ultimaCarga||0)<5*60*1000)return; window._ultimaCarga=Date.now(); await carregaTudo(); renderTab(); toast('🔄 Dados atualizados'); }catch(_){} }
+async function checaVersao(){ try{
+  const r=await fetch(location.origin+'/',{method:'HEAD',cache:'no-store'});
+  const et=r.headers.get('etag'); if(!et)return;
+  let old=null; try{ old=localStorage.getItem('appEtag'); }catch(_){}
+  try{ localStorage.setItem('appEtag',et); }catch(_){}
+  if(old&&old!==et){ toast('🔄 Nova versão do sistema — atualizando…'); setTimeout(()=>location.reload(),900); }
+}catch(_){} }
+async function atualizaSeVelho(){ try{ if(document.hidden||!me||!db)return; if(Date.now()-(window._ultimaCarga||0)<5*60*1000)return; window._ultimaCarga=Date.now(); checaVersao(); await carregaTudo(); renderTab(); toast('🔄 Dados atualizados'); }catch(_){} }
+setTimeout(checaVersao,4000);
 document.addEventListener('visibilitychange',atualizaSeVelho);
 window.addEventListener('focus',atualizaSeVelho);
 setInterval(atualizaSeVelho,10*60*1000);
@@ -2401,7 +2409,7 @@ function pontosCampo(atId,mesPrefix){
     if(d.status==='presente'){ pts+=base; d.jogo?pj++:ptr++; }
     else if(d.status==='atraso'){ pts+=base/2; pa++; pAtr+=base/2; }
     else if(d.status==='justificada'){ pts+=3; pjus++; } });
-  if(pj)det.push({txt:'✅ Presenças em jogos',calc:pj+'× 15',pts:pj*15});
+  if(pj)det.push({txt:'✅ Presenças em dias de jogo/amistoso (treino no mesmo dia já incluso)',calc:pj+'× 15',pts:pj*15});
   if(ptr)det.push({txt:'🏃 Presenças em treinos',calc:ptr+'× 10',pts:ptr*10});
   if(pa)det.push({txt:'⏰ Atrasos (metade)',calc:pa+'×',pts:pAtr});
   if(pjus)det.push({txt:'📝 Faltas justificadas',calc:pjus+'× 3',pts:pjus*3});

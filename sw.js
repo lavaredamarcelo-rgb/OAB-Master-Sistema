@@ -1,4 +1,9 @@
 self.addEventListener('install',e=>self.skipWaiting());
+self.addEventListener('fetch',e=>{
+  if(e.request.mode==='navigate'){
+    e.respondWith(fetch(e.request,{cache:'no-store'}).catch(()=>fetch(e.request)));
+  }
+});
 self.addEventListener('activate',e=>e.waitUntil(clients.claim()));
 self.addEventListener('push',e=>{
   let d={}; try{ d=e.data?e.data.json():{}; }catch(_){ d={corpo:e.data&&e.data.text()}; }
