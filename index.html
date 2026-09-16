@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='12/09e · upload reforçado';
+const BUILD='16/09 · posições compartilháveis';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -514,9 +514,9 @@ function genPDF(nomeArq,titulo,linhas){
   pdf+=`xref\n0 ${objs.length+1}\n0000000000 65535 f \n`+offs.map(o=>String(o).padStart(10,'0')+' 00000 n \n').join('');
   pdf+=`trailer<</Size ${objs.length+1}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF`;
   const bytes=new Uint8Array(pdf.length); for(let i=0;i<pdf.length;i++)bytes[i]=pdf.charCodeAt(i)&0xFF;
-  baixar(nomeArq,new Blob([bytes],{type:'application/pdf'}));
-  toast('PDF baixado — anexe no WhatsApp para compartilhar');
+  return new Blob([bytes],{type:'application/pdf'});
 }
+function baixaPDF(nomeArq,titulo,linhas){ baixar(nomeArq,genPDF(nomeArq,titulo,linhas)); toast('PDF baixado — anexe no WhatsApp para compartilhar'); }
 function htmlParaLinhas(html){
   const d=document.createElement('div'); d.innerHTML=html; const out=[];
   d.querySelectorAll('h4,p').forEach(el=>{ const t=el.textContent.replace(/\s+/g,' ').trim(); if(!t)return;
@@ -1036,10 +1036,32 @@ function cardPosicoes(){
   const ps={};
   elenco().forEach(a=>{ const pp=posicoesDe(a); (pp.length?pp:['Sem posição definida']).forEach(p=>{ const k=p.charAt(0).toUpperCase()+p.slice(1).toLowerCase(); (ps[k]??=[]).push(pnome(a.nome)); }); });
   const keys=Object.keys(ps).sort((a,b)=>ps[b].length-ps[a].length);
-  return `<div class="card"><div class="spread"><h2>📊 Elenco por posição</h2>${gestor()?`<button class="mini sec" onclick="pdfPosicoes()">📄 PDF</button>`:''}</div>
+  return `<div class="card"><div class="spread"><h2>📊 Elenco por posição</h2>${gestor()?`<div class="row" style="gap:6px"><button class="mini gold" onclick="whatsPosicoes()">📱 WhatsApp</button><button class="mini gold" onclick="pdfPosicoesEnviar()">📤 Enviar PDF</button><button class="mini sec" onclick="pdfPosicoes()">🖨️ Imprimir</button></div>`:''}</div>
   <p class="mut"><strong>${elenco().length} jogadores</strong> no elenco. Atleta com mais de uma posição (separadas por vírgula no cadastro) conta em cada uma.</p>
   <div class="tblwrap"><table><tr><th>Posição</th><th>Qtd.</th><th>Jogadores</th></tr>
   ${keys.length?keys.map(k=>`<tr><td><strong>${esc(k)}</strong></td><td><span class="pill ${ps[k].length>=2?'p-ok':'p-warn'}">${ps[k].length}</span></td><td class="mut">${esc(ps[k].join(', '))}</td></tr>`).join(''):'<tr><td colspan="3" class="mut">Nenhum jogador cadastrado.</td></tr>'}</table></div></div>`;
+}
+function linhasPosicoes(){
+  const ps={};
+  elenco().forEach(a=>{ const pp=posicoesDe(a); (pp.length?pp:['Sem posição definida']).forEach(pz=>{ const k=pz.charAt(0).toUpperCase()+pz.slice(1).toLowerCase(); (ps[k]??=[]).push(a); }); });
+  const keys=Object.keys(ps).sort((a,b)=>ps[b].length-ps[a].length);
+  return {ps,keys};
+}
+function whatsPosicoes(){
+  const {ps,keys}=linhasPosicoes();
+  if(!keys.length){toast('Nenhum jogador cadastrado');return;}
+  const msg=`⚽ *ELENCO POR POSIÇÃO — ${db.config.time}*\n_${elenco().length} jogadores · ${dbr(hoje())}_\n\n`+
+    keys.map(k=>`*${k} (${ps[k].length}):* ${ps[k].map(a=>pnome(a.nome)).join(', ')}`).join('\n\n');
+  modalWhats('Elenco por posição',msg);
+}
+async function pdfPosicoesEnviar(){
+  const {ps,keys}=linhasPosicoes();
+  if(!keys.length){toast('Nenhum jogador cadastrado');return;}
+  const linhas=[`${db.config.time} — ${elenco().length} jogadores — gerado em ${dbr(hoje())}`,''];
+  keys.forEach(k=>{ linhas.push(''); linhas.push(`${k.toUpperCase()} (${ps[k].length})`);
+    ps[k].forEach(a=>linhas.push(`   - ${a.nome}${a.oab?' (OAB '+a.oab+')':''}`)); });
+  const b=genPDF('elenco-por-posicao.pdf','Elenco por Posição — '+db.config.time,linhas);
+  await compartilhaBlob(b,'elenco-por-posicao-'+hoje()+'.pdf','Elenco por posição — '+db.config.time);
 }
 function cardPats(){
   const ps=(db.pats||[]).filter(p=>p.ativo);
@@ -1380,8 +1402,9 @@ async function arteElenco(){
     <button class="mini gold" onclick="compartilhaBlob(window._arteElenco,'elenco-cards.png','Elenco — '+db.config.time)">📤 Enviar (WhatsApp)</button>
     <button class="sec" onclick="fecha()">Fechar</button></div>`);
 }
-async function compartilhaBlob(b,nome,titulo){
-  const file=new File([b],nome,{type:'image/png'});
+async function compartilhaBlob(b,nome,titulo,tipo){
+  tipo=tipo||(String(nome).endsWith('.pdf')?'application/pdf':'image/png');
+  const file=new File([b],nome,{type:tipo});
   if(navigator.canShare&&navigator.canShare({files:[file]})){ try{await navigator.share({files:[file],title:titulo});}catch(_){} }
   else { baixar(nome,b,'image/png'); toast('Envio direto não suportado neste aparelho — baixei a imagem para você anexar'); }
 }
@@ -1776,7 +1799,7 @@ function pdfCobrancaDocs(){
    'restrito à diretoria, e utilizados exclusivamente para as finalidades esportivas do time.','',
    `Belém/PA, ${new Date().toLocaleDateString('pt-BR')}.`,'','',
    '_________________________________________','DIRETORIA — '+c.time);
-  genPDF('termo-cobranca-documentos-'+hoje()+'.pdf',c.time+' — NOTIFICAÇÃO PARA APRESENTAÇÃO DE DOCUMENTOS',linhas);
+  baixaPDF('termo-cobranca-documentos-'+hoje()+'.pdf',c.time+' — NOTIFICAÇÃO PARA APRESENTAÇÃO DE DOCUMENTOS',linhas);
 }
 async function salvaChecklist(){
   const sel=[...document.querySelectorAll('.chk_doc:checked')].map(c=>c.value);
@@ -6748,8 +6771,8 @@ function tLGPD(){
 }
 function verTermoModelo(){ modal(`<h2>Modelo — Termo LGPD</h2>${termoLGPDTexto({nome:'[NOME DO ATLETA]',oab:''})}<div class="row" style="margin-top:14px"><button class="sec" onclick="pdfTermoLGPD()">⬇ Baixar PDF</button><button class="sec" onclick="fecha()">Fechar</button></div>`); }
 function verTermoUniModelo(){ modal(`<h2>Modelo — Termo de uniforme</h2>${termoUniTexto({nome:'[NOME DO ATLETA]'},{descricao:'[ITEM]',numero:'[Nº]',tamanho:'[TAM]'})}<div class="row" style="margin-top:14px"><button class="sec" onclick="pdfTermoUni()">⬇ Baixar PDF</button><button class="sec" onclick="fecha()">Fechar</button></div>`); }
-function pdfTermoLGPD(){ genPDF('termo-lgpd-'+hoje()+'.pdf',db.config.time+' — Termo de Consentimento LGPD (modelo v'+TERMO_LGPD_V+')',htmlParaLinhas(termoLGPDTexto({nome:'____________________________________',oab:''}))); }
-function pdfTermoUni(){ genPDF('termo-uniforme-'+hoje()+'.pdf',db.config.time+' — Termo de Responsabilidade de Uniforme (modelo v'+TERMO_UNI_V+')',htmlParaLinhas(termoUniTexto({nome:'____________________________________'},{descricao:'______________________',numero:'____',tamanho:'____'}))); }
+function pdfTermoLGPD(){ baixaPDF('termo-lgpd-'+hoje()+'.pdf',db.config.time+' — Termo de Consentimento LGPD (modelo v'+TERMO_LGPD_V+')',htmlParaLinhas(termoLGPDTexto({nome:'____________________________________',oab:''}))); }
+function pdfTermoUni(){ baixaPDF('termo-uniforme-'+hoje()+'.pdf',db.config.time+' — Termo de Responsabilidade de Uniforme (modelo v'+TERMO_UNI_V+')',htmlParaLinhas(termoUniTexto({nome:'____________________________________'},{descricao:'______________________',numero:'____',tamanho:'____'}))); }
 function pdfComprovante(aid){
   const a=at(aid);
   const linhas=htmlParaLinhas(termoLGPDTexto(a));
@@ -6757,7 +6780,7 @@ function pdfComprovante(aid){
     `Aceito por ${a.nome} em ${a.consent.quando} (versão ${a.consent.versao}), mediante login individual.`,
     'Registro de aceite eletrônico nos termos do art. 10, §2º, da MP nº 2.200-2/2001.',
     `Documento gerado pelo sistema em ${agora()}.`);
-  genPDF('comprovante-lgpd-'+pnome(a.nome).toLowerCase()+'.pdf',db.config.time+' — Comprovante de Consentimento LGPD',linhas);
+  baixaPDF('comprovante-lgpd-'+pnome(a.nome).toLowerCase()+'.pdf',db.config.time+' — Comprovante de Consentimento LGPD',linhas);
 }
 function pdfMiniRelatorio(){
   const ats=db.atletas.filter(a=>!a.pendente);
@@ -6777,7 +6800,7 @@ function pdfMiniRelatorio(){
     '- Seus dados de saúde são acessíveis apenas à diretoria, ao treinador e ao preparador físico (art. 11, LGPD).',
     '- Você pode revogar o consentimento a qualquer tempo (art. 8º, §5º).',
     db.config.encarregado?`- Encarregado de dados (DPO): ${db.config.encarregado}${db.config.encContato?' — '+db.config.encContato:''}.`:'');
-  genPDF('relatorio-lgpd-'+hoje()+'.pdf',db.config.time+' — Mini Relatório LGPD',linhas);
+  baixaPDF('relatorio-lgpd-'+hoje()+'.pdf',db.config.time+' — Mini Relatório LGPD',linhas);
 }
 function csvLogs(){ csv('auditoria-lgpd.csv',[['Quando','Tipo','Quem','Registro'],...db.logs.map(l=>[l.quando,l.tipo,l.quem,l.texto])]); }
 
@@ -6946,7 +6969,7 @@ function pdfContratoPat(id){
    '_________________________________________','PATROCINADO — '+c.time,'','','',
    '_________________________________________','PATROCINADOR — '+p.nome
   ].filter(l=>l!=='');
-  genPDF('contrato-patrocinio-'+p.nome.toLowerCase().replace(/\s+/g,'-')+'.pdf',c.time+' — CONTRATO DE PATROCÍNIO ESPORTIVO',linhas);
+  baixaPDF('contrato-patrocinio-'+p.nome.toLowerCase().replace(/\s+/g,'-')+'.pdf',c.time+' — CONTRATO DE PATROCÍNIO ESPORTIVO',linhas);
 }
 async function arteRodapePats(){
   const ordemTier={diamante:0,master:1,ouro:2,prata:3,bronze:4,apoio:5};
@@ -7004,7 +7027,7 @@ function pdfRelatorioPats(){
   'PATROCINADORES ATIVOS:'];
   (db.pats||[]).filter(p=>p.ativo).forEach(p=>linhas.push(`- ${p.nome} [${p.tier.toUpperCase()}]${p.local?' — '+p.local:''}${p.valor>0?' — '+brl(p.valor):''}${p.vigencia_ate?' — vigência até '+dbr(String(p.vigencia_ate)):''}${p.beneficio?' — benefício: '+p.beneficio:''}`));
   linhas.push('','Documento gerado automaticamente pelo sistema de gestão do '+c.time+'.');
-  genPDF('relatorio-patrocinio-'+hoje()+'.pdf',c.time+' — Relatório de Visibilidade de Patrocínio',linhas);
+  baixaPDF('relatorio-patrocinio-'+hoje()+'.pdf',c.time+' — Relatório de Visibilidade de Patrocínio',linhas);
 }
 function delPat(id){
   const p=byId(db.pats,id);
