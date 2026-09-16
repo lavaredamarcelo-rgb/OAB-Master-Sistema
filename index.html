@@ -21,7 +21,7 @@ html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
 h1,h2,h3{font-family:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;letter-spacing:.01em;text-wrap:balance}
 h1{font-size:26px;margin:0}h2{font-size:20px;margin:0 0 12px}h3{font-size:16px;margin:0 0 8px}
-button{font:inherit;cursor:pointer;border:none;border-radius:9px;padding:8px 14px;background:var(--p);color:#fff;transition:filter .15s}
+button{appearance:none;-webkit-appearance:none;font:inherit;cursor:pointer;border:none;border-radius:9px;padding:8px 14px;background:var(--p);color:#fff;transition:filter .15s}
 button:hover{filter:brightness(1.08)}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 button.sec{background:var(--card);color:var(--ink);border:1px solid var(--line)}
@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='16/09 · posições compartilháveis';
+const BUILD='16/09b · botões iOS 26';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -5335,7 +5335,7 @@ const CSS_RELATORIO=`*{-webkit-print-color-adjust:exact!important;print-color-ad
   .tot td{background:#f3e3c8!important;font-weight:bold}
   .ok{color:#2E7D4F}.bad{color:#B3372E}.warn{color:#A86A12}
   .mes{page-break-inside:avoid}
-  .fechar,.imprimir{position:fixed;top:12px;padding:10px 18px;color:#fff;border:none;border-radius:9px;font-weight:700;cursor:pointer;z-index:9;font-size:14px;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+  .fechar,.imprimir{appearance:none;-webkit-appearance:none;backdrop-filter:none;-webkit-backdrop-filter:none;opacity:1;position:fixed;top:12px;padding:10px 18px;color:#fff;border:none;border-radius:9px;font-weight:700;cursor:pointer;z-index:99;font-size:14px;box-shadow:0 3px 10px rgba(0,0,0,.25)}
   .fechar{right:12px;background:#B3372E}
   .imprimir{right:118px;background:#2E7D4F}
   .rod{margin-top:18px;font-size:11px;color:#adb2bc;text-align:center}
