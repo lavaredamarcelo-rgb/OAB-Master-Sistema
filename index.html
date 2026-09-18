@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='16/09b · botões iOS 26';
+const BUILD='18/09 · convocação compartilhável';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -3406,7 +3406,7 @@ function verConvocacao(id){
   <div class="row" style="margin-top:14px;flex-wrap:wrap">
   ${podeEditar&&c.status!=='encerrada'?`<button class="mini" onclick="fecha();formConvocacao('${c.id}')">✏️ Editar</button>`:''}
   ${podeEditar&&c.status==='rascunho'?`<button class="mini gold" onclick="publicaConvocacao('${c.id}')">📣 Publicar</button>`:''}
-  ${c.status!=='rascunho'?`<button class="mini gold" onclick="whatsConvocacao('${c.id}')">📱 WhatsApp</button><button class="mini sec" onclick="pdfConvocacao('${c.id}')">📄 PDF</button>`:''}
+  ${c.status!=='rascunho'?`<button class="mini gold" onclick="whatsConvocacao('${c.id}')">📱 WhatsApp</button><button class="mini gold" onclick="pdfConvocacaoEnviar('${c.id}')">📤 Enviar PDF</button><button class="mini sec" onclick="pdfConvocacao('${c.id}')">🖨️ Imprimir</button>`:''}
   ${podeEditar&&c.status==='publicada'?`<button class="mini sec" onclick="encerraConvocacao('${c.id}')">🏁 Encerrar</button>`:''}
   ${podeEditar?`<button class="mini bad" onclick="delConvocacao('${c.id}')">🗑</button>`:''}
   <button class="sec" onclick="fecha()">Fechar</button></div>`);
@@ -3503,6 +3503,33 @@ function pdfConvocacao(id){
   <p style="margin-top:30px">Belém/PA, ${dbr(hoje())}.</p>
   <p style="margin-top:40px;text-align:center">___________________________________<br><strong>Comissão Técnica — ${esc(db.config.time)}</strong></p>`,
   `Convocação — ${c.titulo}`);
+}
+async function pdfConvocacaoEnviar(id){
+  const c=convDe(id); if(!c)return;
+  const L=[];
+  L.push(`${db.config.time} — Convocação Oficial`);
+  L.push(`${c.titulo}`);
+  L.push('');
+  if(c.data)L.push(`Data: ${dbr(c.data)}${c.dataFim?' a '+dbr(c.dataFim):''}${c.hora?' às '+c.hora:''}`);
+  if(c.local)L.push(`Local: ${c.local}`);
+  if(c.concentracao)L.push(`Concentração: ${c.concentracao}`);
+  if(c.uniforme)L.push(`Uniforme: ${c.uniforme}`);
+  if(c.maxAtletas)L.push(`Convocados: ${c.convocados.length} de ${c.maxAtletas} vagas do regulamento`);
+  if(c.obs)L.push(`Obs.: ${c.obs}`);
+  L.push('');
+  L.push('RELAÇÃO DE ATLETAS CONVOCADOS');
+  POS_GRUPOS.forEach(([g,lbl])=>{
+    const lista=c.convocados.filter(x=>x.posicao===g);
+    if(!lista.length)return;
+    L.push(''); L.push(lbl.replace(/^[^ ]+ /,'').toUpperCase()+` (${lista.length})`);
+    lista.forEach(x=>{ const a=at(x.atletaId); const cf=c.conf[x.atletaId];
+      L.push(`   - ${a?a.nome:''}${a&&a.oab?' (OAB '+a.oab+')':''}${c.status!=='rascunho'?(cf?(cf.ok?'  [confirmado]':'  [não pode'+(cf.motivo?': '+cf.motivo:'')+']'):'  [aguardando]'):''}`); });
+  });
+  if(c.subs&&c.subs.length){ L.push(''); L.push('SUBSTITUIÇÕES');
+    c.subs.forEach(sx=>L.push(`   - ${nomeAt(sx.saiu)} -> ${nomeAt(sx.entrou)}${sx.motivo?' ('+sx.motivo+')':''} em ${dbr(String(sx.quando).slice(0,10))}`)); }
+  L.push(''); L.push(`Belém/PA, ${dbr(hoje())}. — Comissão Técnica ${db.config.time}`);
+  const b=genPDF('convocacao.pdf','Convocação — '+c.titulo,L);
+  await compartilhaBlob(b,'convocacao-'+c.titulo.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,40)+'.pdf','Convocação — '+c.titulo);
 }
 function cardConvPendente(){
   if(!db.convocacoes)return '';
