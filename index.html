@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='21/09c · edição de uniformes';
+const BUILD='21/09d · estoque por peça';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -6502,7 +6502,10 @@ function tUniformes(){
       <span class="pill p-mut">${list.length} números</span>
       ${fora.length?`<span class="pill p-gold">${fora.length} com jogadores</span>`:''}
       ${nFalt?`<span class="pill p-bad">${nFalt} com peça faltando</span>`:''}
-      ${estoque.length?`<span class="pill p-ok">${estoque.length} em estoque</span>`:''}</span>
+      ${(()=>{const pc={camisa:0,short:0,meiao:0};
+        list.forEach(u=>{ if(u.atletaId||u.convidado)return; Object.entries(u.pecas||{}).forEach(([k,v])=>{ if(v==='estoque')pc[k]++; }); });
+        const tot=pc.camisa+pc.short+pc.meiao;
+        return tot?`<span class="pill p-ok">estoque real: 👕${pc.camisa} 🩳${pc.short} 🧦${pc.meiao}</span>`:'<span class="pill p-bad">sem peças em estoque</span>';})()}</span>
       <div class="row" style="gap:4px;pointer-events:auto"><button class="mini gold" onclick="event.stopPropagation();modoRapidoUni('${esc(desc)}')">⚡ Rápido</button><button class="mini sec" onclick="event.stopPropagation();conferenciaUni('${esc(desc)}')">📋 Conferir</button><button class="mini sec" onclick="event.stopPropagation();formUniforme('${esc(desc)}')">➕</button><button class="mini sec" onclick="event.stopPropagation();formEditaModelo('${esc(desc)}')">✏️</button></div></summary>
       ${(()=>{const temP=(u,k)=>u.pecas&&u.pecas[k]&&u.pecas[k]!=='faltando';
         const cat={comp:0,cs:0,c:0,sh:0,m:0,out:0};
@@ -6913,10 +6916,11 @@ async function aceitaUniGo(id){
   log('uniforme',`Termo ACEITO por ${me.nome} — uniforme nº ${u.numero} (v${TERMO_UNI_V})`);
   fecha(); await recarrega(); toast('Termo aceito — bom jogo! ⚽');
 }
+const grupoItem=nome=>{ let w=String(nome||'').trim().split(/\s+/)[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(w.endsWith('s')&&w.length>3)w=w.slice(0,-1); return w; };
+const EMO_GRUPO={bola:'⚽',colete:'🦺',cone:'🚧',meiao:'🧦',camisa:'👕',short:'🩳',luva:'🧤',rede:'🥅',bomba:'🎈',kit:'🧰',garrafa:'🥤',squeeze:'🥤',prancheta:'📋',apito:'📣',bandeira:'🚩'};
 function tInventario(){
-  return `<div class="card"><h2>📦 Materiais</h2>
-  <div class="tblwrap"><table class="cardz"><tr><th></th><th>Item</th><th>Detalhes</th><th>Disponível</th><th>Emprestado</th><th></th></tr>
-  ${db.inventario.length?[...db.inventario].sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>{
+  const linhaItem=i=>{
     const emp=i.emprestimos||[]; const empQtd=emp.reduce((s,e)=>s+Number(e.qtd||0),0); const disp=Number(i.qtd)-empQtd;
     return `<tr>
   <td>${i.fotoUrl?`<img src="${esc(i.fotoUrl)}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:9px;cursor:pointer" onclick="window.open('${esc(i.fotoUrl)}','_blank')">`:'<span style="font-size:24px">📦</span>'}</td>
@@ -6924,7 +6928,28 @@ function tInventario(){
   <td><div class="row" style="gap:4px">${i.marca?`<span class="pill p-mut">🏷️ ${esc(i.marca)}</span>`:''}${i.cor?`<span class="pill p-gold">🎨 ${esc(i.cor)}</span>`:''}${i.material?`<span class="pill p-warn">🧵 ${esc(i.material)}</span>`:''}</div></td>
   <td data-l="Disponível"><div class="row"><button class="mini sec" onclick="qtdItem('${i.id}',-1)">−</button><strong style="color:${disp<0?'var(--bad)':'inherit'}">${disp}</strong><span class="mut">/${i.qtd}</span><button class="mini sec" onclick="qtdItem('${i.id}',1)">+</button></div></td>
   <td data-l="Emprestado">${emp.length?emp.map((e,ix)=>`<div class="row" style="gap:4px;font-size:12.5px;margin-bottom:4px">→ <strong>${e.qtd}×</strong> ${esc(e.nome)}${e.fone?` <a href="${waLink(e.fone,'Olá, '+e.nome+'! Sobre o empréstimo de '+e.qtd+'× '+i.nome+' do '+db.config.time+' ('+e.quando+'): ')}" target="_blank" rel="noopener">📱</a>`:''} <span class="mut">${esc(e.quando)}</span><button class="mini sec" title="Devolvido" onclick="devolveEmp('${i.id}',${ix})">↩</button></div>`).join(''):'<span class="mut">—</span>'}</td>
-  <td class="row"><button class="mini" onclick="emprestaItem('${i.id}')">→ Emprestar</button><button class="mini sec" onclick="formItem('${i.id}')">✏️</button><button class="mini sec" onclick="delItem('${i.id}')">✕</button></td></tr>`;}).join(''):'<tr><td colspan="6" class="mut">Nenhum material cadastrado.</td></tr>'}</table></div></div>`;
+  <td class="row"><button class="mini" onclick="emprestaItem('${i.id}')">→ Emprestar</button><button class="mini sec" onclick="formItem('${i.id}')">✏️</button><button class="mini sec" onclick="delItem('${i.id}')">✕</button></td></tr>`;};
+  const itens=db.inventario.filter(i=>i.cat!==CAT_AVULSA);
+  if(!itens.length)return `<div class="card"><h2>📦 Materiais</h2><p class="mut">Nenhum material cadastrado.</p></div>`;
+  const grupos={};
+  itens.forEach(i=>{ (grupos[grupoItem(i.nome)]??=[]).push(i); });
+  const chaves=Object.keys(grupos).sort((a,b)=>grupos[b].length-grupos[a].length||a.localeCompare(b));
+  const tabela=list=>`<div class="tblwrap"><table class="cardz"><tr><th></th><th>Item</th><th>Detalhes</th><th>Disponível</th><th>Emprestado</th><th></th></tr>${list.sort((a,b)=>a.nome.localeCompare(b.nome)).map(linhaItem).join('')}</table></div>`;
+  const soltos=chaves.filter(k=>grupos[k].length===1).flatMap(k=>grupos[k]);
+  return `<div class="card"><h2>📦 Materiais</h2>
+  <p class="mut" style="margin-top:0;font-size:12.5px">Itens parecidos ficam juntos — toque no grupo para ver cada um.</p>
+  ${chaves.filter(k=>grupos[k].length>1).map(k=>{
+    const list=grupos[k];
+    const totQtd=list.reduce((s2,i)=>s2+Number(i.qtd||0),0);
+    const totEmp=list.reduce((s2,i)=>s2+(i.emprestimos||[]).reduce((s3,e)=>s3+Number(e.qtd||0),0),0);
+    const nomeG=k.charAt(0).toUpperCase()+k.slice(1)+(totQtd>1?'s':'');
+    return `<details style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:700;font-size:16px;font-family:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif">${EMO_GRUPO[k]||'📦'} ${esc(nomeG)}
+      <span class="pill p-mut">${list.length} tipo${list.length>1?'s':''}</span>
+      <span class="pill p-ok">${totQtd-totEmp} disponíve${totQtd-totEmp===1?'l':'is'}</span>
+      ${totEmp?`<span class="pill p-warn">${totEmp} emprestado${totEmp>1?'s':''}</span>`:''}
+      <span class="mut" style="font-weight:400;font-size:12px">— toque para abrir</span></summary>
+    ${tabela(list)}</details>`;}).join('')}
+  ${soltos.length?tabela(soltos):''}</div>`;
 }
 function relacaoMateriais(){
   // agrupa TUDO por pessoa: uniformes + materiais emprestados
