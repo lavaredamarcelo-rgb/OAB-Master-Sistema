@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='21/09 · uniformes ágeis';
+const BUILD='21/09b · conferência e avulsas';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -6457,7 +6457,7 @@ function upFinDoc(inp){ upFile(inp,10,async f=>{ await enviaArquivo(f,'financeir
 function tUni(){
   if(me.role!=='diretoria') return tUniRO();
   return `<div class="spread sect"><p class="mut">Uniformes agrupados por modelo — toque para abrir. Para juntar números novos a um modelo existente, cadastre o lote com o <strong>mesmo nome</strong>.</p>
-  <div class="row"><button onclick="formUniforme()">➕ Novo uniforme (lote)</button><button class="sec" onclick="formItem()">+ Material</button>
+  <div class="row"><button onclick="formUniforme()">➕ Novo uniforme (lote)</button><button class="sec" onclick="formAvulsa()">🧦 Peças avulsas</button><button class="sec" onclick="formItem()">+ Material</button>
   <button class="gold" onclick="relacaoMateriais()">📣 Relação p/ WhatsApp</button></div></div>
   ${tUniformes()}
   ${tInventario()}`;
@@ -6489,7 +6489,8 @@ function tUniformes(){
   const grupos={};
   db.uniformes.forEach(u=>{ (grupos[u.descricao]??=[]).push(u); });
   const porNum=(a,b)=>Number(a.numero)-Number(b.numero);
-  return `<div class="card sect"><h2>👕 Uniformes</h2>
+  const emAtraso=pecasEmAtraso(30);
+  return `<div class="card sect"><div class="spread"><h2>👕 Uniformes</h2>${emAtraso.length?`<button class="mini warn" onclick="cobrarDevolucoes(30)">⏰ ${emAtraso.length} há 30+ dias — cobrar</button>`:''}</div>
   ${Object.keys(grupos).length?Object.entries(grupos).map(([desc,list])=>{
     const fora=list.filter(u=>u.atletaId||u.convidado);
     const estoque=list.filter(u=>!u.atletaId&&!u.convidado);
@@ -6502,7 +6503,7 @@ function tUniformes(){
       ${fora.length?`<span class="pill p-gold">${fora.length} com jogadores</span>`:''}
       ${nFalt?`<span class="pill p-bad">${nFalt} com peça faltando</span>`:''}
       ${estoque.length?`<span class="pill p-ok">${estoque.length} em estoque</span>`:''}</span>
-      <div class="row" style="gap:4px;pointer-events:auto"><button class="mini gold" onclick="event.stopPropagation();modoRapidoUni('${esc(desc)}')">⚡ Rápido</button></div></summary>
+      <div class="row" style="gap:4px;pointer-events:auto"><button class="mini gold" onclick="event.stopPropagation();modoRapidoUni('${esc(desc)}')">⚡ Rápido</button><button class="mini sec" onclick="event.stopPropagation();conferenciaUni('${esc(desc)}')">📋 Conferir</button></div></summary>
       ${(()=>{const temP=(u,k)=>u.pecas&&u.pecas[k]&&u.pecas[k]!=='faltando';
         const cat={comp:0,cs:0,c:0,sh:0,m:0,out:0};
         list.forEach(u=>{const c=temP(u,'camisa'),h=temP(u,'short'),m=temP(u,'meiao');
@@ -6530,7 +6531,8 @@ function tUniformes(){
         const ics=Object.entries(u.pecas||{}).filter(([,v])=>v!=='faltando').map(([k])=>PECAS_EMO[k]).join('');
         return `<button class="mini ${falt?'bad':'sec'}" ${u.goleiro&&!falt?'style="background:var(--gold-soft);border-color:var(--gold)"':''} onclick="numOpcoes('${u.id}')">${u.goleiro?'🧤 ':''}${esc(u.numero)} <span style="font-size:10px">${ics}</span></button>`;}).join('')}</div>`:''}
     </details>`;
-  }).join(''):'<p class="mut">Nenhum uniforme cadastrado.</p>'}</div>`;
+  }).join(''):'<p class="mut">Nenhum uniforme cadastrado.</p>'}
+  ${cardAvulsas()}</div>`;
 }
 function numOpcoes(id){
   const u=byId(db.uniformes,id);
@@ -6543,6 +6545,139 @@ function numOpcoes(id){
   ${Object.values(u.pecas||{}).some(v=>v==='faltando')?`<button class="sec" onclick="fecha();devolveUni('${u.id}')">🔎 Ajustar peças</button>`:''}
   <button class="bad mini" onclick="delUni('${u.id}')">✕ Excluir</button>
   <button class="sec" onclick="fecha()">Fechar</button></div>`);
+}
+const diasDesde=str=>{ if(!str)return null; const m=String(str).match(/(\d{2})\/(\d{2})\/(\d{4})/); if(!m)return null;
+  return Math.floor((Date.now()-new Date(+m[3],+m[2]-1,+m[1]).getTime())/86400000); };
+
+/* ---- 📋 Conferência física ---- */
+function conferenciaUni(desc){
+  const list=db.uniformes.filter(u=>u.descricao===desc).sort((a,b)=>Number(a.numero)-Number(b.numero));
+  modal(`<h2>📋 Conferência — ${esc(desc)}</h2>
+  <p class="mut" style="margin-top:0">Com a mala aberta, marque o que está <strong>fisicamente aqui</strong>. Peças que estão com atletas vêm desmarcadas — marque só se a peça apareceu na mala (vira devolução).</p>
+  <div style="max-height:52vh;overflow-y:auto">
+  ${list.map(u=>`<div class="alertline" style="background:var(--bg);padding:6px 10px;flex-wrap:wrap">
+    <strong style="min-width:44px">${u.goleiro?'🧤 ':''}nº ${esc(u.numero)}</strong>
+    ${Object.keys(PECAS_LBL).map(k=>{ const st=(u.pecas||{})[k];
+      if(!st)return `<span class="mut" style="font-size:11px;opacity:.5">${PECAS_EMO[k]} —</span>`;
+      return `<label style="display:flex;align-items:center;gap:4px;margin:0;text-transform:none;font-weight:400;font-size:13px;color:var(--ink)">
+        <input type="checkbox" class="chk_conf" data-uid="${u.id}" data-k="${k}" ${st==='estoque'?'checked':''} style="width:auto">
+        ${PECAS_EMO[k]}<span class="mut" style="font-size:10.5px">${st==='estoque'?'estoque':st==='faltando'?'⚠ faltando':st==='pendente'?'c/ '+pnome(nomeUni(u)):'c/ '+pnome(nomeUni(u))}</span></label>`;}).join('')}
+  </div>`).join('')}
+  </div>
+  <div class="row" style="margin-top:12px"><button class="gold" onclick="conferenciaGo('${esc(desc)}')">✔ Aplicar conferência</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+async function conferenciaGo(desc){
+  const list=db.uniformes.filter(u=>u.descricao===desc);
+  const fis={}; document.querySelectorAll('.chk_conf').forEach(c=>{ (fis[c.dataset.uid]??={})[c.dataset.k]=c.checked; });
+  const mudancas=[]; // {u, pecas novas, resumo[]}
+  list.forEach(u=>{
+    const marc=fis[u.id]||{}; const pecas={...(u.pecas||{})}; const res=[];
+    Object.keys(pecas).forEach(k=>{ const st=pecas[k]; const aqui=!!marc[k];
+      if(aqui&&st==='faltando'){ pecas[k]='estoque'; res.push(`${PECAS_EMO[k]} achada`); }
+      else if(aqui&&(st==='atleta'||st==='pendente')){ pecas[k]='estoque'; res.push(`${PECAS_EMO[k]} devolvida (estava c/ ${pnome(nomeUni(u))})`); }
+      else if(!aqui&&st==='estoque'){ pecas[k]='faltando'; res.push(`${PECAS_EMO[k]} não encontrada`); } });
+    if(res.length)mudancas.push({u,pecas,res});
+  });
+  if(!mudancas.length){fecha();toast('📋 Conferência: tudo bate com o sistema! 👏');return;}
+  modal(`<h2>📋 Divergências encontradas (${mudancas.length} número${mudancas.length>1?'s':''})</h2>
+  ${mudancas.map(m=>`<div class="alertline al-warn" style="padding:6px 10px"><strong>nº ${esc(m.u.numero)}</strong><div style="flex:1;font-size:13px">${m.res.join(' · ')}</div></div>`).join('')}
+  <p class="mut" style="font-size:12px">Ao aplicar: peças não encontradas viram "faltando"; peças que apareceram voltam ao estoque (devolução registrada).</p>
+  <div class="row" style="margin-top:12px"><button class="gold" onclick="conferenciaAplica('${esc(desc)}')">Confirmar e aplicar</button><button class="sec" onclick="conferenciaUni('${esc(desc)}')">← Voltar</button></div>`);
+  window._confMud=mudancas;
+}
+async function conferenciaAplica(desc){
+  const mudancas=window._confMud||[];
+  for(const m of mudancas){
+    const comAtleta=Object.values(m.pecas).some(v=>v==='atleta'||v==='pendente');
+    const patch={pecas:m.pecas};
+    if(!comAtleta){ patch.status='estoque'; patch.atleta_id=null; patch.convidado=''; patch.convidado_fone=''; patch.entregue_em=''; patch.aceito_em=''; }
+    await q(sb.from('uniformes').update(patch).eq('id',m.u.id));
+  }
+  log('uniforme',`📋 Conferência física de "${desc}": ${mudancas.length} número(s) ajustado(s) — ${mudancas.map(m=>'nº '+m.u.numero+' ('+m.res.join(', ')+')').join('; ')}`);
+  fecha(); await recarrega(); toast(`📋 Conferência aplicada — ${mudancas.length} ajuste(s)`);
+}
+
+/* ---- 🧦 Peças avulsas (sem número) ---- */
+const CAT_AVULSA='Peça avulsa de uniforme';
+function formAvulsa(){
+  modal(`<h2>🧦 Cadastrar peças avulsas</h2>
+  <p class="mut">Peças sem numeração (ex.: 10 meiões novos). Depois dá para vincular a um número.</p>
+  <div class="grid g2">
+  <div><label>Peça</label><select id="av_tipo">${Object.entries(PECAS_LBL).map(([k,v])=>`<option value="${k}">${PECAS_EMO[k]} ${v}</option>`).join('')}</select></div>
+  <div><label>Quantidade</label><input id="av_qtd" type="number" min="1" value="10"></div>
+  </div>
+  <label>Cor / descrição (opcional)</label><input id="av_cor" placeholder="Ex.: branco liso">
+  <div class="row" style="margin-top:14px"><button onclick="salvaAvulsa()">Cadastrar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+async function salvaAvulsa(){
+  const k=fval('av_tipo'), qtd=Number(fval('av_qtd'))||0, cor=fval('av_cor');
+  if(!qtd){toast('Informe a quantidade');return;}
+  await q(sb.from('inventario').insert({nome:`${PECAS_LBL[k]} avulso${cor?' — '+cor:''}`,cat:CAT_AVULSA,qtd,material:k,cor}));
+  log('uniforme',`🧦 Peças avulsas cadastradas: ${qtd}× ${PECAS_LBL[k]}${cor?' ('+cor+')':''}`);
+  fecha(); await recarrega(); toast('🧦 Peças avulsas cadastradas');
+}
+function vincularAvulsa(invId){
+  const it=byId(db.inventario,invId); if(!it||!it.material)return;
+  const k=it.material;
+  const emp=(it.emprestimos||[]).reduce((s,e)=>s+Number(e.qtd||0),0);
+  if(Number(it.qtd)-emp<1){toast('Sem unidades disponíveis');return;}
+  const alvos=db.uniformes.filter(u=>{const st=(u.pecas||{})[k];return !st||st==='faltando';})
+    .sort((a,b)=>a.descricao.localeCompare(b.descricao)||Number(a.numero)-Number(b.numero));
+  if(!alvos.length){toast('Todos os números já têm essa peça');return;}
+  modal(`<h2>🔗 Vincular ${PECAS_EMO[k]} a um número</h2>
+  <p class="mut">${esc(it.nome)} — ${it.qtd} em estoque. Escolha o número que recebe a peça (1 unidade sai das avulsas):</p>
+  <label>Número</label><select id="va_num">${alvos.map(u=>`<option value="${u.id}">${esc(u.descricao)} — nº ${u.numero}${(u.pecas||{})[k]==='faltando'?' (estava faltando)':' (não tinha)'}</option>`).join('')}</select>
+  <div class="row" style="margin-top:14px"><button onclick="vinculaAvulsaGo('${invId}')">🔗 Vincular</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+async function vinculaAvulsaGo(invId){
+  const it=byId(db.inventario,invId); const uid2=fval('va_num'); const u=byId(db.uniformes,uid2);
+  if(!it||!u)return;
+  const pecas={...(u.pecas||{})}; pecas[it.material]='estoque';
+  await q(sb.from('uniformes').update({pecas}).eq('id',uid2));
+  await q(sb.from('inventario').update({qtd:Number(it.qtd)-1}).eq('id',invId));
+  log('uniforme',`🔗 ${PECAS_LBL[it.material]} avulso vinculado ao nº ${u.numero} (${u.descricao})`);
+  fecha(); await recarrega(); toast(`🔗 ${PECAS_EMO[it.material]} agora está no nº ${u.numero}`);
+}
+function cardAvulsas(){
+  const its=db.inventario.filter(i=>i.cat===CAT_AVULSA);
+  if(!its.length)return '';
+  return `<div style="margin-top:14px"><h3>🧦 Peças avulsas (sem número)</h3>
+  ${its.map(i=>{const emp=(i.emprestimos||[]).reduce((s2,e)=>s2+Number(e.qtd||0),0);const disp=Number(i.qtd)-emp;
+    return `<div class="alertline" style="background:var(--bg);padding:6px 10px"><span>${PECAS_EMO[i.material]||'📦'}</span>
+    <div style="flex:1"><strong>${esc(i.nome)}</strong> <span class="mut">— ${disp} ${disp===1?'disponível':'disponíveis'}</span></div>
+    ${disp>0?`<button class="mini sec" onclick="vincularAvulsa('${i.id}')">🔗 Vincular a um nº</button>`:''}
+    <button class="mini sec" onclick="formItem('${i.id}')">✏️</button></div>`;}).join('')}</div>`;
+}
+
+/* ---- ⏰ Cobrança de devoluções ---- */
+function pecasEmAtraso(dias){
+  return db.uniformes.filter(u=>(u.atletaId||u.convidado)&&Object.values(u.pecas||{}).some(v=>v==='atleta'||v==='pendente'))
+    .map(u=>({u,d:diasDesde(u.entregueEm||u.entregue_em)})).filter(x=>x.d!=null&&x.d>=dias);
+}
+function cobrarDevolucoes(dias){
+  dias=dias||30;
+  const lista=pecasEmAtraso(dias);
+  const porPessoa={};
+  lista.forEach(x=>{ const nome=nomeUni(x.u); (porPessoa[nome]??={itens:[],fone:'',aid:x.u.atletaId}).itens.push(x);
+    const a=x.u.atletaId?at(x.u.atletaId):null; porPessoa[nome].fone=(a&&a.fone)||x.u.convFone||x.u.convidado_fone||''; });
+  const nomes=Object.keys(porPessoa);
+  const msgDe=n=>{const P=porPessoa[n];
+    return `👕 *${db.config.time} — Uniformes*\n\nOlá, ${pnome(n)}! Consta com você há mais de ${dias} dias:\n${P.itens.map(x=>`• Nº ${x.u.numero} (${x.u.descricao}) — ${Object.entries(x.u.pecas||{}).filter(([,v])=>v==='atleta'||v==='pendente').map(([k])=>PECAS_LBL[k]).join(', ')} — desde ${String(x.u.entregueEm||'').split(',')[0]||'—'}\n`).join('')}\nPedimos a gentileza de devolver no próximo treino/jogo. 🤝⚽`;};
+  modal(`<h2>⏰ Cobrar devoluções</h2>
+  <div class="row" style="align-items:center;gap:8px"><label style="margin:0">Com alguém há mais de</label>
+  <input type="number" value="${dias}" min="1" style="max-width:80px" onchange="cobrarDevolucoes(Number(this.value)||30)"> <span>dias</span></div>
+  ${nomes.length?`
+  <p class="mut" style="margin-top:10px">${lista.length} número(s) com ${nomes.length} pessoa(s):</p>
+  ${nomes.map(n=>{const P=porPessoa[n];
+    return `<div class="alertline al-warn" style="padding:6px 10px"><div style="flex:1"><strong>${esc(pnome(n))}</strong>
+      <div class="mut" style="font-size:11.5px">${P.itens.map(x=>`nº ${x.u.numero} (${x.d} dias)`).join(' · ')}</div></div>
+      ${P.fone?`<button class="mini gold" onclick="window.open(waLink('${esc(P.fone)}',\`${msgDe(n).replace(/`/g,'')}\`),'_blank')">📱 Cobrar</button>`:'<span class="mut" style="font-size:11px">sem fone</span>'}</div>`;}).join('')}
+  <label style="margin-top:12px">Mensagem para o grupo</label>
+  <textarea id="cd_grupo" style="min-height:100px">👕 *${db.config.time} — Uniformes*\n\nPessoal, temos peças de uniforme fora do estoque há mais de ${dias} dias: ${nomes.map(n=>'@'+pnome(n)).join(', ')}.\n\nPedimos a devolução no próximo treino/jogo para mantermos os kits completos. 🤝</textarea>
+  <div class="row" style="margin-top:8px"><button onclick="copiar($('cd_grupo').value,'Mensagem copiada — cole no grupo')">📋 Copiar p/ grupo</button>
+  ${db.config.grupo?`<button class="gold" onclick="window.open('${esc(db.config.grupo)}','_blank')">👥 Abrir grupo</button>`:''}</div>`:
+  `<p class="mut" style="margin-top:10px">Ninguém com peças há mais de ${dias} dias. 🎉</p>`}
+  <div class="row" style="margin-top:12px"><button class="sec" onclick="fecha()">Fechar</button></div>`);
 }
 function reporPecas(id){
   const u=byId(db.uniformes,id);
