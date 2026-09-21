@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='18/09 · convocação compartilhável';
+const BUILD='21/09 · uniformes ágeis';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -6456,8 +6456,8 @@ function upFinDoc(inp){ upFile(inp,10,async f=>{ await enviaArquivo(f,'financeir
 /* ================= UNIFORMES & MATERIAIS ================= */
 function tUni(){
   if(me.role!=='diretoria') return tUniRO();
-  return `<div class="spread sect"><p class="mut">Uniformes agrupados por modelo — toque para abrir; em destaque, os números que estão com alguém. Clique ✏️ para editar, ➕ para adicionar números.</p>
-  <div class="row"><button onclick="novoUniforme()">➕ Novo uniforme</button><button class="sec" onclick="formItem()">+ Material</button>
+  return `<div class="spread sect"><p class="mut">Uniformes agrupados por modelo — toque para abrir. Para juntar números novos a um modelo existente, cadastre o lote com o <strong>mesmo nome</strong>.</p>
+  <div class="row"><button onclick="formUniforme()">➕ Novo uniforme (lote)</button><button class="sec" onclick="formItem()">+ Material</button>
   <button class="gold" onclick="relacaoMateriais()">📣 Relação p/ WhatsApp</button></div></div>
   ${tUniformes()}
   ${tInventario()}`;
@@ -6502,7 +6502,19 @@ function tUniformes(){
       ${fora.length?`<span class="pill p-gold">${fora.length} com jogadores</span>`:''}
       ${nFalt?`<span class="pill p-bad">${nFalt} com peça faltando</span>`:''}
       ${estoque.length?`<span class="pill p-ok">${estoque.length} em estoque</span>`:''}</span>
-      <div class="row" style="gap:4px;pointer-events:auto"><button class="mini sec" onclick="event.stopPropagation();editaUniforme('${firstItem.id}')">✏️</button><button class="mini sec" onclick="event.stopPropagation();adicionaNumerosUniforme('${firstItem.id}')">➕</button></div></summary>
+      <div class="row" style="gap:4px;pointer-events:auto"><button class="mini gold" onclick="event.stopPropagation();modoRapidoUni('${esc(desc)}')">⚡ Rápido</button></div></summary>
+      ${(()=>{const temP=(u,k)=>u.pecas&&u.pecas[k]&&u.pecas[k]!=='faltando';
+        const cat={comp:0,cs:0,c:0,sh:0,m:0,out:0};
+        list.forEach(u=>{const c=temP(u,'camisa'),h=temP(u,'short'),m=temP(u,'meiao');
+          if(c&&h&&m)cat.comp++; else if(c&&h)cat.cs++; else if(c&&!h&&!m)cat.c++; else if(h&&!c&&!m)cat.sh++; else if(m&&!c&&!h)cat.m++; else cat.out++;});
+        return `<div class="row" style="gap:4px;flex-wrap:wrap;margin-top:6px">
+          ${cat.comp?`<span class="pill p-ok">🧩 ${cat.comp} completo${cat.comp>1?'s':''} (👕🩳🧦)</span>`:''}
+          ${cat.cs?`<span class="pill p-mut">👕🩳 ${cat.cs} sem meião</span>`:''}
+          ${cat.c?`<span class="pill p-warn">👕 ${cat.c} só camisa</span>`:''}
+          ${cat.sh?`<span class="pill p-warn">🩳 ${cat.sh} só short</span>`:''}
+          ${cat.m?`<span class="pill p-warn">🧦 ${cat.m} só meião</span>`:''}
+          ${cat.out?`<span class="pill p-bad">❔ ${cat.out} sem peça disponível</span>`:''}
+        </div>`;})()}
       ${corP||forn?`<p class="mut" style="margin:6px 0 0">${corP?'🎨 '+esc(corP):''}${corP&&forn?' · ':''}${forn?'🏭 '+esc(forn):''}</p>`:''}
       ${fora.length?`<div class="tblwrap" style="margin-top:8px"><table class="cardz"><tr><th>Nº</th><th>Com quem</th><th>Peças</th><th></th></tr>
         ${fora.sort(porNum).map(u=>`<tr>
@@ -6515,7 +6527,8 @@ function tUniformes(){
       ${estoque.length?`<p class="mut" style="margin:10px 0 4px">Em estoque — toque no número para entregar ou excluir:</p>
       <div class="row" style="gap:6px">${estoque.sort(porNum).map(u=>{
         const falt=Object.values(u.pecas||{}).some(v=>v==='faltando');
-        return `<button class="mini ${falt?'bad':'sec'}" ${u.goleiro&&!falt?'style="background:var(--gold-soft);border-color:var(--gold)"':''} onclick="numOpcoes('${u.id}')">${u.goleiro?'🧤 ':''}${esc(u.numero)}</button>`;}).join('')}</div>`:''}
+        const ics=Object.entries(u.pecas||{}).filter(([,v])=>v!=='faltando').map(([k])=>PECAS_EMO[k]).join('');
+        return `<button class="mini ${falt?'bad':'sec'}" ${u.goleiro&&!falt?'style="background:var(--gold-soft);border-color:var(--gold)"':''} onclick="numOpcoes('${u.id}')">${u.goleiro?'🧤 ':''}${esc(u.numero)} <span style="font-size:10px">${ics}</span></button>`;}).join('')}</div>`:''}
     </details>`;
   }).join(''):'<p class="mut">Nenhum uniforme cadastrado.</p>'}</div>`;
 }
@@ -6526,13 +6539,85 @@ function numOpcoes(id){
   ${u.goleiro?`<p class="mut" style="margin-top:8px">🧤 Uniforme de goleiro${u.cor?' — cor: '+esc(u.cor):''}</p>`:u.cor?`<p class="mut" style="margin-top:8px">🎨 ${esc(u.cor)}</p>`:''}
   <div class="row" style="margin-top:14px">
   <button onclick="fecha();entregarUni('${u.id}')">▶ Entregar</button>
+  <button class="sec" onclick="fecha();reporPecas('${u.id}')">🧩 Repor peças</button>
   ${Object.values(u.pecas||{}).some(v=>v==='faltando')?`<button class="sec" onclick="fecha();devolveUni('${u.id}')">🔎 Ajustar peças</button>`:''}
   <button class="bad mini" onclick="delUni('${u.id}')">✕ Excluir</button>
   <button class="sec" onclick="fecha()">Fechar</button></div>`);
 }
+function reporPecas(id){
+  const u=byId(db.uniformes,id);
+  modal(`<h2>🧩 Repor peças — ${esc(u.descricao)} nº ${esc(u.numero)}</h2>
+  <p class="mut">Marque as peças que este número passa a ter em estoque (ex.: chegou a camisa que faltava). Peças que estão com atleta não mudam.</p>
+  ${Object.entries(PECAS_LBL).map(([k,lbl])=>{const st=(u.pecas||{})[k];
+    const travada=st==='atleta'||st==='pendente';
+    return `<label style="display:flex;align-items:center;gap:8px;margin:6px 0;text-transform:none;font-weight:400;color:var(--ink)">
+      <input type="checkbox" class="chk_repo" value="${k}" ${st==='estoque'?'checked':''} ${travada?'disabled checked':''} style="width:auto">
+      ${PECAS_EMO[k]} ${lbl} <span class="mut" style="font-size:11.5px">${travada?'(com o atleta)':st==='estoque'?'(em estoque)':st==='faltando'?'(faltando)':'(não cadastrada)'}</span></label>`;}).join('')}
+  <div class="row" style="margin-top:14px"><button onclick="reporPecasGo('${id}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+async function reporPecasGo(id){
+  const u=byId(db.uniformes,id);
+  const marc=new Set([...document.querySelectorAll('.chk_repo:checked')].map(c=>c.value));
+  const pecas={...(u.pecas||{})};
+  Object.keys(PECAS_LBL).forEach(k=>{
+    const st=pecas[k];
+    if(st==='atleta'||st==='pendente')return;
+    if(marc.has(k))pecas[k]='estoque';
+    else if(st==='estoque')delete pecas[k];
+  });
+  await q(sb.from('uniformes').update({pecas}).eq('id',id));
+  log('uniforme',`Peças ajustadas no nº ${u.numero} (${u.descricao}): ${Object.keys(pecas).filter(k=>pecas[k]==='estoque').map(k=>PECAS_LBL[k]).join(', ')||'nenhuma em estoque'}`);
+  fecha(); await recarrega(); toast('🧩 Peças atualizadas');
+}
+function modoRapidoUni(desc){
+  const list=db.uniformes.filter(u=>u.descricao===desc);
+  const porNum=(a,b)=>Number(a.numero)-Number(b.numero);
+  const pessoas=[...elenco(),...membros().filter(a=>['treinador','auxiliar','preparador'].includes(a.role))];
+  const pSel=subState.uniRapP||'';
+  const comEstoque=list.filter(u=>Object.values(u.pecas||{}).some(v=>v==='estoque')&&!u.atletaId&&!u.convidado).sort(porNum);
+  const forA=list.filter(u=>u.atletaId||u.convidado).sort(porNum);
+  modal(`<h2>⚡ Entrega e devolução rápidas</h2>
+  <p class="mut" style="margin-top:0">${esc(desc)} — feito para a hora do jogo: escolha a pessoa e toque no número.</p>
+  <label>Entregar para</label><select id="ur_p" onchange="subState.uniRapP=this.value">
+    <option value="">— escolher —</option>
+    ${pessoas.map(a=>`<option value="${a.id}" ${a.id===pSel?'selected':''}>${esc(pnome(a.nome))}${a.role!=='atleta'&&a.role!=='diretoria'?' ('+ROLES[a.role]+')':''}</option>`).join('')}
+  </select>
+  ${comEstoque.length?`<p class="mut" style="margin:10px 0 4px">📦 Em estoque — toque para <strong>entregar tudo do número</strong>:</p>
+  <div class="row" style="gap:6px;flex-wrap:wrap">${comEstoque.map(u=>{
+    const ics=Object.entries(u.pecas||{}).filter(([,v])=>v==='estoque').map(([k])=>PECAS_EMO[k]).join('');
+    return `<button class="mini sec" onclick="entregaRapida('${u.id}','${esc(desc)}')">${u.goleiro?'🧤 ':''}${esc(u.numero)} <span style="font-size:10px">${ics}</span></button>`;}).join('')}</div>`:'<p class="mut">Nada em estoque neste modelo.</p>'}
+  ${forA.length?`<p class="mut" style="margin:12px 0 4px">👤 Com alguém — toque para <strong>devolver tudo ao estoque</strong>:</p>
+  <div class="row" style="gap:6px;flex-wrap:wrap">${forA.map(u=>`<button class="mini" style="background:var(--gold-soft);border:1px solid var(--gold);color:var(--ink)" onclick="devolveRapida('${u.id}','${esc(desc)}')">${u.goleiro?'🧤 ':''}${esc(u.numero)} · ${esc(pnome(nomeUni(u)))}</button>`).join('')}</div>`:''}
+  <p class="mut" style="font-size:11.5px;margin-top:10px">Entrega registra as peças como "aguardando aceite" (o termo continua valendo). Extravio/peça faltando: use o ↩ da lista normal.</p>
+  <div class="row" style="margin-top:12px"><button class="sec" onclick="fecha()">Fechar</button></div>`);
+}
+async function entregaRapida(id,desc){
+  const aid=fval('ur_p');
+  if(!aid){toast('Escolha primeiro para quem entregar');return;}
+  const u=byId(db.uniformes,id); const a=at(aid);
+  const pecas={...u.pecas}; let n=0;
+  Object.keys(pecas).forEach(k=>{ if(pecas[k]==='estoque'){pecas[k]='pendente';n++;} });
+  if(!n){toast('Este número não tem peças em estoque');return;}
+  await q(sb.from('uniformes').update({status:'pendente',atleta_id:aid,convidado:'',entregue_em:agora(),pecas}).eq('id',id));
+  log('uniforme',`⚡ Entrega rápida: nº ${u.numero} (${desc}) para ${a?a.nome:aid}`);
+  await recarrega(); toast(`⚡ Nº ${u.numero} → ${a?pnome(a.nome):''}`);
+  modoRapidoUni(desc);
+}
+async function devolveRapida(id,desc){
+  const u=byId(db.uniformes,id);
+  const quem=nomeUni(u);
+  const pecas={...u.pecas};
+  Object.keys(pecas).forEach(k=>{ if(pecas[k]==='atleta'||pecas[k]==='pendente')pecas[k]='estoque'; });
+  await q(sb.from('uniformes').update({pecas,status:'estoque',atleta_id:null,convidado:'',convidado_fone:'',entregue_em:'',aceito_em:''}).eq('id',id));
+  log('uniforme',`⚡ Devolução rápida: nº ${u.numero} (${desc}) devolvido por ${quem}`);
+  await recarrega(); toast(`↩ Nº ${u.numero} de volta ao estoque`);
+  modoRapidoUni(desc);
+}
 function formUniforme(){
   modal(`<h2>Cadastrar uniformes em lote</h2>
-  <label>Descrição</label><input id="u_desc" placeholder="Ex.: Uniforme branco com listra">
+  <label>Descrição</label><input id="u_desc" placeholder="Ex.: Uniforme branco com listra" list="u_descs">
+  <datalist id="u_descs">${[...new Set(db.uniformes.map(u=>u.descricao))].map(d=>`<option value="${esc(d)}">`).join('')}</datalist>
+  <p class="mut" style="margin-top:2px">Use um nome já existente para <strong>juntar</strong> os números novos ao mesmo modelo.</p>
   <label>Numeração (intervalos e números soltos)</label><input id="u_nums" value="1-20" placeholder="Ex.: 1-10, 15-20, 25">
   <p class="mut" style="margin-top:4px">Separe por vírgula: intervalos com hífen ("1-10") e números soltos ("25"). Ex.: <strong>1-10, 15-20, 25</strong></p>
   <div class="grid g2">
