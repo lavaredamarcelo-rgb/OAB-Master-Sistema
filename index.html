@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='21/09e · relação de materiais';
+const BUILD='21/09f · impressão no iPhone';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -5368,16 +5368,28 @@ const CSS_RELATORIO=`*{-webkit-print-color-adjust:exact!important;print-color-ad
   .rod{margin-top:18px;font-size:11px;color:#adb2bc;text-align:center}
   @media print{body{padding:6mm}.fechar,.imprimir{display:none}h1{box-shadow:none}.card{box-shadow:none;border:1px solid #e8e2d4}}`;
 function abreRelatorio(html,titulo){
-  const w=window.open('','_blank');
-  if(!w){toast('Libere pop-ups para gerar o PDF');return;}
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titulo}</title><style>${CSS_RELATORIO}</style></head><body>
-  <button class="imprimir" onclick="window.print()">🖨️ Salvar PDF</button>
-  <button class="fechar" onclick="window.close()">✕ Fechar</button>${html}
-  <p class="rod">Gerado em ${new Date().toLocaleString('pt-BR')} pelo sistema de gestão do ${esc(db.config.time)} ⚽</p>
-  <script>window.onload=()=>window.print()<\/script></body></html>`);
-  w.document.close();
-  toast('📄 Na janela que abriu, escolha "Salvar como PDF"');
+  fechaRelatorio();
+  const doc=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titulo}</title><style>${CSS_RELATORIO}.fechar,.imprimir{display:none}</style></head><body>${html}
+  <p class="rod">Gerado em ${new Date().toLocaleString('pt-BR')} pelo sistema de gestão do ${esc(db.config.time)} ⚽</p></body></html>`;
+  const ov=document.createElement('div');
+  ov.id='reloverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:#fff;display:flex;flex-direction:column';
+  ov.innerHTML=`<div style="display:flex;gap:8px;align-items:center;padding:10px 12px;background:#8a1f2f;flex-wrap:wrap">
+    <strong style="color:#f7e8c8;flex:1;font-size:14px">📄 ${esc(titulo||'Relatório')}</strong>
+    <button style="appearance:none;-webkit-appearance:none;background:#2E7D4F;color:#fff;border:none;border-radius:9px;padding:9px 16px;font-weight:700;cursor:pointer" onclick="imprimeRelatorio()">🖨️ Salvar PDF / Imprimir</button>
+    <button style="appearance:none;-webkit-appearance:none;background:#B3372E;color:#fff;border:none;border-radius:9px;padding:9px 16px;font-weight:700;cursor:pointer" onclick="fechaRelatorio()">✕ Fechar</button>
+  </div>
+  <iframe id="rel_if" style="flex:1;border:none;width:100%;background:#fff"></iframe>`;
+  document.body.appendChild(ov);
+  document.getElementById('rel_if').srcdoc=doc;
+  toast('📄 Toque em "Salvar PDF / Imprimir" — na tela de impressão dá para salvar e compartilhar o PDF');
 }
+function imprimeRelatorio(){
+  const f=document.getElementById('rel_if');
+  try{ f.contentWindow.focus(); f.contentWindow.print(); }
+  catch(_){ try{ window.print(); }catch(__){ toast('⚠️ Impressão indisponível neste aparelho'); } }
+}
+function fechaRelatorio(){ const ov=document.getElementById('reloverlay'); if(ov)ov.remove(); }
 const MESES_NOME=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 function gerarPDFFinanceiro(){
   const anoAtual=new Date().getFullYear();
