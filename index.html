@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='21/09d · estoque por peça';
+const BUILD='21/09e · relação de materiais';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -6458,7 +6458,7 @@ function tUni(){
   if(me.role!=='diretoria') return tUniRO();
   return `<div class="spread sect"><p class="mut">Uniformes agrupados por modelo — toque para abrir. Para juntar números novos a um modelo existente, cadastre o lote com o <strong>mesmo nome</strong>.</p>
   <div class="row"><button onclick="formUniforme()">➕ Novo uniforme (lote)</button><button class="sec" onclick="formAvulsa()">🧦 Peças avulsas</button><button class="sec" onclick="formItem()">+ Material</button>
-  <button class="gold" onclick="relacaoMateriais()">📣 Relação p/ WhatsApp</button></div></div>
+  <button class="gold" onclick="menuRelacaoMateriais()">📄 Relação de materiais</button></div></div>
   ${tUniformes()}
   ${tInventario()}`;
 }
@@ -6950,6 +6950,78 @@ function tInventario(){
       <span class="mut" style="font-weight:400;font-size:12px">— toque para abrir</span></summary>
     ${tabela(list)}</details>`;}).join('')}
   ${soltos.length?tabela(soltos):''}</div>`;
+}
+function dadosMateriais(){
+  const modelos=[...new Set(db.uniformes.map(u=>u.descricao))].sort().map(desc=>{
+    const list=db.uniformes.filter(u=>u.descricao===desc);
+    const pecas=Object.keys(PECAS_LBL).map(k=>{
+      const est=list.filter(u=>!u.atletaId&&!u.convidado&&(u.pecas||{})[k]==='estoque').length;
+      const com=list.filter(u=>['atleta','pendente'].includes((u.pecas||{})[k])).length;
+      const faltNums=list.filter(u=>(u.pecas||{})[k]==='faltando').map(u=>u.numero).sort((a,b)=>Number(a)-Number(b));
+      const semNums=list.filter(u=>!(u.pecas||{})[k]).map(u=>u.numero).sort((a,b)=>Number(a)-Number(b));
+      return {k,est,com,falt:faltNums.length,faltNums,sem:semNums.length,semNums};
+    });
+    return {desc,total:list.length,comAlguem:list.filter(u=>u.atletaId||u.convidado).length,pecas};
+  });
+  const avulsas=db.inventario.filter(i=>i.cat===CAT_AVULSA).map(i=>{
+    const emp=(i.emprestimos||[]).reduce((s2,e)=>s2+Number(e.qtd||0),0);
+    return {nome:i.nome,qtd:Number(i.qtd),disp:Number(i.qtd)-emp};
+  });
+  const grupos={};
+  db.inventario.filter(i=>i.cat!==CAT_AVULSA).forEach(i=>{ (grupos[grupoItem(i.nome)]??=[]).push(i); });
+  const materiais=Object.keys(grupos).sort().map(k=>{
+    const list=grupos[k];
+    const itens=list.sort((a,b)=>a.nome.localeCompare(b.nome)).map(i=>{
+      const emps=(i.emprestimos||[]);
+      const emp=emps.reduce((s2,e)=>s2+Number(e.qtd||0),0);
+      return {nome:i.nome,marca:i.marca,cor:i.cor,qtd:Number(i.qtd),emp,disp:Number(i.qtd)-emp,
+        empDet:emps.map(e=>`${e.qtd}× com ${e.nome} (desde ${String(e.quando).split(',')[0]})`)};
+    });
+    return {grupo:(EMO_GRUPO[k]||'📦')+' '+k.charAt(0).toUpperCase()+k.slice(1),itens,
+      totQtd:itens.reduce((s2,i)=>s2+i.qtd,0),totDisp:itens.reduce((s2,i)=>s2+i.disp,0),totEmp:itens.reduce((s2,i)=>s2+i.emp,0)};
+  });
+  return {modelos,avulsas,materiais};
+}
+function relatorioMateriais(){
+  const D=dadosMateriais();
+  const html=`<h1>📦 Relação de Materiais e Uniformes</h1>
+  <p class="sub">${esc(db.config.time)} — situação em ${dbr(hoje())}</p>
+  ${D.modelos.length?`<h2>👕 Uniformes — por modelo</h2>
+  ${D.modelos.map(m=>`<div class="mes"><h2 style="font-size:15px">${esc(m.desc)} — ${m.total} números · ${m.comAlguem} com atletas</h2>
+  <table><tr><th>Peça</th><th>Em estoque</th><th>Com atletas</th><th>Faltando</th><th>Números com falta</th><th>Sem a peça</th></tr>
+  ${m.pecas.map(pz=>`<tr><td><strong>${PECAS_EMO[pz.k]} ${PECAS_LBL[pz.k]}</strong></td><td class="ok"><strong>${pz.est}</strong></td><td>${pz.com}</td><td class="${pz.falt?'bad':''}">${pz.falt}</td><td>${pz.faltNums.join(', ')||'—'}</td><td>${pz.sem?pz.sem+' (nº '+pz.semNums.join(', ')+')':'—'}</td></tr>`).join('')}</table></div>`).join('')}`:''}
+  ${D.avulsas.length?`<h2>🧦 Peças avulsas (sem número)</h2>
+  <table><tr><th>Peça</th><th>Quantidade</th><th>Disponível</th></tr>
+  ${D.avulsas.map(a=>`<tr><td>${esc(a.nome)}</td><td>${a.qtd}</td><td class="ok"><strong>${a.disp}</strong></td></tr>`).join('')}</table>`:''}
+  ${D.materiais.length?`<h2>📦 Materiais — por grupo</h2>
+  ${D.materiais.map(g=>`<div class="mes"><h2 style="font-size:15px">${esc(g.grupo)} — ${g.totDisp} disponível(is) de ${g.totQtd}${g.totEmp?' · '+g.totEmp+' emprestado(s)':''}</h2>
+  <table><tr><th>Item</th><th>Detalhes</th><th>Total</th><th>Disponível</th><th>Emprestado</th></tr>
+  ${g.itens.map(i=>`<tr><td><strong>${esc(i.nome)}</strong></td><td>${[i.marca,i.cor].filter(Boolean).map(esc).join(' · ')||'—'}</td><td>${i.qtd}</td><td class="ok"><strong>${i.disp}</strong></td><td>${i.empDet.length?i.empDet.map(esc).join('<br>'):'—'}</td></tr>`).join('')}</table></div>`).join('')}`:''}`;
+  abreRelatorio(html,`Relação de materiais — ${db.config.time}`);
+}
+async function relatorioMateriaisPDF(){
+  const D=dadosMateriais();
+  const L=[`${db.config.time} — situação em ${dbr(hoje())}`,''];
+  if(D.modelos.length){ L.push('UNIFORMES — POR MODELO');
+    D.modelos.forEach(m=>{ L.push(''); L.push(`${m.desc} — ${m.total} números, ${m.comAlguem} com atletas`);
+      m.pecas.forEach(pz=>{ L.push(`   ${PECAS_LBL[pz.k]}: ${pz.est} em estoque · ${pz.com} com atletas · ${pz.falt} faltando${pz.faltNums.length?' (nº '+pz.faltNums.join(', ')+')':''}${pz.sem?' · '+pz.sem+' sem a peça (nº '+pz.semNums.join(', ')+')':''}`); }); }); }
+  if(D.avulsas.length){ L.push(''); L.push('PECAS AVULSAS (SEM NUMERO)');
+    D.avulsas.forEach(a=>L.push(`   - ${a.nome}: ${a.disp} disponível(is) de ${a.qtd}`)); }
+  if(D.materiais.length){ L.push(''); L.push('MATERIAIS — POR GRUPO');
+    D.materiais.forEach(g=>{ L.push(''); L.push(`${g.grupo.replace(/^[^ ]+ /,'')} — ${g.totDisp} disponível(is) de ${g.totQtd}${g.totEmp?', '+g.totEmp+' emprestado(s)':''}`);
+      g.itens.forEach(i=>{ L.push(`   - ${i.nome}${i.cor?' ('+i.cor+')':''}: ${i.disp}/${i.qtd} disponível(is)`);
+        i.empDet.forEach(e=>L.push(`        · ${e}`)); }); }); }
+  const b=genPDF('materiais.pdf','Relação de Materiais — '+db.config.time,L);
+  await compartilhaBlob(b,'materiais-'+hoje()+'.pdf','Relação de materiais — '+db.config.time);
+}
+function menuRelacaoMateriais(){
+  modal(`<h2>📄 Relação de materiais</h2>
+  <p class="mut">Uniformes por modelo (estoque, com atletas e faltantes por peça), peças avulsas e materiais por grupo.</p>
+  <div class="row" style="flex-wrap:wrap;margin-top:10px">
+  <button class="gold" onclick="fecha();relatorioMateriaisPDF()">📤 Enviar PDF</button>
+  <button onclick="fecha();relatorioMateriais()">🖨️ Imprimir</button>
+  <button class="sec" onclick="fecha();relacaoMateriais()">📱 WhatsApp (por pessoa)</button>
+  <button class="sec" onclick="fecha()">Fechar</button></div>`);
 }
 function relacaoMateriais(){
   // agrupa TUDO por pessoa: uniformes + materiais emprestados
