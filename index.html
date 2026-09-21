@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='21/09f · impressão no iPhone';
+const BUILD='21/09g · PDF da arte';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -5369,20 +5369,53 @@ const CSS_RELATORIO=`*{-webkit-print-color-adjust:exact!important;print-color-ad
   @media print{body{padding:6mm}.fechar,.imprimir{display:none}h1{box-shadow:none}.card{box-shadow:none;border:1px solid #e8e2d4}}`;
 function abreRelatorio(html,titulo){
   fechaRelatorio();
-  const doc=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titulo}</title><style>${CSS_RELATORIO}.fechar,.imprimir{display:none}</style></head><body>${html}
+  const doc=`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${titulo}</title><style>${CSS_RELATORIO}.fechar,.imprimir{display:none}body{-webkit-text-size-adjust:100%}</style></head><body>${html}
   <p class="rod">Gerado em ${new Date().toLocaleString('pt-BR')} pelo sistema de gestão do ${esc(db.config.time)} ⚽</p></body></html>`;
   const ov=document.createElement('div');
   ov.id='reloverlay';
   ov.style.cssText='position:fixed;inset:0;z-index:99999;background:#fff;display:flex;flex-direction:column';
   ov.innerHTML=`<div style="display:flex;gap:8px;align-items:center;padding:10px 12px;background:#8a1f2f;flex-wrap:wrap">
     <strong style="color:#f7e8c8;flex:1;font-size:14px">📄 ${esc(titulo||'Relatório')}</strong>
-    <button style="appearance:none;-webkit-appearance:none;background:#2E7D4F;color:#fff;border:none;border-radius:9px;padding:9px 16px;font-weight:700;cursor:pointer" onclick="imprimeRelatorio()">🖨️ Salvar PDF / Imprimir</button>
+    <button style="appearance:none;-webkit-appearance:none;background:#2E7D4F;color:#fff;border:none;border-radius:9px;padding:9px 16px;font-weight:700;cursor:pointer" onclick="relatorioPDFArte()">📤 PDF / Compartilhar</button>
+    ${navigator.standalone?'':'<button style="appearance:none;-webkit-appearance:none;background:#1C4FA0;color:#fff;border:none;border-radius:9px;padding:9px 16px;font-weight:700;cursor:pointer" onclick="imprimeRelatorio()">🖨️ Imprimir</button>'}
     <button style="appearance:none;-webkit-appearance:none;background:#B3372E;color:#fff;border:none;border-radius:9px;padding:9px 16px;font-weight:700;cursor:pointer" onclick="fechaRelatorio()">✕ Fechar</button>
   </div>
   <iframe id="rel_if" style="flex:1;border:none;width:100%;background:#fff"></iframe>`;
   document.body.appendChild(ov);
+  window._relTitulo=titulo||'Relatório';
   document.getElementById('rel_if').srcdoc=doc;
-  toast('📄 Toque em "Salvar PDF / Imprimir" — na tela de impressão dá para salvar e compartilhar o PDF');
+  toast('📄 Toque em "PDF / Compartilhar" para gerar o arquivo da arte');
+}
+window._relTitulo='';
+async function carregaLib(src,globalName){
+  if(window[globalName])return;
+  await new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=src; sc.onload=res; sc.onerror=()=>rej(new Error('sem internet para carregar o gerador de PDF')); document.head.appendChild(sc); });
+}
+async function relatorioPDFArte(){
+  const f=document.getElementById('rel_if'); if(!f||!f.contentDocument){toast('Abra um relatório primeiro');return;}
+  toast('📄 Gerando o PDF da arte… aguarde');
+  try{
+    await carregaLib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js','html2canvas');
+    await carregaLib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js','jspdf');
+    const body=f.contentDocument.body;
+    const wAntes=body.style.width; body.style.width='794px';
+    const cv=await html2canvas(body,{scale:2,backgroundColor:'#ffffff',useCORS:true,windowWidth:820});
+    body.style.width=wAntes;
+    const pdf=new jspdf.jsPDF({unit:'mm',format:'a4',compress:true});
+    const pw=210, ph=297, margem=0;
+    const pagPx=Math.floor(cv.width*ph/pw);
+    let y=0, pag=0;
+    while(y<cv.height){
+      const h=Math.min(pagPx,cv.height-y);
+      const fatia=document.createElement('canvas'); fatia.width=cv.width; fatia.height=h;
+      fatia.getContext('2d').drawImage(cv,0,y,cv.width,h,0,0,cv.width,h);
+      if(pag>0)pdf.addPage();
+      pdf.addImage(fatia.toDataURL('image/jpeg',0.92),'JPEG',margem,margem,pw,h*pw/cv.width);
+      y+=h; pag++;
+    }
+    const nome=(window._relTitulo||'relatorio').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').slice(0,50)+'.pdf';
+    await compartilhaBlob(pdf.output('blob'),nome,window._relTitulo||'Relatório','application/pdf');
+  }catch(e){ toast('⚠️ '+(e&&e.message?e.message:'Não consegui gerar o PDF — tente de novo')); }
 }
 function imprimeRelatorio(){
   const f=document.getElementById('rel_if');
