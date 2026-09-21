@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='21/09b · conferência e avulsas';
+const BUILD='21/09c · edição de uniformes';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -6503,7 +6503,7 @@ function tUniformes(){
       ${fora.length?`<span class="pill p-gold">${fora.length} com jogadores</span>`:''}
       ${nFalt?`<span class="pill p-bad">${nFalt} com peça faltando</span>`:''}
       ${estoque.length?`<span class="pill p-ok">${estoque.length} em estoque</span>`:''}</span>
-      <div class="row" style="gap:4px;pointer-events:auto"><button class="mini gold" onclick="event.stopPropagation();modoRapidoUni('${esc(desc)}')">⚡ Rápido</button><button class="mini sec" onclick="event.stopPropagation();conferenciaUni('${esc(desc)}')">📋 Conferir</button></div></summary>
+      <div class="row" style="gap:4px;pointer-events:auto"><button class="mini gold" onclick="event.stopPropagation();modoRapidoUni('${esc(desc)}')">⚡ Rápido</button><button class="mini sec" onclick="event.stopPropagation();conferenciaUni('${esc(desc)}')">📋 Conferir</button><button class="mini sec" onclick="event.stopPropagation();formUniforme('${esc(desc)}')">➕</button><button class="mini sec" onclick="event.stopPropagation();formEditaModelo('${esc(desc)}')">✏️</button></div></summary>
       ${(()=>{const temP=(u,k)=>u.pecas&&u.pecas[k]&&u.pecas[k]!=='faltando';
         const cat={comp:0,cs:0,c:0,sh:0,m:0,out:0};
         list.forEach(u=>{const c=temP(u,'camisa'),h=temP(u,'short'),m=temP(u,'meiao');
@@ -6542,6 +6542,7 @@ function numOpcoes(id){
   <div class="row" style="margin-top:14px">
   <button onclick="fecha();entregarUni('${u.id}')">▶ Entregar</button>
   <button class="sec" onclick="fecha();reporPecas('${u.id}')">🧩 Repor peças</button>
+  <button class="sec" onclick="fecha();formEditaNumero('${u.id}')">✏️ Editar nº</button>
   ${Object.values(u.pecas||{}).some(v=>v==='faltando')?`<button class="sec" onclick="fecha();devolveUni('${u.id}')">🔎 Ajustar peças</button>`:''}
   <button class="bad mini" onclick="delUni('${u.id}')">✕ Excluir</button>
   <button class="sec" onclick="fecha()">Fechar</button></div>`);
@@ -6550,6 +6551,46 @@ const diasDesde=str=>{ if(!str)return null; const m=String(str).match(/(\d{2})\/
   return Math.floor((Date.now()-new Date(+m[3],+m[2]-1,+m[1]).getTime())/86400000); };
 
 /* ---- 📋 Conferência física ---- */
+function formEditaModelo(desc){
+  const list=db.uniformes.filter(u=>u.descricao===desc);
+  const ref=list.find(u=>!u.goleiro)||list[0];
+  modal(`<h2>✏️ Editar modelo — ${esc(desc)}</h2>
+  <p class="mut">Vale para todos os ${list.length} números deste modelo.</p>
+  <label>Nome do modelo</label><input id="em_desc" value="${esc(desc)}">
+  <div class="grid g2">
+  <div><label>Cor principal</label><input id="em_cor" value="${esc((ref&&ref.cor)||'')}"></div>
+  <div><label>Fornecedor</label><input id="em_forn" value="${esc((ref&&ref.fornecedor)||'')}"></div>
+  </div>
+  <div class="row" style="margin-top:14px"><button onclick="salvaEditaModelo('${esc(desc)}')">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+async function salvaEditaModelo(descAntiga){
+  const nova=fval('em_desc'); if(!nova){toast('Dê um nome ao modelo');return;}
+  const cor=fval('em_cor'), forn=fval('em_forn');
+  const ids=db.uniformes.filter(u=>u.descricao===descAntiga).map(u=>u.id);
+  await q(sb.from('uniformes').update({descricao:nova,fornecedor:forn}).in('id',ids));
+  const idsNaoGk=db.uniformes.filter(u=>u.descricao===descAntiga&&!u.goleiro).map(u=>u.id);
+  if(idsNaoGk.length)await q(sb.from('uniformes').update({cor}).in('id',idsNaoGk));
+  log('uniforme',`Modelo editado: "${descAntiga}" → "${nova}" (${ids.length} números)`);
+  fecha(); await recarrega(); toast('✏️ Modelo atualizado');
+}
+function formEditaNumero(id){
+  const u=byId(db.uniformes,id);
+  modal(`<h2>✏️ Editar nº ${esc(u.numero)} — ${esc(u.descricao)}</h2>
+  <div class="grid g2">
+  <div><label>Número</label><input id="en_num" value="${esc(u.numero)}"></div>
+  <div><label>Cor deste número</label><input id="en_cor" value="${esc(u.cor||'')}"></div>
+  </div>
+  <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:400;color:var(--ink)"><input type="checkbox" id="en_gk" ${u.goleiro?'checked':''} style="width:auto">🧤 Uniforme de goleiro</label>
+  <div class="row" style="margin-top:14px"><button onclick="salvaEditaNumero('${id}')">Salvar</button><button class="sec" onclick="fecha();numOpcoes('${id}')">← Voltar</button></div>`);
+}
+async function salvaEditaNumero(id){
+  const u=byId(db.uniformes,id);
+  const num=fval('en_num'); if(!num){toast('Informe o número');return;}
+  if(db.uniformes.some(x=>x.id!==id&&x.descricao===u.descricao&&x.numero===num)){toast('Já existe o nº '+num+' neste modelo');return;}
+  await q(sb.from('uniformes').update({numero:num,cor:fval('en_cor'),goleiro:$('en_gk').checked}).eq('id',id));
+  log('uniforme',`Número editado: ${u.numero} → ${num} (${u.descricao})`);
+  fecha(); await recarrega(); toast('✏️ Número atualizado');
+}
 function conferenciaUni(desc){
   const list=db.uniformes.filter(u=>u.descricao===desc).sort((a,b)=>Number(a.numero)-Number(b.numero));
   modal(`<h2>📋 Conferência — ${esc(desc)}</h2>
@@ -6748,16 +6789,17 @@ async function devolveRapida(id,desc){
   await recarrega(); toast(`↩ Nº ${u.numero} de volta ao estoque`);
   modoRapidoUni(desc);
 }
-function formUniforme(){
-  modal(`<h2>Cadastrar uniformes em lote</h2>
-  <label>Descrição</label><input id="u_desc" placeholder="Ex.: Uniforme branco com listra" list="u_descs">
+function formUniforme(descPre){
+  const ref=descPre?db.uniformes.find(u=>u.descricao===descPre):null;
+  modal(`<h2>${descPre?'➕ Adicionar números — '+esc(descPre):'Cadastrar uniformes em lote'}</h2>
+  <label>Descrição</label><input id="u_desc" value="${descPre?esc(descPre):''}" placeholder="Ex.: Uniforme branco com listra" list="u_descs">
   <datalist id="u_descs">${[...new Set(db.uniformes.map(u=>u.descricao))].map(d=>`<option value="${esc(d)}">`).join('')}</datalist>
   <p class="mut" style="margin-top:2px">Use um nome já existente para <strong>juntar</strong> os números novos ao mesmo modelo.</p>
-  <label>Numeração (intervalos e números soltos)</label><input id="u_nums" value="1-20" placeholder="Ex.: 1-10, 15-20, 25">
+  <label>Numeração (intervalos e números soltos)</label><input id="u_nums" value="${descPre?'':'1-20'}" placeholder="Ex.: 1-10, 15-20, 25">
   <p class="mut" style="margin-top:4px">Separe por vírgula: intervalos com hífen ("1-10") e números soltos ("25"). Ex.: <strong>1-10, 15-20, 25</strong></p>
   <div class="grid g2">
-  <div><label>Cor principal (opcional)</label><input id="u_cor" placeholder="Ex.: Branca com listra azul"></div>
-  <div><label>Fornecedor esportivo</label><input id="u_forn" placeholder="Ex.: Casa do Esporte — Belém"></div>
+  <div><label>Cor principal (opcional)</label><input id="u_cor" value="${ref&&!ref.goleiro?esc(ref.cor||''):''}" placeholder="Ex.: Branca com listra azul"></div>
+  <div><label>Fornecedor esportivo</label><input id="u_forn" value="${ref?esc(ref.fornecedor||''):''}" placeholder="Ex.: Casa do Esporte — Belém"></div>
   <div><label>🧤 Nº(s) do goleiro (opcional)</label><input id="u_gk" placeholder="Ex.: 1, 12"></div>
   <div><label>Cor do uniforme do goleiro</label><input id="u_gkcor" placeholder="Ex.: Verde-limão"></div>
   </div>
