@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='23/09 · documentos no app';
+const BUILD='23/09b · ZIP confiável';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -1748,17 +1748,39 @@ function anexaCat(aid,cat){
 async function carregaJSZip(){ if(window.JSZip)return;
   await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'; s.onload=res; s.onerror=()=>rej(new Error('sem internet para carregar o compactador')); document.head.appendChild(s); });
 }
+async function baixaLoteArquivos(files){
+  // assina em lote e baixa com nova tentativa; devolve {ok:[{d,bl}], falhas:[d]}
+  const {data:urls,error}=await sb.storage.from('arquivos').createSignedUrls(files.map(d=>d.path),600);
+  const mapa={}; (urls||[]).forEach(u=>{ if(u.signedUrl)mapa[u.path]=u.signedUrl; });
+  if(error&&!urls)throw error;
+  const ok=[],falhas=[];
+  let n=0;
+  for(const d of files){
+    n++; if(n%8===0)toast(`Baixando arquivos… ${n}/${files.length}`);
+    let url=mapa[d.path];
+    if(!url){ const r1=await sb.storage.from('arquivos').createSignedUrl(d.path,600); url=r1.data&&r1.data.signedUrl; }
+    if(!url){ falhas.push(d); continue; }
+    let bl=null;
+    for(let t=0;t<2&&!bl;t++){
+      try{ const resp=await fetch(url); if(resp.ok)bl=await resp.blob(); else await new Promise(r=>setTimeout(r,700)); }
+      catch(_){ await new Promise(r=>setTimeout(r,700)); }
+    }
+    if(bl)ok.push({d,bl}); else falhas.push(d);
+  }
+  return {ok,falhas};
+}
 async function baixarZipPessoa(aid){
   const files=db.arquivos.filter(d=>d.atletaId===aid);
   if(!files.length){toast('Esta pessoa não tem documentos');return;}
   toast('Preparando o ZIP…');
   try{
     await carregaJSZip(); const zip=new JSZip();
-    for(const d of files){ const {data,error}=await sb.storage.from('arquivos').createSignedUrl(d.path,300); if(error)continue;
-      const bl=await (await fetch(data.signedUrl)).blob(); zip.file((d.categoria+' - '+d.nome).replace(/[\/\\]/g,'-'),bl); }
+    const {ok,falhas}=await baixaLoteArquivos(files);
+    ok.forEach(({d,bl})=>zip.file((d.categoria+' - '+d.nome).replace(/[\/\\]/g,'-'),bl));
+    if(falhas.length)zip.file('_ERROS.txt','Não foi possível baixar:\n'+falhas.map(d=>'- '+d.categoria+' - '+d.nome).join('\n')+'\nTente gerar o ZIP novamente.');
     baixar('documentos-'+pnome(nomeAt(aid)).toLowerCase()+'-'+hoje()+'.zip',await zip.generateAsync({type:'blob'}),'application/zip');
     log('docs',`${me.nome} baixou o ZIP de documentos de ${nomeAt(aid)}`);
-    toast('ZIP baixado ✔');
+    toast(falhas.length?`⚠️ ZIP gerado com ${falhas.length} falha(s) — veja _ERROS.txt e gere de novo`:'ZIP baixado ✔ — '+ok.length+' arquivo(s)');
   }catch(e){ toast('⚠️ '+e.message); }
 }
 async function baixarZipTodos(){
@@ -1766,14 +1788,14 @@ async function baixarZipTodos(){
   toast('Preparando o ZIP de todos — aguarde…');
   try{
     await carregaJSZip(); const zip=new JSZip();
-    for(const d of db.arquivos){ const {data,error}=await sb.storage.from('arquivos').createSignedUrl(d.path,300); if(error)continue;
-      const bl=await (await fetch(data.signedUrl)).blob();
-      zip.folder(nomeAt(d.atletaId).replace(/[\/\\]/g,'-')).file((d.categoria+' - '+d.nome).replace(/[\/\\]/g,'-'),bl); }
+    const {ok,falhas}=await baixaLoteArquivos(db.arquivos);
+    ok.forEach(({d,bl})=>zip.folder(nomeAt(d.atletaId).replace(/[\/\\]/g,'-')).file((d.categoria+' - '+d.nome).replace(/[\/\\]/g,'-'),bl));
+    if(falhas.length)zip.file('_ERROS.txt','Não foi possível baixar:\n'+falhas.map(d=>'- '+nomeAt(d.atletaId)+': '+d.categoria+' - '+d.nome).join('\n')+'\nTente gerar o ZIP novamente.');
     const faltas=docsFaltantes();
     if(faltas.length)zip.file('_PENDENCIAS.txt','DOCUMENTOS FALTANDO — '+db.config.time+' ('+dbr(hoje())+')\n\n'+faltas.map(x=>'- '+x.a.nome+': '+x.docs.join(', ')).join('\n'));
     baixar('documentos-oab-master-'+hoje()+'.zip',await zip.generateAsync({type:'blob'}),'application/zip');
     log('docs',`${me.nome} baixou o ZIP GERAL de documentos (${db.arquivos.length} arquivos)`);
-    toast('ZIP geral baixado ✔ — pronto para a inscrição');
+    toast(falhas.length?`⚠️ ZIP gerado com ${falhas.length} falha(s) — veja _ERROS.txt e gere de novo`:'ZIP geral baixado ✔ — '+ok.length+' arquivo(s), pronto para a inscrição');
   }catch(e){ toast('⚠️ '+e.message); }
 }
 function docsFaltantes(){
