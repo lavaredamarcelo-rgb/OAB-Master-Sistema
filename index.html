@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='23/09b · ZIP confiável';
+const BUILD='23/09c · atestado/declaração unificados';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -1642,7 +1642,7 @@ async function excluiAtleta(id){
 }
 
 /* ================= DOCUMENTOS ================= */
-const CATS_DOC=['Carteira OAB','Certidão','Atestado','Declaração de saúde','Comprovante','Outro'];
+const CATS_DOC=['Carteira OAB','Certidão','Atestado ou Declaração de saúde','Comprovante','Outro'];
 function docLinha(d,podeDel,podeEditTat){
   const isVideo=d.nome.match(/\.(mp4|mov|m4v|webm)$/i);
   if(isVideo){
