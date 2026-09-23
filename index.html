@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='23/09d · docs da comissão';
+const BUILD='23/09e · cobrança inclui comissão';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -1803,7 +1803,10 @@ async function baixarZipTodos(){
   }catch(e){ toast('⚠️ '+e.message); }
 }
 function docsFaltantes(){
-  return elenco().map(a=>({a,docs:db.config.docsObrig.filter(cat=>!db.arquivos.some(d=>d.atletaId===a.id&&d.categoria===cat))})).filter(x=>x.docs.length);
+  const jog=elenco().map(a=>({a,docs:db.config.docsObrig.filter(cat=>!db.arquivos.some(d=>d.atletaId===a.id&&d.categoria===cat))}));
+  const com=db.atletas.filter(a=>a.ativo&&!a.pendente&&ehComissaoTec(a))
+    .map(a=>({a,docs:db.arquivos.some(d=>d.atletaId===a.id&&d.categoria==='Identificação')?[]:['Identificação']}));
+  return [...jog,...com].filter(x=>x.docs.length);
 }
 function msgDocsInd(x,prazo){
   return `Prezado(a) ${pnome(x.a.nome)},\n\n*${db.config.time} — Secretaria* 📋\n\nPara a inscrição do time nos campeonatos, precisamos que você anexe no sistema os seguintes documentos:\n\n${x.docs.map(d=>'• '+d).join('\n')}\n\n📲 Caminho: entre no sistema → Meu espaço → Meus documentos → 📎 Anexar (dá para fotografar na hora)\n🔗 ${location.origin}${prazo?'\n⏳ Prazo: '+dbr(prazo):''}\n\nContamos com você! 🤝⚽`;
