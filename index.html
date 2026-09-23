@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='21/09g · PDF da arte';
+const BUILD='23/09 · documentos no app';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -317,7 +317,21 @@ function confirma(msg,cb){
 document.addEventListener('click',e=>{ if(e.target.id==='modalbg') fecha(); });
 function fval(id){ const el=$(id); return el?el.value.trim():''; }
 function copiar(txt,msg){ navigator.clipboard.writeText(txt).then(()=>toast(msg||'Copiado!')).catch(()=>toast('Não foi possível copiar')); }
-function baixar(nome,conteudo,mime){ const b=conteudo instanceof Blob?conteudo:new Blob([conteudo],{type:mime}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=nome; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); }
+let ehAppInstalado=()=>navigator.standalone===true;
+function baixar(nome,conteudo,mime){
+  const b=conteudo instanceof Blob?conteudo:new Blob([conteudo],{type:mime});
+  if(ehAppInstalado()){ // PWA no iPhone não baixa por link — entrega pelo compartilhar, com toque novo
+    const f=new File([b],nome,{type:mime||b.type||'application/octet-stream'});
+    modal(`<h2>📤 Arquivo pronto</h2><p class="mut">${esc(nome)} — no app instalado, o arquivo sai pelo compartilhar (dá para salvar em Arquivos, WhatsApp, e-mail…).</p>
+    <div class="row" style="margin-top:12px"><button class="gold" id="btn_shr">📤 Compartilhar / Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+    setTimeout(()=>{ const bt=document.getElementById('btn_shr'); if(bt)bt.onclick=async()=>{ try{
+      if(navigator.canShare&&navigator.canShare({files:[f]})) await navigator.share({files:[f],title:nome});
+      else { const a=document.createElement('a'); document.body.appendChild(a); a.href=URL.createObjectURL(f); a.download=nome; a.click(); a.remove(); }
+      fecha(); }catch(_){} }; },0);
+    return;
+  }
+  const a=document.createElement('a'); document.body.appendChild(a); a.href=URL.createObjectURL(b); a.download=nome; a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
 function log(tipo,texto){ sb.from('logs').insert({tipo,texto,quem:me?me.nome:'sistema'}).then(()=>{}); }
 
 /* ================= CARREGAMENTO ================= */
@@ -1718,13 +1732,16 @@ async function comprimeImagem(f){
 }
 function anexaCat(aid,cat){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='.pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx';
+  inp.style.cssText='position:fixed;left:-9999px;top:0'; document.body.appendChild(inp);
   inp.onchange=()=>upFile(inp,40,async f=>{
     toast('Enviando…');
-    f=await comprimeImagem(f);
-    if(f.size>10*1048576){toast('⚠️ Arquivo grande demais mesmo após compressão (máx. 10 MB) — envie um PDF menor ou uma foto');return;}
-    await enviaArquivo(f,'geral',aid,cat);
-    log('docs',`${me.nome} anexou "${f.name}" (${cat})${aid!==me.id?' ao arquivo de '+nomeAt(aid):''}`);
-    await recarrega(); toast(cat+' anexado ✔');
+    try{
+      f=await comprimeImagem(f);
+      if(f.size>10*1048576){toast('⚠️ Arquivo grande demais mesmo após compressão (máx. 10 MB) — envie um PDF menor ou uma foto');return;}
+      await enviaArquivo(f,'geral',aid,cat);
+      log('docs',`${me.nome} anexou "${f.name}" (${cat})${aid!==me.id?' ao arquivo de '+nomeAt(aid):''}`);
+      await recarrega(); toast(`✔ ${cat} anexado ao arquivo de ${pnome(nomeAt(aid))}`);
+    } finally { inp.remove(); }
   });
   inp.click();
 }
@@ -1752,6 +1769,8 @@ async function baixarZipTodos(){
     for(const d of db.arquivos){ const {data,error}=await sb.storage.from('arquivos').createSignedUrl(d.path,300); if(error)continue;
       const bl=await (await fetch(data.signedUrl)).blob();
       zip.folder(nomeAt(d.atletaId).replace(/[\/\\]/g,'-')).file((d.categoria+' - '+d.nome).replace(/[\/\\]/g,'-'),bl); }
+    const faltas=docsFaltantes();
+    if(faltas.length)zip.file('_PENDENCIAS.txt','DOCUMENTOS FALTANDO — '+db.config.time+' ('+dbr(hoje())+')\n\n'+faltas.map(x=>'- '+x.a.nome+': '+x.docs.join(', ')).join('\n'));
     baixar('documentos-oab-master-'+hoje()+'.zip',await zip.generateAsync({type:'blob'}),'application/zip');
     log('docs',`${me.nome} baixou o ZIP GERAL de documentos (${db.arquivos.length} arquivos)`);
     toast('ZIP geral baixado ✔ — pronto para a inscrição');
