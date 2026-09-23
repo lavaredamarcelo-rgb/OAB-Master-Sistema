@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='23/09c · atestado/declaração unificados';
+const BUILD='23/09d · docs da comissão';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -1643,6 +1643,8 @@ async function excluiAtleta(id){
 
 /* ================= DOCUMENTOS ================= */
 const CATS_DOC=['Carteira OAB','Certidão','Atestado ou Declaração de saúde','Comprovante','Outro'];
+const CATS_DOC_COMISSAO=['Identificação','Outros documentos'];
+const ehComissaoTec=a=>!!a&&['treinador','auxiliar','preparador'].includes(a.role);
 function docLinha(d,podeDel,podeEditTat){
   const isVideo=d.nome.match(/\.(mp4|mov|m4v|webm)$/i);
   if(isVideo){
@@ -1700,10 +1702,12 @@ function tDocs(){
   <p class="mut" style="margin-top:10px">* obrigatório · 💡 Peça a cada atleta que anexe os documentos pelo celular, em <strong>Meu espaço → Meus documentos</strong>.</p></div>`;
 }
 function slotsDocs(aid,podeAnexar){
-  const cats=[...db.config.docsObrig,...CATS_DOC.filter(c=>!db.config.docsObrig.includes(c))];
+  const pessoa=at(aid);
+  const comTec=ehComissaoTec(pessoa);
+  const cats=comTec?CATS_DOC_COMISSAO:[...db.config.docsObrig,...CATS_DOC.filter(c=>!db.config.docsObrig.includes(c))];
   return cats.map(cat=>{
     const files=db.arquivos.filter(d=>d.atletaId===aid&&d.categoria===cat);
-    const obrig=db.config.docsObrig.includes(cat);
+    const obrig=!comTec&&db.config.docsObrig.includes(cat);
     if(!obrig&&!files.length&&!podeAnexar)return '';
     return `<div class="doc" style="flex-wrap:wrap;align-items:flex-start">
     <div style="flex:1;min-width:200px"><strong>${esc(cat)}</strong>
