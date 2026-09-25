@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='25/09 · disponibilidade e distribuição';
+const BUILD='25/09b · campeonato conta como jogo';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -254,7 +254,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const brl=v=>(Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const ehMensal=c=>/Mensalidade/i.test(c.desc||'');
 const mapsLink=l=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(l);
-const ehJogoTipo=t=>['jogo','amistoso','treino_amistoso'].includes(t);
+const ehJogoTipo=t=>['jogo','amistoso','treino_amistoso','campeonato'].includes(t);
 const ehTreinoTipo=t=>['treino','treino_amistoso'].includes(t);
 const tipoEvIco=t=>t==='jogo'?'⚽':t==='amistoso'?'🤝':t==='treino_amistoso'?'🏃🤝':t==='treino'?'🏃':t==='campeonato'?'🏆':'📌';
 const tipoEvLbl=t=>t==='jogo'?'⚽ Jogo':t==='amistoso'?'🤝 Amistoso':t==='treino_amistoso'?'🏃🤝 Treino + Amistoso':t==='treino'?'🏃 Treino':t==='campeonato'?'🏆 Campeonato':'📌 Compromisso';
@@ -2507,7 +2507,7 @@ function presencasSemStats(atId,cat){
   cat=cat||'todos';
   return db.presencas.filter(p=>p.atletaId===atId&&['presente','atraso'].includes(p.status)).filter(p=>{
     const e=byId(db.eventos,p.eventoId); if(!e)return false;
-    const t=e.tipo==='treino_amistoso'?'amistoso':e.tipo;
+    const t=e.tipo==='treino_amistoso'?'amistoso':(e.tipo==='campeonato'?'jogo':e.tipo);
     if(!['jogo','amistoso','treino'].includes(t))return false;
     if(cat!=='todos'&&t!==cat)return false;
     return !db.stats.some(x=>x.eventoId===p.eventoId&&x.atletaId===atId);
@@ -2517,7 +2517,7 @@ const ehSetorDef=atId=>{const a=at(atId);return !!a&&posAbrevTodas(a).some(pz=>[
 function jogosSemSofrer(atId,cat){
   cat=cat||'todos';
   return db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.placarNos!=null&&Number(e.placarDeles)===0)
-    .filter(e=>cat==='todos'||(e.tipo==='treino_amistoso'?'amistoso':e.tipo)===cat)
+    .filter(e=>cat==='todos'||(e.tipo==='treino_amistoso'?'amistoso':(e.tipo==='campeonato'?'jogo':e.tipo))===cat)
     .filter(e=>db.presencas.some(x=>x.eventoId===e.id&&x.atletaId===atId&&['presente','atraso'].includes(x.status))
              ||db.stats.some(x=>x.eventoId===e.id&&x.atletaId===atId)).length;
 }
@@ -2958,7 +2958,7 @@ function pdfDossieAtleta(atId){
   `Dossiê — ${pnome(a.nome)}`);
 }
 function pdfTotaisTemporada(){
-  const tipoDe=id=>{const e=byId(db.eventos,id);return e?(e.tipo==='treino_amistoso'?'amistoso':e.tipo):'';};
+  const tipoDe=id=>{const e=byId(db.eventos,id);return e?(e.tipo==='treino_amistoso'?'amistoso':(e.tipo==='campeonato'?'jogo':e.tipo)):'';};
   const zera=()=>({g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,ce:0,gs:0,pp:0,pc:0,gco:0,j:0,notas:[]});
   const aggCat=cat=>{ const agg={};
     db.stats.filter(x=>x.atletaId&&(cat==='todos'||tipoDe(x.eventoId)===cat)).forEach(x=>{ const a=agg[x.atletaId]??=zera();
@@ -2980,7 +2980,7 @@ function pdfTotaisTemporada(){
   const V=jp.filter(e=>e.placarNos>e.placarDeles).length, E=jp.filter(e=>e.placarNos===e.placarDeles).length, D=jp.filter(e=>e.placarNos<e.placarDeles).length;
   const GP=jp.reduce((x,e)=>x+e.placarNos,0), GC=jp.reduce((x,e)=>x+e.placarDeles,0);
   const golsCat=[['jogo','🏆 Oficiais'],['amistoso','🤝 Amistosos']].map(([t,lb])=>{
-    const l=jp.filter(e=>(e.tipo==='treino_amistoso'?'amistoso':e.tipo)===t);
+    const l=jp.filter(e=>(e.tipo==='treino_amistoso'?'amistoso':(e.tipo==='campeonato'?'jogo':e.tipo))===t);
     return {lb,n:l.length,gp:l.reduce((x,e)=>x+e.placarNos,0),gc:l.reduce((x,e)=>x+e.placarDeles,0),
       v:l.filter(e=>e.placarNos>e.placarDeles).length,em:l.filter(e=>e.placarNos===e.placarDeles).length,d:l.filter(e=>e.placarNos<e.placarDeles).length};
   }).filter(x=>x.n);
@@ -3097,13 +3097,13 @@ async function salvaStatsAoVivo(evId){
   toast(semNovos?'⚠️ Salvo sem os itens novos — rode o SQL v11 no Supabase':'✅ Estatísticas salvas ao vivo!');
 }
 function tDesemp(){
-  const jogos=db.eventos.filter(e=>['jogo','amistoso','treino','treino_amistoso'].includes(e.tipo)).sort((a,b)=>b.data.localeCompare(a.data));
+  const jogos=db.eventos.filter(e=>['jogo','amistoso','treino','treino_amistoso','campeonato'].includes(e.tipo)).sort((a,b)=>b.data.localeCompare(a.data));
   const podeEditar=gestor();
   const sel=subState.despEv||(jogos[0]&&jogos[0].id)||'';
   const ats=elenco();
   const modeLancAV=subState.modeLancAV||false;
   const cat=subState.despCat||'todos';
-  const catDe=evId=>{const e=byId(db.eventos,evId);return e?(e.tipo==='treino_amistoso'?'amistoso':e.tipo):'';};
+  const catDe=evId=>{const e=byId(db.eventos,evId);return e?(e.tipo==='treino_amistoso'?'amistoso':(e.tipo==='campeonato'?'jogo':e.tipo)):'';};
   const agg={};
   db.stats.filter(s=>cat==='todos'||catDe(s.eventoId)===cat).forEach(s=>{ const a=agg[s.atletaId]??={g:0,as:0,ca:0,cv:0,des:0,due:0,da:0,ant:0,ch:0,df:0,pe:0,dp:0,bp:0,fc:0,ce:0,gs:0,pp:0,pc:0,gco:0,j:0,notas:[]};
     a.g+=+s.gols||0; a.as+=+s.assist||0; a.ca+=+s.amarelos||0; a.cv+=s.vermelho?1:0; a.des+=+s.desarmes||0; a.due+=+s.duelos||0; a.da+=+s.duelosAereos||0; a.ant+=+s.antecipacao||0; a.ch+=+s.chutesGol||0; a.df+=+s.defesas||0; a.pe+=+s.passesErrados||0; a.dp+=+s.duelosPerdidos||0; a.bp+=+s.bolasPerdidas||0; a.fc+=+s.faltasCometidas||0; a.ce+=+s.chutesErrados||0; a.gs+=+s.golsSofridos||0; a.pp+=+s.penaltisPerdidos||0; a.pc+=+s.penaltisCometidos||0; a.gco+=+s.golsContra||0; a.j++; if(notaConta(s.eventoId))a.notas.push(notaDe(s).v); });
