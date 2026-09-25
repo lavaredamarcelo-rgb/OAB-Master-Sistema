@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='23/09g · docs de convidados';
+const BUILD='25/09 · disponibilidade e distribuição';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -338,7 +338,7 @@ function log(tipo,texto){ sb.from('logs').insert({tipo,texto,quem:me?me.nome:'si
 function mapAtleta(r){ return {id:r.id,nome:r.nome,apelido:r.apelido||'',fone:r.fone,email:r.email,oab:r.oab,posicao:r.posicao,role:r.role,ativo:r.ativo,pendente:!r.aprovado,fundador:!!r.fundador,cargo:r.cargo||'',cadastroManual:!!r.cadastro_manual,isentoMens:!!r.isento_mensalidade,fotoUrl:r.foto_url||'',
   consent:{aceito:r.consent_status==='aceito',recusado:r.consent_status==='recusado',revogado:r.consent_status==='revogado',quando:fdt(r.consent_quando),versao:r.consent_versao||TERMO_LGPD_V},saude:{}}; }
 async function carregaTudo(){
-  const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist,craquevotos,craquetotais,convs,atrasosG]=await Promise.all([
+  const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist,craquevotos,craquetotais,convs,atrasosG,disps]=await Promise.all([
     q(sb.from('perfis').select('*').order('nome')),
     q(sb.from('saude').select('*')),
     q(sb.from('eventos').select('*').order('data')),
@@ -361,13 +361,15 @@ async function carregaTudo(){
     sb.from('craque_votos').select('*').then(r=>r.data||[]),
     sb.rpc('contagem_craque_todos').then(r=>r.data||[]),
     sb.from('convocacoes').select('*').order('quando',{ascending:false}).then(r=>r.error?null:(r.data||[])),
-    sb.rpc('atrasos_por_atleta').then(r=>r.data||[])
+    sb.rpc('atrasos_por_atleta').then(r=>r.data||[]),
+    sb.from('disponibilidades').select('*').then(r=>r.error?null:(r.data||[]))
   ]);
   db={}; window._ultimaCarga=Date.now();
   db.atletas=perfis.map(mapAtleta);
   saude.forEach(s=>{ const a=at(s.atleta_id); if(a)a.saude={sangue:s.sangue,plano:s.plano,alergias:s.alergias,medicamentos:s.medicamentos,condicoes:s.condicoes,emergencia:s.emergencia,lesoes:s.lesoes,obs:s.obs,lesoesLista:s.lesoes_lista||[],obsLista:s.obs_lista||[]}; });
   db.eventos=eventos.map(e=>({id:e.id,tipo:e.tipo,titulo:e.titulo,data:String(e.data),dataFim:e.data_fim?String(e.data_fim):'',hora:e.hora,horaFim:e.hora_fim||'',local:e.local,obs:e.obs,adversario:e.adversario||'',placarNos:e.placar_nos??null,placarDeles:e.placar_deles??null,statsTime:e.stats_time||{}}));
   db.craqueVotos=(craquevotos||[]).map(v=>({id:v.id,eventoId:v.evento_id,votanteId:v.votante_id,votoId:v.voto_id}));
+  db.disponibilidades=disps===null?null:disps.map(x=>({id:x.id,eventoId:x.evento_id,atletaId:x.atleta_id,ok:!!x.ok,motivo:x.motivo||''}));
   db.atrasosGestao={}; (atrasosG||[]).forEach(r=>db.atrasosGestao[r.atleta_id]={qtd:Number(r.qtd),total:Number(r.total)});
   db.convocacoes=convs===null?null:convs.map(c=>({id:c.id,titulo:c.titulo,eventoId:c.evento_id,data:c.data?String(c.data):'',dataFim:c.data_fim?String(c.data_fim):'',maxAtletas:c.max_atletas||null,subs:c.substituicoes||[],hora:c.hora||'',local:c.local||'',concentracao:c.concentracao||'',uniforme:c.uniforme||'',obs:c.obs||'',convocados:c.convocados||[],conf:c.confirmacoes||{},status:c.status,criadoPor:c.criado_por||'',quando:c.quando}));
   db.craqueTotais=(craquetotais||[]).map(t=>({eventoId:t.evento_id,votoId:t.voto_id,votos:Number(t.votos)||0}));
@@ -1009,6 +1011,7 @@ function tPainel(){
   ${meusPend.map(u=>`<div class="alertline al-warn sect">👕 Você recebeu <strong>${esc(u.descricao)} nº ${esc(u.numero)}</strong> — <button class="mini gold" onclick="aceitarUniforme('${u.id}')">Ler e aceitar o termo de responsabilidade</button></div>`).join('')}
   ${cardVotacaoCraque()}
   ${cardConvPendente()}
+  ${cardDisponibilidade()}
   ${cardNovidadesTaticas()}
   ${cardAcordos(false)}
   ${cardRankingClube()}
@@ -3431,11 +3434,12 @@ function formConvocacao(id){
       const travado=subState.convSel.has(a.id)&&!marcadoAqui;
       return `<label data-aid="${a.id}" style="display:flex;align-items:center;gap:8px;margin:4px 0;text-transform:none;font-weight:400;font-size:14px;color:var(--ink);${travado?'opacity:.35':''}">
       <input type="checkbox" class="chk_conv" data-aid="${a.id}" value="${a.id}" ${marcadoAqui?'checked':''} ${travado?'disabled':''} onchange="toggleConvPos('${a.id}','${g}',this)" style="width:auto">
-      <span style="flex:1"><strong>${esc(pnome(a.nome))}</strong>${travado?` <span class="mut" style="font-size:10.5px">já convocado como ${subState.convPos[a.id]||grupoPos(a)}</span>`:''}<br>${infoAtletaConv(a)}</span></label>`;}).join('')}</details>`;
+      <span style="flex:1"><strong>${esc(pnome(a.nome))}</strong> <span class="dispb" data-aid="${a.id}"></span>${travado?` <span class="mut" style="font-size:10.5px">já convocado como ${subState.convPos[a.id]||grupoPos(a)}</span>`:''}<br>${infoAtletaConv(a)}</span></label>`;}).join('')}</details>`;
   }).join('');
   modal(`<h2>${c?'✏️ Editar':'📣 Nova'} convocação</h2>
   <label>Campeonato / jogo *</label><input id="cv_tit" value="${c?esc(c.titulo):''}" placeholder="Ex.: Copa OAB 2026 — 1ª fase">
-  ${futuros.length?`<label>Vincular a um evento da agenda (opcional)</label><select id="cv_ev"><option value="">— nenhum —</option>${futuros.map(e=>`<option value="${e.id}" ${c&&c.eventoId===e.id?'selected':''}>${dbr(e.data)} — ${esc(e.titulo)}</option>`).join('')}</select>`:'<input type="hidden" id="cv_ev" value="">'}
+  ${futuros.length?`<label>Vincular a um evento da agenda (opcional)</label><select id="cv_ev" onchange="atualizaDispBadges()"><option value="">— nenhum —</option>${futuros.map(e=>`<option value="${e.id}" ${c&&c.eventoId===e.id?'selected':''}>${dbr(e.data)} — ${esc(e.titulo)}</option>`).join('')}</select>
+  <label style="display:flex;align-items:center;gap:6px;margin-top:6px;text-transform:none;font-weight:400;font-size:13px;color:var(--ink)"><input type="checkbox" id="cv_sodisp" onchange="aplicaFiltroDisp()" style="width:auto">🙋 Mostrar só quem se colocou disponível para o evento</label>`:'<input type="hidden" id="cv_ev" value="">'}
   <div class="grid g2">
   <div><label>Início / data do jogo</label><input id="cv_data" type="date" value="${c?c.data:''}"></div>
   <div><label>Fim do campeonato (período)</label><input id="cv_dataf" type="date" value="${c?c.dataFim:''}"></div>
@@ -3456,7 +3460,7 @@ function formConvocacao(id){
     <button onclick="salvaConvocacao('${id||''}',false)">💾 Salvar rascunho</button>
     <button class="gold" onclick="salvaConvocacao('${id||''}',true)">📣 ${c&&c.status==='publicada'?'Salvar e manter publicada':'Publicar agora'}</button>
     <button class="sec" onclick="subState.convBusca='';fecha()">Cancelar</button></div>`);
-  setTimeout(atualizaContConv,0);
+  setTimeout(()=>{atualizaContConv();atualizaDispBadges();},0);
 }
 async function salvaConvocacao(id,publicar){
   const tit=fval('cv_tit'); if(!tit){toast('Dê um nome à convocação (campeonato/jogo)');return;}
@@ -3518,6 +3522,7 @@ function verConvocacao(id){
   ${podeEditar&&c.status!=='encerrada'?`<button class="mini" onclick="fecha();formConvocacao('${c.id}')">✏️ Editar</button>`:''}
   ${podeEditar&&c.status==='rascunho'?`<button class="mini gold" onclick="publicaConvocacao('${c.id}')">📣 Publicar</button>`:''}
   ${c.status!=='rascunho'?`<button class="mini gold" onclick="whatsConvocacao('${c.id}')">📱 WhatsApp</button><button class="mini gold" onclick="pdfConvocacaoEnviar('${c.id}')">📤 Enviar PDF</button><button class="mini sec" onclick="pdfConvocacao('${c.id}')">🖨️ Imprimir</button>`:''}
+  ${podeEditar&&c.status!=='encerrada'?`<button class="mini" onclick="distribuirUniformes('${c.id}')">👕 Distribuir uniformes</button>`:''}
   ${podeEditar&&c.status==='publicada'?`<button class="mini sec" onclick="encerraConvocacao('${c.id}')">🏁 Encerrar</button>`:''}
   ${podeEditar?`<button class="mini bad" onclick="delConvocacao('${c.id}')">🗑</button>`:''}
   <button class="sec" onclick="fecha()">Fechar</button></div>`);
@@ -3641,6 +3646,154 @@ async function pdfConvocacaoEnviar(id){
   L.push(''); L.push(`Belém/PA, ${dbr(hoje())}. — Comissão Técnica ${db.config.time}`);
   const b=genPDF('convocacao.pdf','Convocação — '+c.titulo,L);
   await compartilhaBlob(b,'convocacao-'+c.titulo.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,40)+'.pdf','Convocação — '+c.titulo);
+}
+/* ---- 🙋 Disponibilidade para jogos ---- */
+const dispDe=(evId,atId)=>(db.disponibilidades||[]).find(x=>x.eventoId===evId&&x.atletaId===atId);
+function proximosJogos(n){ return db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.data>=hoje()).sort((a,b)=>a.data.localeCompare(b.data)).slice(0,n||4); }
+function cardDisponibilidade(){
+  if(db.disponibilidades===null)return gestor()?`<div class="card sect"><h2>🙋 Quem vai?</h2><p class="mut">⚠️ Rode o <strong>SQL v27</strong> no Supabase para ativar a disponibilidade.</p></div>`:'';
+  const jogos=proximosJogos(4);
+  if(!jogos.length)return '';
+  const podeResponder=elenco().some(a=>a.id===me.id);
+  return `<div class="card sect" style="border-color:var(--gold)"><h2>🙋 Quem vai? — disponibilidade</h2>
+  <p class="mut" style="margin-top:0;font-size:12.5px">Marque se você pode jogar — o treinador convoca em cima de quem responde.</p>
+  ${jogos.map(e=>{
+    const ds=(db.disponibilidades||[]).filter(x=>x.eventoId===e.id);
+    const sim=ds.filter(x=>x.ok), nao=ds.filter(x=>!x.ok);
+    const semResp=elenco().length-ds.filter(x=>elenco().some(a=>a.id===x.atletaId)).length;
+    const minha=dispDe(e.id,me.id);
+    return `<div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px">
+    <div class="spread"><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}${e.adversario?' vs '+esc(e.adversario):''}</strong><span class="mut" style="font-size:12px">${dbr(e.data)}${e.hora?' · '+esc(e.hora):''}</span></div>
+    ${podeResponder?`<div class="row" style="gap:8px;margin:8px 0 6px">
+      <button class="mini" style="${minha&&minha.ok?'background:var(--ok);border-color:var(--ok)':'background:var(--ok-soft);color:var(--ok);border:1px solid var(--ok)'}" onclick="marcaDisp('${e.id}',true)">🙋 Estou disponível${minha&&minha.ok?' ✓':''}</button>
+      <button class="mini ${minha&&!minha.ok?'bad':'sec'}" onclick="marcaDisp('${e.id}',false)">❌ Não posso${minha&&!minha.ok?' ✓':''}</button></div>`:''}
+    <details><summary class="mut" style="cursor:pointer;font-size:12px"><span class="pill p-ok">🙋 ${sim.length}</span> <span class="pill p-bad">❌ ${nao.length}</span> <span class="pill p-mut">⏳ ${Math.max(0,semResp)} sem resposta</span> — ver nomes ${me.role==='diretoria'?`<button class="mini sec" style="margin-left:6px" onclick="event.preventDefault();marcaDispPor('${e.id}')">✏️ marcar por atleta</button>`:''}</summary>
+      ${sim.length?`<p style="font-size:12.5px;margin:6px 0 0">🙋 ${sim.map(x=>esc(pnome(nomeAt(x.atletaId)))).join(', ')}</p>`:''}
+      ${nao.length?`<p style="font-size:12.5px;margin:4px 0 0">❌ ${nao.map(x=>esc(pnome(nomeAt(x.atletaId)))+(gestor()&&x.motivo?' ('+esc(x.motivo)+')':'')).join(', ')}</p>`:''}
+    </details></div>`;}).join('')}</div>`;
+}
+async function marcaDisp(evId,ok){
+  if(!ok){
+    modal(`<h2>❌ Não vou poder</h2><label>Motivo (opcional — só a comissão vê)</label><input id="dp_motivo" placeholder="Ex.: plantão, viagem…">
+    <div class="row" style="margin-top:12px"><button class="bad" onclick="marcaDispGo('${evId}',false,fval('dp_motivo'))">Confirmar</button><button class="sec" onclick="fecha()">Voltar</button></div>`);
+    return;
+  }
+  marcaDispGo(evId,true,'');
+}
+async function marcaDispGo(evId,ok,motivo,atId){
+  const alvo=atId||me.id;
+  const {error}=await sb.from('disponibilidades').upsert({evento_id:evId,atleta_id:alvo,ok,motivo:motivo||''},{onConflict:'evento_id,atleta_id'});
+  if(error){toast('⚠️ '+(/disponibilidades|schema cache/.test(error.message||'')?'Rode o SQL v27 no Supabase':error.message));return;}
+  if(alvo!==me.id)log('agenda',`Disponibilidade de ${nomeAt(alvo)} marcada pela diretoria (${me.nome}): ${ok?'disponível':'não pode'}${motivo?' — '+motivo:''}`);
+  fecha(); await recarrega(); toast(alvo!==me.id?`✔ Registrado por ${pnome(nomeAt(alvo))}`:(ok?'🙋 Disponibilidade confirmada — bora!':'Registrado — o treinador fica sabendo'));
+}
+function marcaDispPor(evId){
+  const sem=elenco().filter(a=>!dispDe(evId,a.id));
+  const resto=elenco().filter(a=>dispDe(evId,a.id));
+  modal(`<h2>✏️ Marcar disponibilidade por um atleta</h2>
+  <p class="mut">Para quem confirmou por fora (WhatsApp, ligação) e não marcou no app. Fica registrado que foi a diretoria quem marcou.</p>
+  <label>Atleta</label><select id="mp_at">
+    ${sem.length?`<optgroup label="⏳ Sem resposta">${sem.map(a=>`<option value="${a.id}">${esc(pnome(a.nome))}</option>`).join('')}</optgroup>`:''}
+    ${resto.length?`<optgroup label="Já responderam (sobrescrever)">${resto.map(a=>{const d=dispDe(evId,a.id);return `<option value="${a.id}">${esc(pnome(a.nome))} (${d.ok?'🙋':'❌'})</option>`;}).join('')}</optgroup>`:''}
+  </select>
+  <label>Motivo (se não puder — opcional)</label><input id="mp_motivo" placeholder="Ex.: plantão">
+  <div class="row" style="margin-top:12px">
+  <button style="background:var(--ok)" onclick="marcaDispGo('${evId}',true,'',fval('mp_at'))">🙋 Disponível</button>
+  <button class="bad" onclick="marcaDispGo('${evId}',false,fval('mp_motivo'),fval('mp_at'))">❌ Não pode</button>
+  <button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+function atualizaDispBadges(){
+  const ev=fval('cv_ev')||'';
+  document.querySelectorAll('span.dispb').forEach(sp=>{
+    const d=ev?dispDe(ev,sp.dataset.aid):null;
+    sp.innerHTML=!ev?'':(d?(d.ok?'<span class="pill p-ok" style="font-size:10px">🙋 disponível</span>':'<span class="pill p-bad" style="font-size:10px">❌ não pode</span>'):'<span class="pill p-mut" style="font-size:10px">⏳ sem resposta</span>');
+  });
+  aplicaFiltroDisp();
+}
+function aplicaFiltroDisp(){
+  const chk=document.getElementById('cv_sodisp'); const ev=fval('cv_ev')||'';
+  const on=chk&&chk.checked&&ev;
+  document.querySelectorAll('label[data-aid]').forEach(l=>{
+    if(l.querySelector('input.chk_conv')){ const d=on?dispDe(ev,l.dataset.aid):null; l.style.display=(on&&!(d&&d.ok))?'none':''; }
+  });
+}
+
+/* ---- 👕 Distribuição automática de uniformes ---- */
+const NUM_SETOR={ZAG:[3,4],ALA:[2,6,7],VOL:[5,8],MEI:[10],ATA:[9,11]};
+function distribuirUniformes(convId){
+  const c=convDe(convId); if(!c||!c.convocados.length){toast('Convocação sem atletas');return;}
+  const modelos=[...new Set(db.uniformes.map(u=>u.descricao))];
+  if(!modelos.length){toast('Nenhum uniforme cadastrado');return;}
+  modal(`<h2>👕 Distribuir uniformes — ${esc(c.titulo)}</h2>
+  <label>Modelo do uniforme</label><select id="du_modelo">${modelos.map(m=>`<option>${esc(m)}</option>`).join('')}</select>
+  <p class="mut" style="font-size:12px">O sistema propõe um número para cada convocado respeitando a posição (ZAG 3-4 · ALA 2, 6, 7 · VOL 5, 8 · MEI 10 · ATA 9, 11 · 🧤 goleiro nos números de goleiro · demais números livres). Você confere e ajusta antes de aplicar.</p>
+  <div class="row" style="margin-top:12px"><button class="gold" onclick="montaDistribuicao('${convId}')">Montar proposta</button><button class="sec" onclick="verConvocacao('${convId}')">Voltar</button></div>`);
+}
+function montaDistribuicao(convId){
+  const c=convDe(convId); const modelo=fval('du_modelo');
+  const doModelo=db.uniformes.filter(u=>u.descricao===modelo);
+  const temEstoque=u=>Object.values(u.pecas||{}).some(v=>v==='estoque');
+  const completo=u=>['camisa','short'].every(k=>(u.pecas||{})[k]==='estoque');
+  const livres=doModelo.filter(u=>!u.atletaId&&!u.convidado&&temEstoque(u));
+  const usados=new Set(); const props=[];
+  const ordemPos={GOL:0,ZAG:1,ALA:2,VOL:3,MEI:4,ATA:5,JOG:6};
+  const convocados=[...c.convocados].sort((a,b)=>(ordemPos[a.posicao]??9)-(ordemPos[b.posicao]??9));
+  const setorNums=pos=>NUM_SETOR[pos]||[];
+  const numLivreDe=lista=>livres.filter(u=>!usados.has(u.id)&&!u.goleiro&&lista.includes(Number(u.numero))).sort((a,b)=>Number(completo(b))-Number(completo(a)))[0];
+  const numNeutro=()=>livres.filter(u=>!usados.has(u.id)&&!u.goleiro&&!Object.values(NUM_SETOR).some(l=>l.includes(Number(u.numero)))).sort((a,b)=>Number(completo(b))-Number(completo(a))||Number(a.numero)-Number(b.numero))[0];
+  const qualquer=()=>livres.filter(u=>!usados.has(u.id)&&!u.goleiro).sort((a,b)=>Number(completo(b))-Number(completo(a))||Number(a.numero)-Number(b.numero))[0];
+  convocados.forEach(cv=>{
+    const a=at(cv.atletaId); if(!a)return;
+    const jaTem=doModelo.find(u=>u.atletaId===cv.atletaId);
+    if(jaTem){ usados.add(jaTem.id); props.push({aid:cv.atletaId,pos:cv.posicao,uId:jaTem.id,obs:'já está com ele ✔'}); return; }
+    let u=null,obs='';
+    if(cv.posicao==='GOL'){
+      u=livres.filter(x=>!usados.has(x.id)&&x.goleiro).sort((a2,b2)=>Number(completo(b2))-Number(completo(a2)))[0];
+      if(!u){ u=qualquer(); obs='⚠️ sem uniforme de goleiro livre'; }
+    } else {
+      u=numLivreDe(setorNums(cv.posicao))||numNeutro();
+      if(!u){ u=qualquer(); if(u)obs='⚠️ número de outro setor'; }
+    }
+    if(u){ usados.add(u.id); props.push({aid:cv.atletaId,pos:cv.posicao,uId:u.id,obs}); }
+    else props.push({aid:cv.atletaId,pos:cv.posicao,uId:'',obs:'❌ sem número livre'});
+  });
+  window._distProps={convId,modelo,props};
+  const opcoes=uSel=>doModelo.filter(u=>(!u.atletaId&&!u.convidado&&temEstoque(u))||u.id===uSel)
+    .sort((a,b)=>Number(a.numero)-Number(b.numero))
+    .map(u=>`<option value="${u.id}" ${u.id===uSel?'selected':''}>${u.goleiro?'🧤 ':''}nº ${esc(u.numero)} (${Object.entries(u.pecas||{}).filter(([,v])=>v==='estoque').map(([k])=>PECAS_EMO[k]).join('')||'—'})</option>`).join('');
+  modal(`<h2>👕 Proposta — ${esc(modelo)}</h2>
+  <p class="mut" style="margin-top:0;font-size:12px">Confira e ajuste; ao aplicar, cada atleta recebe as peças em estoque do número e o termo de aceite no app.</p>
+  <div style="max-height:50vh;overflow-y:auto">
+  ${window._distProps.props.map((pr,i)=>`<div class="alertline" style="background:var(--bg);padding:6px 10px;flex-wrap:wrap">
+    <div style="flex:1;min-width:150px"><strong>${esc(pnome(nomeAt(pr.aid)))}</strong> <span class="pill p-mut" style="font-size:10px">${pr.pos}</span>${pr.obs?`<div class="mut" style="font-size:11px">${pr.obs}</div>`:''}</div>
+    <select class="sel_dist" data-i="${i}" style="max-width:180px">${pr.uId?opcoes(pr.uId):'<option value="">— sem número —</option>'+opcoes('')}</select></div>`).join('')}
+  </div>
+  <div class="row" style="margin-top:12px"><button class="gold" onclick="aplicaDistribuicao()">✅ Aplicar e entregar (com termo)</button><button class="sec" onclick="distribuirUniformes('${convId}')">← Voltar</button></div>`);
+}
+async function aplicaDistribuicao(){
+  const D=window._distProps; if(!D)return;
+  document.querySelectorAll('.sel_dist').forEach(sl=>{ D.props[Number(sl.dataset.i)].uId=sl.value; });
+  const vistos=new Set();
+  for(const pr of D.props){ if(!pr.uId)continue;
+    if(vistos.has(pr.uId)){toast('⚠️ O mesmo número foi escolhido para duas pessoas — ajuste antes de aplicar');return;}
+    vistos.add(pr.uId); }
+  let n=0;
+  for(const pr of D.props){
+    if(!pr.uId)continue;
+    const u=byId(db.uniformes,pr.uId);
+    if(u.atletaId===pr.aid)continue; // já estava com ele
+    const pecas={...u.pecas}; let mudou=false;
+    Object.keys(pecas).forEach(k=>{ if(pecas[k]==='estoque'){pecas[k]='pendente';mudou=true;} });
+    if(!mudou)continue;
+    await q(sb.from('uniformes').update({status:'pendente',atleta_id:pr.aid,convidado:'',entregue_em:agora(),pecas}).eq('id',pr.uId));
+    n++;
+  }
+  const c=convDe(D.convId);
+  log('uniforme',`👕 Distribuição automática (${D.modelo}) na convocação "${c?c.titulo:''}": ${n} entrega(s)`);
+  enviarPush('👕 '+db.config.time,'Uniformes distribuídos para '+(c?c.titulo:'o jogo')+' — aceite o termo no app');
+  await recarrega(); toast(`👕 ${n} entrega(s) registradas — aguardando aceite`);
+  const linhas=D.props.filter(pr=>pr.uId).map(pr=>{const u=byId(db.uniformes,pr.uId);return `nº ${u.numero}${u.goleiro?' 🧤':''} — ${pnome(nomeAt(pr.aid))} (${pr.pos})`;}).sort((a,b)=>Number(a.match(/\d+/)[0])-Number(b.match(/\d+/)[0]));
+  modalWhats('Uniformes do jogo',`👕 *UNIFORMES — ${c?c.titulo:''}*\n_${D.modelo}_\n\n${linhas.join('\n')}\n\n✅ Aceitem o termo no sistema. Devolução após o jogo. 🤝⚽`);
 }
 function cardConvPendente(){
   if(!db.convocacoes)return '';
@@ -4184,7 +4337,7 @@ async function salvaEvento(id){
   }else{
     await semColuna(dd=>sb.from('eventos').insert(dd));
     log('agenda',`Compromisso criado: ${t} (${dbr(d)})`);
-    enviarPush('🗓️ '+db.config.time+' — novo compromisso',`${t} — ${dbr(d)} às ${fval('e_hora')||'19:00'}`);
+    enviarPush('🗓️ '+db.config.time+' — novo compromisso',`${t} — ${dbr(d)} às ${fval('e_hora')||'19:00'}`+ (ehJogoTipo(fval('e_tipo'))?' — marque sua disponibilidade no app! 🙋':''));
     toast('Compromisso criado');
   }
   fecha(); await recarrega();
@@ -7836,6 +7989,7 @@ function tMeu(){
   ${prox.length?`<button class="sec mini" onclick="baixarICS(db.eventos.filter(e=>e.data>=hoje()),'agenda-oabmaster.ics')">📅 Agenda completa (.ics)</button>`:''}</div>
   ${cardVotacaoCraque()}
   ${cardConvPendente()}
+  ${cardDisponibilidade()}
   ${cardNovidadesTaticas()}
   ${cardAcordos(true)}
   ${cardMeusPontos()}
