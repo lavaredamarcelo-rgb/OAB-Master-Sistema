@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='28/09 · estatísticas sincronizadas';
+const BUILD='28/09b · aniversários e oficiais em destaque';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -335,7 +335,7 @@ function baixar(nome,conteudo,mime){
 function log(tipo,texto){ sb.from('logs').insert({tipo,texto,quem:me?me.nome:'sistema'}).then(()=>{}); }
 
 /* ================= CARREGAMENTO ================= */
-function mapAtleta(r){ return {id:r.id,nome:r.nome,apelido:r.apelido||'',fone:r.fone,email:r.email,oab:r.oab,posicao:r.posicao,role:r.role,ativo:r.ativo,pendente:!r.aprovado,fundador:!!r.fundador,cargo:r.cargo||'',cadastroManual:!!r.cadastro_manual,isentoMens:!!r.isento_mensalidade,fotoUrl:r.foto_url||'',
+function mapAtleta(r){ return {id:r.id,nome:r.nome,apelido:r.apelido||'',nascimento:r.nascimento?String(r.nascimento):'',fone:r.fone,email:r.email,oab:r.oab,posicao:r.posicao,role:r.role,ativo:r.ativo,pendente:!r.aprovado,fundador:!!r.fundador,cargo:r.cargo||'',cadastroManual:!!r.cadastro_manual,isentoMens:!!r.isento_mensalidade,fotoUrl:r.foto_url||'',
   consent:{aceito:r.consent_status==='aceito',recusado:r.consent_status==='recusado',revogado:r.consent_status==='revogado',quando:fdt(r.consent_quando),versao:r.consent_versao||TERMO_LGPD_V},saude:{}}; }
 async function carregaTudo(){
   const [perfis,saude,eventos,presencas,cobrancas,avaliacoes,metas,stats,uniformes,inventario,tn,te,docsAll,logs,tarefas,cfg,lotes,balancorec,unifhist,craquevotos,craquetotais,convs,atrasosG,disps]=await Promise.all([
@@ -1009,9 +1009,11 @@ function tPainel(){
   const meusPend=db.uniformes.filter(u=>u.atletaId===me.id&&u.status==='pendente');
   return `${bannerNotif()}
   ${meusPend.map(u=>`<div class="alertline al-warn sect">👕 Você recebeu <strong>${esc(u.descricao)} nº ${esc(u.numero)}</strong> — <button class="mini gold" onclick="aceitarUniforme('${u.id}')">Ler e aceitar o termo de responsabilidade</button></div>`).join('')}
+  ${bannerMeuAniversario()}
   ${cardVotacaoCraque()}
   ${cardConvPendente()}
   ${cardDisponibilidade()}
+  ${cardAniversarios()}
   ${cardNovidadesTaticas()}
   ${cardAcordos(false)}
   ${cardRankingClube()}
@@ -1487,6 +1489,18 @@ function formApelido(){
   <label>Nome de exibição</label><input id="ap_nome" value="${esc(me.apelido||'')}" maxlength="25" placeholder="Ex.: Marcelão, J. Silva, Careca…">
   <div class="row" style="margin-top:14px"><button onclick="salvaApelido()">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
 }
+function formMeuNiver(){
+  modal(`<h2>🎂 Meu aniversário</h2>
+  <p class="mut">Para o time te dar os parabéns no dia — aparece para todos no card de aniversariantes.</p>
+  <label>Data de nascimento</label><input id="mn_data" type="date" value="${me.nascimento||''}">
+  <div class="row" style="margin-top:12px"><button onclick="salvaMeuNiver()">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+async function salvaMeuNiver(){
+  const d=fval('mn_data'); if(!d){toast('Escolha a data');return;}
+  const {error}=await sb.from('perfis').update({nascimento:d}).eq('id',me.id);
+  if(error){toast('⚠️ '+(/nascimento/.test(error.message||'')?'Rode o SQL v28 no Supabase':error.message));return;}
+  me.nascimento=d; fecha(); await recarrega(); toast('🎂 Aniversário salvo!');
+}
 async function salvaApelido(){
   const ap=fval('ap_nome')||'';
   const {error}=await sb.from('perfis').update({apelido:ap}).eq('id',me.id);
@@ -1537,6 +1551,7 @@ function formAtleta(id){
   <div class="row" style="gap:6px;width:100%;margin-top:6px"><select id="a_vincconv" style="flex:1;max-width:260px">${nomesConv.map(n=>`<option>${esc(n)}</option>`).join('')}</select>
   <button class="mini" onclick="vincularConvidado('${id}',fval('a_vincconv'))">🎟️ Puxar lançamentos</button></div></div>`:''}
   <label>Nome completo</label><input id="a_nome" value="${esc(a.nome)}">
+  <div><label>🎂 Data de nascimento</label><input id="a_nasc" type="date" value="${a.nascimento||''}"></div>
   <label>Como quer ser chamado(a) — nome de exibição (opcional)</label><input id="a_apelido" value="${esc(a.apelido||'')}" placeholder="Ex.: Marcelão, J. Silva, Careca… (vazio = automático)">
   <div class="grid g2">
   <div><label>WhatsApp (com DDD)</label><input id="a_fone" value="${esc(a.fone)}"></div>
@@ -1595,10 +1610,11 @@ async function salvaAtleta(id){
   const nome=fval('a_nome'); if(!nome){toast('Informe o nome');return;}
   const a=at(id);
   const isento=$('a_isento')?$('a_isento').checked:false;
-  const patch={nome,apelido:fval('a_apelido')||'',fone:fval('a_fone'),oab:fval('a_oab'),posicao:fval('a_pos'),cargo:fval('a_cargo'),isento_mensalidade:isento};
+  const patch={nome,apelido:fval('a_apelido')||'',nascimento:fval('a_nasc')||null,fone:fval('a_fone'),oab:fval('a_oab'),posicao:fval('a_pos'),cargo:fval('a_cargo'),isento_mensalidade:isento};
   const travaDir=a.role==='diretoria'&&!me.fundador;
   if(!travaDir){ patch.role=fval('a_role')||a.role; patch.ativo=$('a_ativo').checked; }
   let {error}=await sb.from('perfis').update(patch).eq('id',id);
+  if(error&&/nascimento/.test(error.message||'')){ delete patch.nascimento; const rz=await sb.from('perfis').update(patch).eq('id',id); error=rz.error; if(!error)toast('⚠️ Salvo sem o aniversário — rode o SQL v28'); }
   if(error&&/apelido/.test(error.message||'')){
     delete patch.apelido;
     const {error:e2}=await sb.from('perfis').update(patch).eq('id',id);
@@ -3096,7 +3112,7 @@ function pdfTotaisTemporada(){
   const tabDisciplina=`<table><tr><th>Atleta</th><th>❌ P. errados</th><th>🔄 B. perdidas</th><th>🚫 Faltas</th><th>🟨</th><th>🟥</th><th>😖 Pên. perd.</th><th>🎁 Pên. com.</th><th>🔴 G. contra</th></tr>
   ${LE.map(([id,a])=>`<tr><td><strong>${esc(pnome(nomeAt(id)))}</strong></td><td>${a.pe}</td><td>${a.bp}</td><td>${a.fc}</td><td>${a.ca}</td><td>${a.cv}</td><td>${a.pp}</td><td>${a.pc}</td><td>${a.gco}</td></tr>`).join('')}</table>`;
   // ===== Por categoria (resumo compacto) =====
-  const catSec=[['jogo','🏆 Jogos oficiais'],['amistoso','🤝 Amistosos']].map(([cat,tit])=>{
+  const catSec=[['amistoso','🤝 Amistosos']].map(([cat,tit])=>{
     const A=aggCat(cat); const l=ordena(A,a=>a.g); if(!l.length)return '';
     return `<div class="mes"><h2>${tit}</h2><table><tr><th>Atleta</th><th>Part.</th><th>⚽</th><th>🅰️</th><th>🛡️</th><th>🧤</th><th>⭐ Nota</th></tr>
     ${l.map(([id,a])=>`<tr><td><strong>${esc(pnome(nomeAt(id)))}</strong></td><td>${a.j}</td><td>${a.g}</td><td>${a.as}</td><td>${a.des}</td><td>${a.df}</td><td><strong>${media(a).toFixed(1)}</strong></td></tr>`).join('')}</table></div>`;
@@ -3141,6 +3157,20 @@ function pdfTotaisTemporada(){
   ${golsCat.map(c=>`<tr><td><strong>${c.lb}</strong></td><td>${c.n}</td><td>${c.v}V · ${c.em}E · ${c.d}D</td><td class="ok">${c.gp}</td><td class="bad">${c.gc}</td><td class="${c.gp-c.gc>=0?'ok':'bad'}"><strong>${c.gp-c.gc>=0?'+':''}${c.gp-c.gc}</strong></td></tr>`).join('')}</table>`:''}
   ${ttKeys.length?`<h2>📊 O Time — estatísticas coletivas registradas</h2>
   <div style="margin:8px 0">${ttKeys.map(([k,ic,lb])=>barra(ic+' '+lb,timeTot[k],ttMax,'#8a1f2f')).join('')}</div>`:''}
+  ${(()=>{const A=aggCat('jogo'); const lJ=ordena(A,a=>media(a)); if(!lJ.length)return '';
+    const jpO=jp.filter(e=>(e.tipo==='treino_amistoso'?'amistoso':(e.tipo==='campeonato'?'jogo':e.tipo))==='jogo');
+    const vO=jpO.filter(e=>e.placarNos>e.placarDeles).length,eO=jpO.filter(e=>e.placarNos===e.placarDeles).length,dO=jpO.filter(e=>e.placarNos<e.placarDeles).length;
+    return `<h2 style="page-break-before:always">🏆 JOGOS OFICIAIS — em destaque</h2>
+    ${jpO.length?`<div class="cards">
+      <div class="card"><div class="n">${jpO.length}</div><div class="l">Oficiais c/ placar</div></div>
+      <div class="card"><div class="n">${vO}V · ${eO}E · ${dO}D</div><div class="l">Campanha</div></div>
+      <div class="card"><div class="n ok">${jpO.reduce((x2,e)=>x2+e.placarNos,0)}</div><div class="l">Gols pró</div></div>
+      <div class="card"><div class="n bad">${jpO.reduce((x2,e)=>x2+e.placarDeles,0)}</div><div class="l">Gols contra</div></div>
+      <div class="card"><div class="n ${jpO.length&&vO/jpO.length>=.5?'ok':'warn'}">${Math.round(vO/jpO.length*100)}%</div><div class="l">Aproveitamento</div></div>
+    </div>`:''}
+    <table><tr><th>#</th><th>Atleta</th><th>Part.</th><th>⭐ Nota</th><th>⚽</th><th>🅰️</th><th>🛡️</th><th>⚔️</th><th>🧤</th><th>🚫</th><th>🟨</th></tr>
+    ${lJ.map(([id,a],i)=>`<tr><td>${i+1}º</td><td><strong>${esc(pnome(nomeAt(id)))}</strong></td><td>${a.j}</td><td><strong>${a.notas.length?media(a).toFixed(1):'—'}</strong></td><td>${a.g}</td><td>${a.as}</td><td>${a.des}</td><td>${a.due}</td><td>${a.df}</td><td>${a.fc}</td><td>${a.ca}</td></tr>`).join('')}</table>
+    <h2>🌐 Temporada completa (oficiais + amistosos)</h2>`;})()}
   ${golsChart?`<h2>⚽ Artilharia — quem balançou a rede</h2><div style="margin:8px 0">${golsChart}</div>`:''}
   ${secCraques}
   <div class="mes"><h2>⭐ Elenco completo — nota e overall</h2>${tabElenco}</div>
@@ -3747,6 +3777,83 @@ async function pdfConvocacaoEnviar(id){
 /* ---- 🙋 Disponibilidade para jogos ---- */
 const dispDe=(evId,atId)=>(db.disponibilidades||[]).find(x=>x.eventoId===evId&&x.atletaId===atId);
 function proximosJogos(n){ return db.eventos.filter(e=>ehJogoTipo(e.tipo)&&e.data>=hoje()).sort((a,b)=>a.data.localeCompare(b.data)).slice(0,n||4); }
+/* ---- 🎂 Aniversários ---- */
+function idadeEm(nasc,data){ const n=new Date(nasc+'T12:00'); const d=new Date(data+'T12:00'); let i=d.getFullYear()-n.getFullYear(); const m=d.getMonth()-n.getMonth(); if(m<0||(m===0&&d.getDate()<n.getDate()))i--; return i; }
+function aniversariantes(dias){
+  dias=dias===undefined?7:dias;
+  const hj=new Date(hoje()+'T12:00');
+  return db.atletas.filter(a=>a.ativo&&!a.pendente&&a.nascimento).map(a=>{
+    const n=new Date(a.nascimento+'T12:00');
+    let prox=new Date(hj.getFullYear(),n.getMonth(),n.getDate(),12);
+    if(prox<new Date(hj.getFullYear(),hj.getMonth(),hj.getDate()))prox=new Date(hj.getFullYear()+1,n.getMonth(),n.getDate(),12);
+    const falta=Math.round((prox-new Date(hj.getFullYear(),hj.getMonth(),hj.getDate(),12))/86400000);
+    return {a,falta,dia:String(prox.getDate()).padStart(2,'0')+'/'+String(prox.getMonth()+1).padStart(2,'0'),idadeNova:idadeEm(a.nascimento,prox.toISOString().slice(0,10))};
+  }).filter(x=>x.falta<=dias).sort((x,y)=>x.falta-y.falta||x.a.nome.localeCompare(y.a.nome));
+}
+function cardAniversarios(){
+  const lista=aniversariantes(7);
+  if(!lista.length)return '';
+  const hojeL=lista.filter(x=>x.falta===0), prox=lista.filter(x=>x.falta>0);
+  return `<div class="card sect" style="border-color:var(--gold)${hojeL.length?';background:var(--gold-soft)':''}"><h2>🎂 Aniversariantes</h2>
+  ${hojeL.map(x=>`<div class="alertline" style="background:var(--card);border:1px solid var(--gold);align-items:center">
+    <span style="font-size:26px">🎉</span>
+    <div style="flex:1"><strong>HOJE é aniversário de ${esc(pnome(x.a.nome))}!</strong> <span class="mut">${x.idadeNova} anos${x.a.role!=='atleta'&&x.a.role!=='diretoria'?' · '+ROLES[x.a.role]:''}</span></div>
+    ${gestor()?`<button class="mini gold" onclick="arteAniversario('${x.a.id}')">🎨 Arte p/ grupo</button>`:''}
+    ${x.a.fone?`<a class="mini sec" style="padding:4px 10px;border:1px solid var(--line);border-radius:7px;text-decoration:none" href="${waLink(x.a.fone,'🎂🎉 Parabéns, '+pnome(x.a.nome)+'! O '+db.config.time+' te deseja um ano incrível dentro e fora de campo! 🍀⚽')}" target="_blank" rel="noopener">📱</a>`:''}</div>`).join('')}
+  ${prox.length?`<p class="mut" style="font-size:12.5px;margin:${hojeL.length?'8px':'0'} 0 0">📅 Próximos: ${prox.map(x=>`<strong>${esc(pnome(x.a.nome))}</strong> (${x.dia}${x.falta===1?' — amanhã!':''})`).join(' · ')}</p>`:''}</div>`;
+}
+function bannerMeuAniversario(){
+  const eu=aniversariantes(0).find(x=>x.a.id===me.id);
+  if(!eu)return '';
+  return `<div class="card sect" style="background:linear-gradient(135deg,var(--gold-soft),#fff);border:2px solid var(--gold);text-align:center;padding:22px">
+    <div style="font-size:40px">🎂🎉</div>
+    <h2 style="margin:6px 0">Feliz aniversário, ${esc(pnome(me.nome))}!</h2>
+    <p class="mut" style="margin:0">${eu.idadeNova} anos hoje — o ${esc(db.config.time)} inteiro te deseja saúde, gols e muitas vitórias! 🍀⚽</p></div>`;
+}
+async function geraArteAniversario(atId){
+  const a=at(atId); if(!a)return null;
+  const ev=aniversariantes(370).find(x=>x.a.id===atId);
+  const [escImg,fotoImg]=await Promise.all([carrImg('escudo-t.png'),a.fotoUrl?carrImg(a.fotoUrl,true):Promise.resolve(null)]);
+  const W=1080,H=1350, cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
+  const g=x.createLinearGradient(0,0,W*.4,H); g.addColorStop(0,'#8a1f2f'); g.addColorStop(.55,'#511219'); g.addColorStop(1,'#1C2F5A'); x.fillStyle=g; x.fillRect(0,0,W,H);
+  x.save(); x.translate(W/2,H/2); x.rotate(-.55); for(let i=-1600;i<1600;i+=64){ x.fillStyle='rgba(255,255,255,.05)'; x.fillRect(i,-1600,8,3200); } x.restore();
+  const fg=x.createLinearGradient(0,0,W,H); fg.addColorStop(0,'#fff0b8'); fg.addColorStop(.5,'#e9bc2a'); fg.addColorStop(1,'#a87c12');
+  x.globalAlpha=.9; x.fillStyle=fg;
+  [[860,0,1080,0,1080,150,980,190],[0,220,120,180,90,330,0,360],[1000,560,1080,520,1080,680],[0,900,90,860,60,1010,0,1040],[880,1240,1080,1180,1080,1350,920,1350]].forEach(pg=>{x.beginPath();for(let i=0;i<pg.length;i+=2){i?x.lineTo(pg[i],pg[i+1]):x.moveTo(pg[i],pg[i+1]);}x.closePath();x.fill();});
+  x.globalAlpha=1;
+  if(escImg){const h2=150,w2=h2*escImg.width/escImg.height;x.drawImage(escImg,W/2-w2/2,56,w2,h2);}
+  x.textAlign='center'; x.fillStyle='#f3d27a';
+  x.font='800 44px Helvetica'; x.fillText((db.config.time||'').toUpperCase(),W/2,268);
+  const cx=W/2, cy=600, r=230;
+  x.save(); x.beginPath(); x.arc(cx,cy,r,0,7); x.closePath(); x.fillStyle='#fff'; x.fill(); x.clip();
+  if(fotoImg){const sc=Math.max(r*2/fotoImg.width,r*2/fotoImg.height);const w2=fotoImg.width*sc,h2=fotoImg.height*sc;x.drawImage(fotoImg,cx-w2/2,cy-h2/2,w2,h2);}
+  else{x.fillStyle='#a08c4a';x.font='800 170px Helvetica';x.textBaseline='middle';x.fillText(ini(a.nome),cx,cy);x.textBaseline='alphabetic';}
+  x.restore();
+  x.lineWidth=14; x.strokeStyle='#F2C11E'; x.beginPath(); x.arc(cx,cy,r+8,0,7); x.stroke();
+  x.font='120px Helvetica'; x.fillText('🎂',cx+r-40,cy-r+70);
+  x.fillStyle='#F2C11E'; x.font='900 92px Helvetica'; x.fillText('FELIZ ANIVERSÁRIO!',W/2,950);
+  x.fillStyle='#fff';
+  let fs=72; const nome=pnome(a.nome).toUpperCase(); x.font='900 '+fs+'px Helvetica';
+  while(x.measureText(nome).width>W-120&&fs>40){fs--;x.font='900 '+fs+'px Helvetica';}
+  x.fillText(nome,W/2,1050);
+  x.fillStyle='#f3d27a'; x.font='700 46px Helvetica';
+  x.fillText(`${ev?ev.idadeNova+' anos · ':''}${ev?ev.dia:''}${a.role!=='atleta'&&a.role!=='diretoria'?' · '+ROLES[a.role]:''}`,W/2,1120);
+  x.globalAlpha=.85; x.font='600 34px Helvetica';
+  x.fillText('Saúde, gols e vitórias dentro e fora de campo! 🍀⚽',W/2,1210); x.globalAlpha=1;
+  return await new Promise(res=>cv.toBlob(res,'image/png'));
+}
+async function arteAniversario(atId){
+  toast('🎨 Gerando a arte…');
+  const b=await geraArteAniversario(atId); if(!b){toast('⚠️ Não consegui gerar');return;}
+  const url=URL.createObjectURL(b); window._arteNiver=b;
+  const a=at(atId);
+  modal(`<h2>🎂 Arte de aniversário — ${esc(pnome(a.nome))}</h2>
+  <img src="${url}" style="width:100%;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.25)">
+  <div class="row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
+    <button class="mini gold" onclick="compartilhaBlob(window._arteNiver,'aniversario-${pnome(a.nome).toLowerCase().replace(/\s+/g,'-')}.png','🎂 '+db.config.time)">📤 Enviar (WhatsApp)</button>
+    <button class="mini gold" onclick="baixar('aniversario-${pnome(a.nome).toLowerCase().replace(/\s+/g,'-')}.png',window._arteNiver,'image/png')">⬇ Baixar</button>
+    <button class="sec" onclick="fecha()">Fechar</button></div>`);
+}
 function cardDisponibilidade(){
   if(db.disponibilidades===null)return gestor()?`<div class="card sect"><h2>🙋 Quem vai?</h2><p class="mut">⚠️ Rode o <strong>SQL v27</strong> no Supabase para ativar a disponibilidade.</p></div>`:'';
   const jogos=proximosJogos(4);
@@ -8084,9 +8191,11 @@ function tMeu(){
   ${prox.length?prox.map(e=>`<div class="alertline" style="background:var(--blue-soft)"><div style="flex:1"><strong>${tipoEvIco(e.tipo)} ${esc(e.titulo)}</strong><div class="mut">${dbr(e.data)}${e.dataFim?' até '+dbr(e.dataFim):''} às ${esc(e.hora)}${e.horaFim?'–'+esc(e.horaFim):''} — ${e.local?`<a href="${mapsLink(e.local)}" target="_blank" rel="noopener">📍 ${esc(e.local)}</a>`:''}${e.obs?' · '+esc(e.obs):''}</div></div>
     <button class="mini" onclick="modalCal('${e.id}')">📅 Pôr no calendário</button></div>`).join(''):'<p class="mut">Nada agendado por enquanto.</p>'}
   ${prox.length?`<button class="sec mini" onclick="baixarICS(db.eventos.filter(e=>e.data>=hoje()),'agenda-oabmaster.ics')">📅 Agenda completa (.ics)</button>`:''}</div>
+  ${bannerMeuAniversario()}
   ${cardVotacaoCraque()}
   ${cardConvPendente()}
   ${cardDisponibilidade()}
+  ${cardAniversarios()}
   ${cardNovidadesTaticas()}
   ${cardAcordos(true)}
   ${cardMeusPontos()}
@@ -8108,6 +8217,7 @@ function tMeu(){
     <div class="row" style="justify-content:center;margin-top:12px;flex-wrap:wrap">
       <label class="mini sec" style="cursor:pointer;padding:9px 14px;border:1px solid var(--line);border-radius:10px;display:inline-flex;align-items:center;gap:6px">📸 ${me.fotoUrl?'Trocar minha foto':'Enviar minha foto'}<input type="file" accept="image/*" style="display:none" onchange="enviaFotoAtleta('${me.id}',this)"></label>
       <button class="mini sec" onclick="formApelido()">✏️ Como quero ser chamado${me.apelido?': '+esc(me.apelido):''}</button>
+      <button class="mini sec" onclick="formMeuNiver()">🎂 ${me.nascimento?'Aniversário: '+dbr(me.nascimento):'Cadastrar meu aniversário'}</button>
     </div>
     <div class="row" style="justify-content:center;margin-top:8px">
       <button class="mini gold" onclick="baixarCard(me.id)">⬇ Baixar card</button>
