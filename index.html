@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='28/09b · aniversários e oficiais em destaque';
+const BUILD='28/09c · aniversário como pendência';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -929,6 +929,7 @@ function pendencias(a){
   if(db.config.limiteFaltas>0&&f>=db.config.limiteFaltas)P.push({txt:`🚫 ${f} faltas (limite: ${db.config.limiteFaltas})`,tab:'presencas'});
   if(a.role==='atleta'||a.role==='diretoria')db.config.docsObrig.filter(cat=>!db.arquivos.some(d=>d.atletaId===a.id&&d.categoria===cat)).forEach(cat=>P.push({txt:`📁 Enviar documento: ${cat}`,tab:'docs'}));
   db.metas.filter(m=>m.atletaId===a.id&&m.status==='andamento'&&m.prazo&&m.prazo<hoje()).forEach(m=>P.push({txt:`📈 Meta vencida: ${m.desc}`,tab:'avaliacao'}));
+  if(!a.nascimento)P.push({txt:'🎂 Cadastrar sua data de aniversário',tab:'meu'});
   if(!a.consent.aceito&&!a.consent.recusado&&!a.consent.revogado)P.push({txt:'⚖️ Termo LGPD pendente de aceite',tab:'lgpd'});
   if(a.consent.recusado||a.consent.revogado)P.push({txt:'⚖️ Sem consentimento LGPD (recusado/revogado)',tab:'lgpd'});
   db.uniformes.filter(u=>u.atletaId===a.id&&u.status==='pendente').forEach(u=>P.push({txt:`👕 Termo do uniforme nº ${u.numero} aguardando aceite`,tab:'uniformes'}));
