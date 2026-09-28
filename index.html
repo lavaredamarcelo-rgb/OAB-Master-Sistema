@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='28/09c · aniversário como pendência';
+const BUILD='28/09d · aniversários em lote';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -1144,7 +1144,7 @@ function tAtletas(){
   </div>
   <div class="card sect" style="background:var(--blue-soft);border-color:var(--blue)">
   <strong>Como adicionar alguém:</strong> envie o link do sistema + o <strong>código do time</strong> (<code>${esc(db.config.codigo)}</code> — mude em Ajustes). A pessoa cria a própria conta, você aprova aqui e, se for o caso, muda a função dela (treinador, preparador, diretoria) no ✏️ Editar.
-  <div class="row" style="margin-top:12px"><button onclick="formNovoAtletaManual()">➕ Cadastrar atleta manualmente</button><span class="mut" style="font-size:12px">• Preencha os dados agora, vincule ao perfil dele depois que se registrar</span></div></div>
+  <div class="row" style="margin-top:12px"><button onclick="formNovoAtletaManual()">➕ Cadastrar atleta manualmente</button><button class="gold" onclick="cadastroRapidoNiver()">🎂 Aniversários em lote</button><span class="mut" style="font-size:12px">• Preencha os dados agora, vincule ao perfil dele depois que se registrar</span></div></div>
   ${(()=>{
     const manuais=db.atletas.filter(a=>a.cadastroManual&&!a.pendente);
     const nomesConv=[...new Set([...db.cobrancas.map(c=>(c.convidado||'').trim()),...db.presencas.map(pz=>(pz.convidado||'').trim()),...db.stats.map(st=>(st.convidado||'').trim())].filter(Boolean))].sort();
@@ -1489,6 +1489,30 @@ function formApelido(){
   <p class="mut">Esse nome aparece na chamada, nos rankings, no card, nas cobranças — em todo o sistema. Deixe vazio para usar o automático (primeiro nome, com sobrenome se houver xará).</p>
   <label>Nome de exibição</label><input id="ap_nome" value="${esc(me.apelido||'')}" maxlength="25" placeholder="Ex.: Marcelão, J. Silva, Careca…">
   <div class="row" style="margin-top:14px"><button onclick="salvaApelido()">Salvar</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+function cadastroRapidoNiver(){
+  const todos=db.atletas.filter(a=>a.ativo&&!a.pendente).sort((a,b)=>a.nome.localeCompare(b.nome));
+  const sem=todos.filter(a=>!a.nascimento), com=todos.filter(a=>a.nascimento);
+  modal(`<h2>🎂 Aniversários — cadastro em lote</h2>
+  <p class="mut">Preencha o que tiver (pode deixar em branco) e salve tudo de uma vez. Inclui atletas, diretoria e comissão.</p>
+  ${sem.length?`<div style="max-height:48vh;overflow-y:auto">
+  ${sem.map(a=>`<div class="alertline" style="background:var(--bg);padding:6px 10px;align-items:center">
+    <div style="flex:1"><strong>${esc(pnome(a.nome))}</strong>${a.role!=='atleta'&&a.role!=='diretoria'?` <span class="mut" style="font-size:11px">${ROLES[a.role]}</span>`:''}</div>
+    <input type="date" class="inp_niver" data-aid="${a.id}" style="max-width:160px"></div>`).join('')}</div>
+  <div class="row" style="margin-top:12px"><button class="gold" onclick="salvaNiverLote()">💾 Salvar todos os preenchidos</button><button class="sec" onclick="fecha()">Fechar</button></div>`:'<p class="ok"><strong>🎉 Todo mundo já tem aniversário cadastrado!</strong></p><div class="row" style="margin-top:10px"><button class="sec" onclick="fecha()">Fechar</button></div>'}
+  ${com.length?`<details style="margin-top:10px"><summary class="mut" style="cursor:pointer;font-size:12.5px">✅ Já cadastrados (${com.length})</summary>
+  ${com.map(a=>`<p style="font-size:13px;margin:4px 0">🎂 ${esc(pnome(a.nome))} — ${dbr(a.nascimento)}</p>`).join('')}</details>`:''}`);
+}
+async function salvaNiverLote(){
+  const inps=[...document.querySelectorAll('.inp_niver')].filter(i=>i.value);
+  if(!inps.length){toast('Nenhuma data preenchida');return;}
+  let n=0;
+  for(const i of inps){
+    const {error}=await sb.from('perfis').update({nascimento:i.value}).eq('id',i.dataset.aid);
+    if(!error)n++;
+  }
+  log('cadastro',`🎂 Aniversários cadastrados em lote pela diretoria: ${n}`);
+  fecha(); await recarrega(); toast(`🎂 ${n} aniversário(s) salvos!`);
 }
 function formMeuNiver(){
   modal(`<h2>🎂 Meu aniversário</h2>
