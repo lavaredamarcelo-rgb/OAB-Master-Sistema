@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='29/09 · PDF do jogo completo';
+const BUILD='29/09b · relação de disponibilidade';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -3885,6 +3885,39 @@ async function arteAniversario(atId){
     <button class="mini gold" onclick="baixar('aniversario-${pnome(a.nome).toLowerCase().replace(/\s+/g,'-')}.png',window._arteNiver,'image/png')">⬇ Baixar</button>
     <button class="sec" onclick="fecha()">Fechar</button></div>`);
 }
+function dispListas(evId){
+  const ds=(db.disponibilidades||[]).filter(x=>x.eventoId===evId);
+  const sim=ds.filter(x=>x.ok).map(x=>at(x.atletaId)).filter(Boolean).sort((a,b)=>a.nome.localeCompare(b.nome));
+  const nao=ds.filter(x=>!x.ok).map(x=>({a:at(x.atletaId),motivo:x.motivo})).filter(x=>x.a).sort((a,b)=>a.a.nome.localeCompare(b.a.nome));
+  const respondeu=new Set(ds.map(x=>x.atletaId));
+  const sem=elenco().filter(a=>!respondeu.has(a.id)).sort((a,b)=>a.nome.localeCompare(b.nome));
+  return {sim,nao,sem};
+}
+function whatsDisponibilidade(evId){
+  const e=byId(db.eventos,evId); if(!e)return;
+  const {sim,nao,sem}=dispListas(evId);
+  const msg=`🙋 *DISPONIBILIDADE — ${e.titulo.toUpperCase()}${e.adversario?' vs '+e.adversario:''}*\n📅 ${dbr(e.data)}${e.hora?' às '+e.hora:''}${e.local?' · '+e.local:''}\n\n`
+    +`✅ *Disponíveis (${sim.length}):*\n${sim.map(a=>'• '+pnome(a.nome)).join('\n')||'— ninguém ainda'}\n\n`
+    +(nao.length?`❌ *Não podem (${nao.length}):* ${nao.map(x=>pnome(x.a.nome)).join(', ')}\n\n`:'')
+    +(sem.length?`⏳ *Ainda não responderam (${sem.length}):* ${sem.map(a=>pnome(a.nome)).join(', ')}\n\n📲 Marque no sistema → tela inicial → "🙋 Quem vai?"\n🔗 ${location.origin}\n\n`:'')
+    +`Bora, Master! 💪⚽`;
+  modalWhats('Disponibilidade do jogo',msg);
+}
+function pdfDisponibilidade(evId){
+  const e=byId(db.eventos,evId); if(!e)return;
+  const {sim,nao,sem}=dispListas(evId);
+  abreRelatorio(`<h1>🙋 Disponibilidade</h1>
+  <p class="sub">${esc(db.config.time)} — ${esc(e.titulo)}${e.adversario?' vs '+esc(e.adversario):''} · ${dbr(e.data)}${e.hora?' às '+esc(e.hora):''}</p>
+  <div class="cards">
+    <div class="card"><div class="n ok">${sim.length}</div><div class="l">Disponíveis</div></div>
+    <div class="card"><div class="n bad">${nao.length}</div><div class="l">Não podem</div></div>
+    <div class="card"><div class="n warn">${sem.length}</div><div class="l">Sem resposta</div></div>
+  </div>
+  <h2>✅ Disponíveis</h2>${sim.length?`<table><tr><th>#</th><th>Atleta</th><th>Posição</th></tr>${sim.map((a,i)=>`<tr><td>${i+1}</td><td><strong>${esc(a.nome)}</strong></td><td>${esc(a.posicao||'—')}</td></tr>`).join('')}</table>`:'<p class="mut">Ninguém confirmou ainda.</p>'}
+  ${nao.length?`<h2>❌ Não podem</h2><table><tr><th>Atleta</th><th>Motivo</th></tr>${nao.map(x=>`<tr><td>${esc(x.a.nome)}</td><td>${esc(x.motivo||'—')}</td></tr>`).join('')}</table>`:''}
+  ${sem.length?`<h2>⏳ Sem resposta</h2><p>${sem.map(a=>esc(pnome(a.nome))).join(' · ')}</p>`:''}`,
+  `Disponibilidade — ${e.titulo}`);
+}
 function cardDisponibilidade(){
   if(db.disponibilidades===null)return gestor()?`<div class="card sect"><h2>🙋 Quem vai?</h2><p class="mut">⚠️ Rode o <strong>SQL v27</strong> no Supabase para ativar a disponibilidade.</p></div>`:'';
   const jogos=proximosJogos(4);
@@ -3905,7 +3938,8 @@ function cardDisponibilidade(){
     <details><summary class="mut" style="cursor:pointer;font-size:12px"><span class="pill p-ok">🙋 ${sim.length}</span> <span class="pill p-bad">❌ ${nao.length}</span> <span class="pill p-mut">⏳ ${Math.max(0,semResp)} sem resposta</span> — ver nomes ${me.role==='diretoria'?`<button class="mini sec" style="margin-left:6px" onclick="event.preventDefault();marcaDispPor('${e.id}')">✏️ marcar por atleta</button>`:''}</summary>
       ${sim.length?`<p style="font-size:12.5px;margin:6px 0 0">🙋 ${sim.map(x=>esc(pnome(nomeAt(x.atletaId)))).join(', ')}</p>`:''}
       ${nao.length?`<p style="font-size:12.5px;margin:4px 0 0">❌ ${nao.map(x=>esc(pnome(nomeAt(x.atletaId)))+(gestor()&&x.motivo?' ('+esc(x.motivo)+')':'')).join(', ')}</p>`:''}
-    </details></div>`;}).join('')}</div>`;
+    </details>
+    ${gestor()?`<div class="row" style="gap:6px;margin-top:6px"><button class="mini gold" onclick="whatsDisponibilidade('${e.id}')">📱 Mandar relação no grupo</button><button class="mini sec" onclick="pdfDisponibilidade('${e.id}')">📄 PDF</button></div>`:''}</div>`;}).join('')}</div>`;
 }
 async function marcaDisp(evId,ok){
   if(!ok){
