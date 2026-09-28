@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='29/09b · relação de disponibilidade';
+const BUILD='29/09c · cobranças em três níveis';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -5553,6 +5553,7 @@ function tFinCob(){
     <button class="gold" onclick="quitacaoLote()">💳 Quitação em lote</button>
     <button class="sec" onclick="maisAcoesCob()">⋯ Mais ações</button>
   </div>
+  ${cardCobrarNiveis()}
   <div id="selbar_c" class="alertline al-bad sect" style="display:${selCob.size?'flex':'none'};align-items:center">🗑 <strong><span id="selct_c">${selCob.size}</span> selecionado(s)</strong><span style="flex:1"></span><button class="bad mini" onclick="delSelCob()">Excluir selecionados</button><button class="mini sec" onclick="selCob.clear();renderTab()">Limpar</button></div>
   <div class="card sect"><div class="spread"><h2 style="margin:0">👥 Cobranças por jogador <span class="mut" style="font-family:inherit;font-size:12px">(toque no nome para abrir)</span></h2>
   <span class="pill p-bad" style="font-size:14px">Total em aberto: ${brl(tot('pendente')+tot('atrasado'))}</span></div>
@@ -6380,7 +6381,14 @@ function cardAcordos(soAtleta){
 function formCobranca(){
   const ats=elenco();
   modal(`<h2>Nova cobrança</h2>
-  <label>Para quem</label><select id="c_quem"><option value="__todos__">🌐 Todos os jogadores — atletas + diretoria (${ats.length})</option>${ats.map(a=>`<option value="${a.id}">${esc(a.nome)}${a.role==='diretoria'?' (diretoria)':''}</option>`).join('')}</select>
+  <label>Para quem</label><select id="c_quem" onchange="$('c_selbox').style.display=this.value==='__sel__'?'block':'none'">
+    <option value="__todos__">🌐 Todos os jogadores — atletas + diretoria (${ats.length})</option>
+    <option value="__sel__">🎯 Escolher os atletas…</option>
+    ${ats.map(a=>`<option value="${a.id}">${esc(a.nome)}${a.role==='diretoria'?' (diretoria)':''}</option>`).join('')}</select>
+  <div id="c_selbox" style="display:none;border:1px solid var(--line);border-radius:10px;padding:8px 12px;max-height:34vh;overflow-y:auto;margin-top:6px">
+    <div class="row" style="gap:8px;margin-bottom:6px"><button class="mini sec" onclick="document.querySelectorAll('.chk_cobsel').forEach(c=>c.checked=true)">Marcar todos</button><button class="mini sec" onclick="document.querySelectorAll('.chk_cobsel').forEach(c=>c.checked=false)">Desmarcar</button></div>
+    ${ats.map(a=>`<label style="display:flex;align-items:center;gap:8px;margin:4px 0;text-transform:none;font-weight:400;font-size:14px;color:var(--ink)"><input type="checkbox" class="chk_cobsel" value="${a.id}" style="width:auto">${esc(pnome(a.nome))}${a.role==='diretoria'?' <span class="mut">(diretoria)</span>':''}${a.isentoMens?' <span class="pill p-mut" style="font-size:10px">🧤 isento mens.</span>':''}</label>`).join('')}
+  </div>
   <div class="grid g2">
   <div><label>Descrição</label><input id="c_desc" placeholder="Ex.: Mensalidade agosto"></div>
   <div><label>Valor (R$)</label><input id="c_valor" type="number" step="0.01"></div>
@@ -6392,9 +6400,10 @@ async function salvaCobranca(){
   const quem=fval('c_quem'),desc=fval('c_desc'),v=fval('c_valor'),venc=fval('c_venc');
   if(!desc||!v||!venc){toast('Preencha descrição, valor e vencimento');return;}
   const ehMens=/mensalidade/i.test(desc);
-  const base=quem==='__todos__'?elenco().filter(a=>!(ehMens&&a.isentoMens)):[];
-  const alvos=quem==='__todos__'?base.map(a=>a.id):[quem];
-  const pulados=quem==='__todos__'?elenco().length-base.length:0;
+  let alvos, pulados=0;
+  if(quem==='__todos__'){ const base=elenco().filter(a=>!(ehMens&&a.isentoMens)); alvos=base.map(a=>a.id); pulados=elenco().length-base.length; }
+  else if(quem==='__sel__'){ alvos=[...document.querySelectorAll('.chk_cobsel:checked')].map(c=>c.value); if(!alvos.length){toast('Marque ao menos um atleta');return;} }
+  else alvos=[quem];
   if(pulados>0)toast(`🧤 ${pulados} isento(s) de mensalidade não incluído(s)`);
   await q(sb.from('cobrancas').insert(alvos.map(aid=>({atleta_id:aid,descricao:desc,valor:Number(v),venc}))));
   log('financeiro',`Cobrança gerada: ${desc} (${brl(v)}) para ${alvos.length} atleta(s)`);
@@ -6470,6 +6479,99 @@ function cobraWhats(id){
   if(!a||!a.fone){toast('Atleta sem WhatsApp cadastrado');return;}
   window.open(waLink(a.fone,msgCobranca(c)),'_blank');
   log('financeiro',`Cobrança enviada via WhatsApp: ${a.nome} — ${c.desc}`);
+}
+function gruposCobranca(){
+  const g={};
+  db.cobrancas.filter(c=>c.atletaId).forEach(c=>{ (g[c.desc]??=[]).push(c); });
+  return Object.entries(g).map(([desc,itens])=>({desc,itens,
+    pagos:itens.filter(c=>c.status==='pago'),dev:itens.filter(c=>c.status!=='pago'),
+    venc:itens.map(c=>c.venc).sort()[0]})).sort((x,y)=>y.venc.localeCompare(x.venc));
+}
+function cobrarCobranca(desc){
+  const grp=gruposCobranca().find(g=>g.desc===desc); if(!grp)return;
+  const dev=grp.dev.map(c=>({c,a:at(c.atletaId)})).filter(x=>x.a).sort((x,y)=>x.a.nome.localeCompare(y.a.nome));
+  if(!dev.length){toast('Ninguém devendo nessa cobrança! 🎉');return;}
+  const total=dev.reduce((s,x)=>s+restanteDe(x.c),0);
+  const msgDe=x=>`Prezado(a) ${pnome(x.a.nome)},\n\n*${db.config.time} — Tesouraria* 🏦\n\nConsta em aberto: *${x.c.desc}* — ${brl(restanteDe(x.c))}${pagoParcial(x.c)>0?' (restante; '+brl(pagoParcial(x.c))+' já pago)':''} (venc. ${dbr(x.c.venc)}${x.c.status==='atrasado'?', em atraso':''}).${db.config.pix?'\n\n💳 Pix: '+db.config.pix:''}\n\nApós o pagamento, envie o comprovante. Obrigado! 🤝⚖️`;
+  modal(`<h2>📣 Cobrar — ${esc(desc)}</h2>
+  <p class="mut">${dev.length} devedor(es) · total em aberto ${brl(total)}</p>
+  ${dev.map(x=>`<div class="alertline al-warn" style="padding:6px 10px"><div style="flex:1"><strong>${esc(pnome(x.a.nome))}</strong> <span class="mut">${brl(restanteDe(x.c))}${x.c.status==='atrasado'?' · atrasada':''}</span></div>
+    ${x.a.fone?`<button class="mini gold" onclick="window.open(waLink('${esc(x.a.fone)}',\`${msgDe(x).replace(/`/g,'')}\`),'_blank')">📱</button>`:'<span class="mut" style="font-size:11px">sem fone</span>'}</div>`).join('')}
+  <label style="margin-top:12px">Mensagem para o grupo</label>
+  <textarea id="cc_grupo" style="min-height:110px">⚽ *${db.config.time} — Tesouraria* 🏦\n\n*${desc}* — ainda em aberto (${dev.length}):\n${dev.map(x=>'• '+pnome(x.a.nome)+' — '+brl(restanteDe(x.c))).join('\n')}\n${db.config.pix?'\n💳 Pix: '+db.config.pix:''}\n\nQuem já pagou, mande o comprovante. Obrigado! 🤝</textarea>
+  <div class="row" style="margin-top:8px"><button onclick="copiar($('cc_grupo').value,'Mensagem copiada — cole no grupo')">📋 Copiar p/ grupo</button>
+  ${db.config.grupo?`<button class="gold" onclick="window.open('${esc(db.config.grupo)}','_blank')">👥 Abrir grupo</button>`:''}
+  <button class="sec mini" onclick="pdfRelacaoCobranca('${esc(desc)}')">📄 Relação</button>
+  <button class="sec" onclick="fecha()">Fechar</button></div>`);
+}
+function pdfRelacaoCobranca(desc){
+  const grp=gruposCobranca().find(g=>g.desc===desc); if(!grp)return;
+  const nm=id=>esc(nomeAt(id));
+  const vP=grp.pagos.reduce((s,c)=>s+Number(valorDe(c)),0), vD=grp.dev.reduce((s,c)=>s+restanteDe(c),0);
+  abreRelatorio(`<h1>💰 Relação — ${esc(desc)}</h1>
+  <p class="sub">${esc(db.config.time)} — vencimento ${dbr(grp.venc)} · gerado em ${dbr(hoje())}</p>
+  <div class="cards">
+    <div class="card"><div class="n">${grp.itens.length}</div><div class="l">Cobranças</div></div>
+    <div class="card"><div class="n ok">${grp.pagos.length}</div><div class="l">Pagas — ${brl(vP)}</div></div>
+    <div class="card"><div class="n ${grp.dev.length?'bad':'ok'}">${grp.dev.length}</div><div class="l">Em aberto — ${brl(vD)}</div></div>
+  </div>
+  ${grp.pagos.length?`<h2>✅ Pagos</h2><table><tr><th>Atleta</th><th>Valor</th><th>Pago em</th><th>Forma</th></tr>
+  ${grp.pagos.sort((a,b)=>nomeAt(a.atletaId).localeCompare(nomeAt(b.atletaId))).map(c=>`<tr><td><strong>${nm(c.atletaId)}</strong></td><td>${brl(valorDe(c))}</td><td>${dbr(c.pagoEm)}</td><td>${esc(c.forma||'—')}</td></tr>`).join('')}</table>`:''}
+  ${grp.dev.length?`<h2>⚠️ Em aberto</h2><table><tr><th>Atleta</th><th>Restante</th><th>Situação</th><th>Parcial pago</th></tr>
+  ${grp.dev.sort((a,b)=>nomeAt(a.atletaId).localeCompare(nomeAt(b.atletaId))).map(c=>`<tr><td><strong>${nm(c.atletaId)}</strong></td><td class="bad"><strong>${brl(restanteDe(c))}</strong></td><td>${c.status==='atrasado'?'<span class="bad">Atrasada</span>':'A vencer'}</td><td>${pagoParcial(c)>0?brl(pagoParcial(c)):'—'}</td></tr>`).join('')}</table>`:'<p class="ok"><strong>🎉 Todos pagaram!</strong></p>'}`,
+  `Relação — ${desc}`);
+}
+function cobrarGeral(){
+  const porAt={};
+  db.cobrancas.filter(c=>c.atletaId&&c.status!=='pago').forEach(c=>{ (porAt[c.atletaId]??=[]).push(c); });
+  const devs=Object.entries(porAt).map(([aid,cs])=>({a:at(aid),cs,tot:cs.reduce((s,c)=>s+restanteDe(c),0)})).filter(x=>x.a).sort((x,y)=>y.tot-x.tot);
+  if(!devs.length){toast('Ninguém devendo! 🎉');return;}
+  const total=devs.reduce((s,x)=>s+x.tot,0);
+  modal(`<h2>📣 Cobrança geral</h2>
+  <p class="mut">${devs.length} devedor(es) · ${brl(total)} em aberto no total. O botão 📱 manda para cada um TUDO que ele deve (com Pix copia e cola).</p>
+  ${devs.map(x=>`<div class="alertline al-warn" style="padding:6px 10px"><div style="flex:1"><strong>${esc(pnome(x.a.nome))}</strong> <span class="mut">${x.cs.length} cobrança(s) — ${brl(x.tot)}</span></div>
+    ${x.a.fone?`<button class="mini gold" onclick="cobraTudoWhats('${x.a.id}')">📱</button>`:'<span class="mut" style="font-size:11px">sem fone</span>'}</div>`).join('')}
+  <label style="margin-top:12px">Mensagem para o grupo</label>
+  <textarea id="cg_grupo" style="min-height:110px">⚽ *${db.config.time} — Tesouraria* 🏦\n\nPessoal, temos ${brl(total)} em aberto. Situação individual:\n${devs.map(x=>'• '+pnome(x.a.nome)+' — '+brl(x.tot)).join('\n')}\n${db.config.pix?'\n💳 Pix: '+db.config.pix:''}\n\nVamos regularizar para manter o time em dia! 🤝⚽</textarea>
+  <div class="row" style="margin-top:8px"><button onclick="copiar($('cg_grupo').value,'Mensagem copiada — cole no grupo')">📋 Copiar p/ grupo</button>
+  ${db.config.grupo?`<button class="gold" onclick="window.open('${esc(db.config.grupo)}','_blank')">👥 Abrir grupo</button>`:''}
+  <button class="sec mini" onclick="pdfDebitosGeral()">📄 Relação geral</button>
+  <button class="sec" onclick="fecha()">Fechar</button></div>`);
+}
+function pdfDebitosGeral(){
+  const porAt={};
+  db.cobrancas.filter(c=>c.atletaId&&c.status!=='pago').forEach(c=>{ (porAt[c.atletaId]??=[]).push(c); });
+  const devs=Object.entries(porAt).map(([aid,cs])=>({a:at(aid),cs:cs.sort((x,y)=>x.venc.localeCompare(y.venc)),tot:cs.reduce((s,c)=>s+restanteDe(c),0)})).filter(x=>x.a).sort((x,y)=>y.tot-x.tot);
+  const emDia=elenco().filter(a=>!porAt[a.id]);
+  const total=devs.reduce((s,x)=>s+x.tot,0);
+  abreRelatorio(`<h1>💰 Relação Geral de Débitos</h1>
+  <p class="sub">${esc(db.config.time)} — situação em ${dbr(hoje())}</p>
+  <div class="cards">
+    <div class="card"><div class="n ${devs.length?'bad':'ok'}">${devs.length}</div><div class="l">Com débito</div></div>
+    <div class="card"><div class="n bad">${brl(total)}</div><div class="l">Total em aberto</div></div>
+    <div class="card"><div class="n ok">${emDia.length}</div><div class="l">Em dia</div></div>
+  </div>
+  ${devs.map(x=>`<div class="mes"><h2 style="font-size:15px">${esc(x.a.nome)} — ${brl(x.tot)}</h2>
+  <table><tr><th>Cobrança</th><th>Vencimento</th><th>Restante</th><th>Situação</th></tr>
+  ${x.cs.map(c=>`<tr><td>${esc(c.desc)}</td><td>${dbr(c.venc)}</td><td><strong>${brl(restanteDe(c))}</strong>${pagoParcial(c)>0?` <span style="font-size:10.5px;color:#8a8f99">(${brl(pagoParcial(c))} pago)</span>`:''}</td><td class="${c.status==='atrasado'?'bad':'warn'}">${c.status==='atrasado'?'Atrasada':'A vencer'}</td></tr>`).join('')}</table></div>`).join('')}
+  ${emDia.length?`<h2>✅ Em dia</h2><p>${emDia.sort((a,b)=>a.nome.localeCompare(b.nome)).map(a=>esc(pnome(a.nome))).join(' · ')}</p>`:''}`,
+  `Débitos gerais — ${db.config.time}`);
+}
+function cardCobrarNiveis(){
+  const grupos=gruposCobranca().filter(g=>g.dev.length||g.pagos.length).slice(0,40);
+  if(!grupos.length)return '';
+  return `<div class="card sect"><h2>📣 Cobrar & relações</h2>
+  <label>Por cobrança específica</label>
+  <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">
+    <select id="cb_grp" style="flex:1;min-width:220px">${grupos.map(g=>`<option value="${esc(g.desc)}">${esc(g.desc)} — ${g.dev.length} devendo / ${g.pagos.length} pagas</option>`).join('')}</select>
+    <button class="mini gold" onclick="cobrarCobranca(fval('cb_grp'))">📱 Cobrar</button>
+    <button class="mini sec" onclick="pdfRelacaoCobranca(fval('cb_grp'))">📄 Relação</button>
+  </div>
+  <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
+    <button class="warn" onclick="cobrarGeral()">📣 Cobrança geral (todos os devedores)</button>
+    <button class="sec" onclick="pdfDebitosGeral()">📄 Relação geral de débitos</button>
+  </div>
+  <p class="mut" style="font-size:11.5px;margin:6px 0 0">Para cobrar tudo de UM jogador, use o botão "📱 Cobrar tudo" no card dele, logo abaixo.</p></div>`;
 }
 function cobraTudoWhats(aid){
   const a=at(aid);
