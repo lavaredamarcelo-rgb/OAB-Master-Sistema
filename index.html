@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='28/09d · aniversários em lote';
+const BUILD='29/09 · PDF do jogo completo';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -2933,9 +2933,15 @@ function pdfDestaqueJogo(evId){
   </div>
   ${(()=>{const c2=STATS_DEFS.filter(([k])=>Number(tot[k])>0);return c2.length?`<h2>📊 Números do time</h2>
   <div class="cards">${c2.map(([k,ic,lb])=>`<div class="card"><div class="n">${tot[k]}</div><div class="l">${ic} ${lb}</div></div>`).join('')}</div>`:'';})()}
-  <h2>⭐ Desempenho individual</h2>
-  <table><tr><th>Atleta</th><th>⭐ Nota</th><th>⚽</th><th>🅰️</th><th>🛡️</th><th>⚔️</th><th>🧤</th><th>🟨/🟥</th></tr>
-  ${L.map(l=>`<tr><td><strong>${esc(pnome(nomeAt(l.id)))}</strong>${cq&&cq.id===l.id?' 🌟':''}</td><td><strong>${l.nota?l.nota.v.toFixed(1)+(l.nota.auto?' 🤖':''):'—'}</strong></td><td>${+l.st.gols||0}</td><td>${+l.st.assist||0}</td><td>${+l.st.desarmes||0}</td><td>${+l.st.duelos||0}</td><td>${+l.st.defesas||0}</td><td>${(+l.st.amarelos||0)+(l.st.vermelho?' 🟥':'')||'—'}</td></tr>`).join('')}</table>
+  <h2>⭐ Desempenho individual — todos os dados lançados</h2>
+  ${(()=>{
+    const cols=STATS_DEFS.filter(([k])=>L.some(l=>Number(l.st[STATS_MAPA[k]])>0));
+    const temCartao=L.some(l=>(+l.st.amarelos||0)>0||l.st.vermelho);
+    return `<table><tr><th>Atleta</th><th>⭐ Nota</th>${cols.map(([k,ic,lb])=>`<th title="${lb}" style="text-align:center">${ic}</th>`).join('')}${temCartao?'<th style="text-align:center">🟨/🟥</th>':''}</tr>
+    ${L.map(l=>`<tr><td><strong>${esc(pnome(nomeAt(l.id)))}</strong>${cq&&cq.id===l.id?' 🌟':''}</td><td><strong>${l.nota?l.nota.v.toFixed(1)+(l.nota.auto?' 🤖':''):'—'}</strong></td>
+      ${cols.map(([k])=>`<td style="text-align:center">${Number(l.st[STATS_MAPA[k]])||'—'}</td>`).join('')}
+      ${temCartao?`<td style="text-align:center">${(+l.st.amarelos||0)||''}${l.st.vermelho?' 🟥':''}${!(+l.st.amarelos)&&!l.st.vermelho?'—':''}</td>`:''}</tr>`).join('')}</table>
+    <p style="font-size:10.5px;color:#8a8f99">Legenda: ${cols.map(([k,ic,lb])=>ic+' '+lb).join(' · ')}</p>`;})()}
   <p style="font-size:11.5px;color:#8a8f99">🤖 = nota do sistema · presença sem estatística vale 7 · números do time somados automaticamente dos atletas${e.placarNos!=null?' (gols pelo placar oficial)':''}.</p>`,
   `${e.titulo} — ${dbr(e.data)}`);
 }
