@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='29/09c · cobranças em três níveis';
+const BUILD='29/09d · arte da convocação e prévia';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -3679,7 +3679,7 @@ function verConvocacao(id){
   <div class="row" style="margin-top:14px;flex-wrap:wrap">
   ${podeEditar&&c.status!=='encerrada'?`<button class="mini" onclick="fecha();formConvocacao('${c.id}')">✏️ Editar</button>`:''}
   ${podeEditar&&c.status==='rascunho'?`<button class="mini gold" onclick="publicaConvocacao('${c.id}')">📣 Publicar</button>`:''}
-  ${c.status!=='rascunho'?`<button class="mini gold" onclick="whatsConvocacao('${c.id}')">📱 WhatsApp</button><button class="mini gold" onclick="pdfConvocacaoEnviar('${c.id}')">📤 Enviar PDF</button><button class="mini sec" onclick="pdfConvocacao('${c.id}')">🖨️ Imprimir</button>`:''}
+  ${c.status!=='rascunho'?`<button class="mini gold" onclick="arteConvocacao('${c.id}')">🎨 Arte</button><button class="mini gold" onclick="whatsConvocacao('${c.id}')">📱 WhatsApp</button><button class="mini gold" onclick="pdfConvocacaoEnviar('${c.id}')">📤 Enviar PDF</button><button class="mini sec" onclick="pdfConvocacao('${c.id}')">🖨️ Imprimir</button>`:''}
   ${podeEditar&&c.status!=='encerrada'?`<button class="mini" onclick="distribuirUniformes('${c.id}')">👕 Distribuir uniformes</button>`:''}
   ${podeEditar&&c.status==='publicada'?`<button class="mini sec" onclick="encerraConvocacao('${c.id}')">🏁 Encerrar</button>`:''}
   ${podeEditar?`<button class="mini bad" onclick="delConvocacao('${c.id}')">🗑</button>`:''}
@@ -4037,7 +4037,36 @@ function montaDistribuicao(convId){
     <div style="flex:1;min-width:150px"><strong>${esc(pnome(nomeAt(pr.aid)))}</strong> <span class="pill p-mut" style="font-size:10px">${pr.pos}</span>${pr.obs?`<div class="mut" style="font-size:11px">${pr.obs}</div>`:''}</div>
     <select class="sel_dist" data-i="${i}" style="max-width:180px">${pr.uId?opcoes(pr.uId):'<option value="">— sem número —</option>'+opcoes('')}</select></div>`).join('')}
   </div>
-  <div class="row" style="margin-top:12px"><button class="gold" onclick="aplicaDistribuicao()">✅ Aplicar e entregar (com termo)</button><button class="sec" onclick="distribuirUniformes('${convId}')">← Voltar</button></div>`);
+  <div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="gold" onclick="aplicaDistribuicao()">✅ Aplicar e entregar (com termo)</button>
+  <button class="mini sec" onclick="pdfPreviaDistribuicao()">📄 Salvar prévia (p/ diretoria)</button>
+  <button class="mini sec" onclick="whatsPreviaDistribuicao()">📱 Prévia no WhatsApp</button>
+  <button class="sec" onclick="distribuirUniformes('${convId}')">← Voltar</button></div>`);
+}
+function previaDistProps(){
+  const D=window._distProps; if(!D)return null;
+  document.querySelectorAll('.sel_dist').forEach(sl=>{ D.props[Number(sl.dataset.i)].uId=sl.value; });
+  return D;
+}
+function pdfPreviaDistribuicao(){
+  const D=previaDistProps(); if(!D)return;
+  const c=convDe(D.convId);
+  const linhas=D.props.map(pr=>{const u=pr.uId?byId(db.uniformes,pr.uId):null;
+    return {nome:nomeAt(pr.aid),pos:pr.pos,num:u?u.numero:null,gk:u&&u.goleiro,pecas:u?Object.entries(u.pecas||{}).filter(([,v])=>v==='estoque'||v==='atleta'||v==='pendente').map(([k])=>PECAS_EMO[k]).join(''):'',obs:pr.obs||''};})
+    .sort((a,b)=>(a.num==null)-(b.num==null)||Number(a.num)-Number(b.num));
+  abreRelatorio(`<h1>👕 Prévia — Distribuição de Uniformes</h1>
+  <p class="sub">${esc(db.config.time)} — ${esc(c?c.titulo:'')} · modelo ${esc(D.modelo)} · gerada em ${dbr(hoje())} <strong>(PROPOSTA — ainda não aplicada)</strong></p>
+  <table><tr><th>Nº</th><th>Atleta</th><th>Posição</th><th>Peças</th><th>Observação</th></tr>
+  ${linhas.map(l=>`<tr><td><strong>${l.num!=null?(l.gk?'🧤 ':'')+esc(l.num):'—'}</strong></td><td><strong>${esc(l.nome)}</strong></td><td>${l.pos}</td><td>${l.pecas||'—'}</td><td>${esc(l.obs)||'—'}</td></tr>`).join('')}</table>
+  <p style="margin-top:24px">Aprovação da diretoria: ______________________________  Data: ____/____/______</p>
+  <p style="font-size:11.5px;color:#8a8f99">Após aprovada, aplique a distribuição no sistema — cada atleta recebe as peças e o termo de aceite no app.</p>`,
+  `Prévia uniformes — ${c?c.titulo:''}`);
+}
+function whatsPreviaDistribuicao(){
+  const D=previaDistProps(); if(!D)return;
+  const c=convDe(D.convId);
+  const linhas=D.props.filter(pr=>pr.uId).map(pr=>{const u=byId(db.uniformes,pr.uId);return {n:Number(u.numero),t:`nº ${u.numero}${u.goleiro?' 🧤':''} — ${pnome(nomeAt(pr.aid))} (${pr.pos})${pr.obs?' ⚠️':''}`};}).sort((a,b)=>a.n-b.n);
+  const msg=`👕 *PRÉVIA — UNIFORMES ${c?c.titulo.toUpperCase():''}*\n_${D.modelo} · proposta para aprovação da diretoria (ainda não aplicada)_\n\n${linhas.map(l=>l.t).join('\n')}\n\nAlguma troca? Me avisem antes de eu aplicar e enviar os termos. 🤝`;
+  modalWhats('Prévia da distribuição',msg);
 }
 async function aplicaDistribuicao(){
   const D=window._distProps; if(!D)return;
@@ -4063,6 +4092,53 @@ async function aplicaDistribuicao(){
   await recarrega(); toast(`👕 ${n} entrega(s) registradas — aguardando aceite`);
   const linhas=D.props.filter(pr=>pr.uId).map(pr=>{const u=byId(db.uniformes,pr.uId);return `nº ${u.numero}${u.goleiro?' 🧤':''} — ${pnome(nomeAt(pr.aid))} (${pr.pos})`;}).sort((a,b)=>Number(a.match(/\d+/)[0])-Number(b.match(/\d+/)[0]));
   modalWhats('Uniformes do jogo',`👕 *UNIFORMES — ${c?c.titulo:''}*\n_${D.modelo}_\n\n${linhas.join('\n')}\n\n✅ Aceitem o termo no sistema. Devolução após o jogo. 🤝⚽`);
+}
+async function geraArteConvocacao(convId){
+  const c=convDe(convId); if(!c)return null;
+  const escImg=await carrImg('escudo-t.png');
+  const W=1080,H=1350, cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
+  const g=x.createLinearGradient(0,0,W*.4,H); g.addColorStop(0,'#8a1f2f'); g.addColorStop(.55,'#511219'); g.addColorStop(1,'#1C2F5A'); x.fillStyle=g; x.fillRect(0,0,W,H);
+  x.save(); x.translate(W/2,H/2); x.rotate(-.55); for(let i=-1600;i<1600;i+=64){ x.fillStyle='rgba(255,255,255,.05)'; x.fillRect(i,-1600,8,3200); } x.restore();
+  const fg=x.createLinearGradient(0,0,W,H); fg.addColorStop(0,'#fff0b8'); fg.addColorStop(.5,'#e9bc2a'); fg.addColorStop(1,'#a87c12');
+  x.globalAlpha=.9; x.fillStyle=fg;
+  [[860,0,1080,0,1080,150,980,190],[0,220,120,180,90,330,0,360],[1000,560,1080,520,1080,680],[0,900,90,860,60,1010,0,1040],[880,1240,1080,1180,1080,1350,920,1350]].forEach(pg=>{x.beginPath();for(let i=0;i<pg.length;i+=2){i?x.lineTo(pg[i],pg[i+1]):x.moveTo(pg[i],pg[i+1]);}x.closePath();x.fill();});
+  x.globalAlpha=1;
+  if(escImg){const h2=140,w2=h2*escImg.width/escImg.height;x.drawImage(escImg,W/2-w2/2,44,w2,h2);}
+  x.textAlign='center';
+  x.fillStyle='#F2C11E'; x.font='900 66px Helvetica'; x.fillText('CONVOCAÇÃO OFICIAL',W/2,268);
+  x.fillStyle='#fff'; let fs=44; const tit=c.titulo.toUpperCase(); x.font='800 '+fs+'px Helvetica';
+  while(x.measureText(tit).width>W-100&&fs>26){fs--;x.font='800 '+fs+'px Helvetica';}
+  x.fillText(tit,W/2,330);
+  x.fillStyle='#f3d27a'; x.font='600 32px Helvetica';
+  const info=[c.data?('📅 '+dbr(c.data)+(c.dataFim?' a '+dbr(c.dataFim):'')+(c.hora?' às '+c.hora:'')):'',c.local?('📍 '+c.local):''].filter(Boolean).join('   ');
+  if(info)x.fillText(info,W/2,378);
+  // relação por posição em duas colunas
+  const grupos=POS_GRUPOS.map(([gk,lbl])=>({gk,lbl:lbl.replace(/^[^ ]+ /,'').toUpperCase(),ico:lbl.split(' ')[0],nomes:c.convocados.filter(cc=>cc.posicao===gk).map(cc=>pnome(nomeAt(cc.atletaId)))})).filter(gr=>gr.nomes.length);
+  const colX=[W*0.27,W*0.73]; let col=0, y=460; const yMax=1180;
+  const hGrupo=gr=>34+gr.nomes.length*40+18;
+  grupos.forEach(gr=>{
+    if(y+hGrupo(gr)>yMax&&col===0){col=1;y=460;}
+    x.fillStyle='#F2C11E'; x.font='900 30px Helvetica'; x.fillText(gr.ico+' '+gr.lbl+' ('+gr.nomes.length+')',colX[col],y); y+=44;
+    x.fillStyle='#fff'; x.font='600 32px Helvetica';
+    gr.nomes.forEach(n=>{ let f2=32; x.font='600 '+f2+'px Helvetica'; while(x.measureText(n).width>W*0.42&&f2>20){f2--;x.font='600 '+f2+'px Helvetica';} x.fillText(n,colX[col],y); y+=40; });
+    y+=18;
+  });
+  x.fillStyle='#f3d27a'; x.font='700 30px Helvetica';
+  x.fillText(`${c.convocados.length} atletas convocados${c.maxAtletas?' · '+c.maxAtletas+' vagas do regulamento':''}`,W/2,1240);
+  x.globalAlpha=.85; x.fillStyle='#fff'; x.font='600 26px Helvetica';
+  x.fillText('Comissão Técnica — '+(db.config.time||''),W/2,1292); x.globalAlpha=1;
+  return await new Promise(res=>cv.toBlob(res,'image/png'));
+}
+async function arteConvocacao(convId){
+  toast('🎨 Gerando a arte…');
+  const b=await geraArteConvocacao(convId); if(!b){toast('⚠️ Não consegui gerar');return;}
+  const c=convDe(convId); const url=URL.createObjectURL(b); window._arteConv=b;
+  modal(`<h2>🎨 Arte — ${esc(c.titulo)}</h2>
+  <img src="${url}" style="width:100%;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.25)">
+  <div class="row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
+    <button class="mini gold" onclick="compartilhaBlob(window._arteConv,'convocacao.png','📣 '+db.config.time)">📤 Enviar (WhatsApp)</button>
+    <button class="mini gold" onclick="baixar('convocacao-${c.titulo.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,40)}.png',window._arteConv,'image/png')">⬇ Baixar</button>
+    <button class="sec" onclick="verConvocacao('${convId}')">← Voltar</button></div>`);
 }
 function cardConvPendente(){
   if(!db.convocacoes)return '';
