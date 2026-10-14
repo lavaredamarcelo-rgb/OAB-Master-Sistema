@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='29/09d · arte da convocação e prévia';
+const BUILD='14/10 · OAB na disponibilidade';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -3913,7 +3913,7 @@ function pdfDisponibilidade(evId){
     <div class="card"><div class="n bad">${nao.length}</div><div class="l">Não podem</div></div>
     <div class="card"><div class="n warn">${sem.length}</div><div class="l">Sem resposta</div></div>
   </div>
-  <h2>✅ Disponíveis</h2>${sim.length?`<table><tr><th>#</th><th>Atleta</th><th>Posição</th></tr>${sim.map((a,i)=>`<tr><td>${i+1}</td><td><strong>${esc(a.nome)}</strong></td><td>${esc(a.posicao||'—')}</td></tr>`).join('')}</table>`:'<p class="mut">Ninguém confirmou ainda.</p>'}
+  <h2>✅ Disponíveis</h2>${sim.length?`<table><tr><th>#</th><th>Atleta</th><th>OAB</th><th>Posição</th></tr>${sim.map((a,i)=>`<tr><td>${i+1}</td><td><strong>${esc(a.nome)}</strong></td><td>${esc(a.oab||'—')}</td><td>${esc(a.posicao||'—')}</td></tr>`).join('')}</table>`:'<p class="mut">Ninguém confirmou ainda.</p>'}
   ${nao.length?`<h2>❌ Não podem</h2><table><tr><th>Atleta</th><th>Motivo</th></tr>${nao.map(x=>`<tr><td>${esc(x.a.nome)}</td><td>${esc(x.motivo||'—')}</td></tr>`).join('')}</table>`:''}
   ${sem.length?`<h2>⏳ Sem resposta</h2><p>${sem.map(a=>esc(pnome(a.nome))).join(' · ')}</p>`:''}`,
   `Disponibilidade — ${e.titulo}`);
