@@ -231,7 +231,7 @@ async function q(p){ const {data,error}=await p; if(error){ toast('⚠️ '+(err
 
 /* ================= ESTADO ================= */
 const TERMO_LGPD_V='1.0', TERMO_UNI_V='1.0';
-const BUILD='14/10 · OAB na disponibilidade';
+const BUILD='14/10b · ofício timbrado';
 let db=null, me=null, tab='painel', subState={};
 const ROLES={diretoria:'Diretoria',treinador:'Treinador',auxiliar:'Auxiliar técnico',preparador:'Preparador físico',atleta:'Atleta'};
 const podeSaude=r=>['diretoria','treinador','preparador','auxiliar'].includes(r);
@@ -3918,6 +3918,68 @@ function pdfDisponibilidade(evId){
   ${sem.length?`<h2>⏳ Sem resposta</h2><p>${sem.map(a=>esc(pnome(a.nome))).join(' · ')}</p>`:''}`,
   `Disponibilidade — ${e.titulo}`);
 }
+/* ---- 📜 Ofício de certidões (Word timbrado) ---- */
+const oabFmt=o=>{o=String(o||'').trim().replace(/^OAB[\s\/.:]*/i,'').replace(/^PA[\s.\-\/:]*/i,'');return o?'OAB/PA '+o:'OAB/PA ______';};
+function formOficioCertidoes(evId){
+  const e=byId(db.eventos,evId); if(!e)return;
+  const {sim}=dispListas(evId);
+  if(!sim.length){toast('Ninguém confirmou disponibilidade ainda');return;}
+  const ano=new Date().getFullYear();
+  modal(`<h2>📜 Ofício de certidões — ${esc(e.titulo)}</h2>
+  <p class="mut">Gera o ofício em Word, no papel timbrado do clube, com os ${sim.length} atletas que confirmaram disponibilidade (nome + OAB).</p>
+  <div class="grid g2">
+  <div><label>Nº do ofício</label><input id="of_num" value="01/${ano}"></div>
+  <div><label>Data (como sai no texto)</label><input id="of_data" value="${dbr(hoje()).replace(/\//g,'.')}"></div>
+  </div>
+  <label>Destinatário (Sua Excelência…)</label><input id="of_dest" value="Dr. Sávio Barreto">
+  <label>Competição (como sai no texto)</label><input id="of_comp" value="${esc((e.titulo||'').toUpperCase())}, realizado pela ALIFA – ASSOCIAÇÃO LIGA DE FUTEBOL DOS ADVOGADOS E ADVOGADAS DO BRASIL">
+  <label>Cidade e período</label><input id="of_local" value="na cidade de ______, no período de ${e.data?dbr(e.data):'____'}${e.dataFim?' a '+dbr(e.dataFim):''}">
+  <div class="grid g2">
+  <div><label>Prazo de inscrição</label><input id="of_prazo1" placeholder="Ex.: 30 de outubro de ${ano}"></div>
+  <div><label>Precisamos dos documentos até</label><input id="of_prazo2" placeholder="Ex.: 28 de outubro de ${ano}"></div>
+  </div>
+  <div class="grid g2">
+  <div><label>Assinante</label><input id="of_ass" value="${esc(me.nome.toUpperCase())}"></div>
+  <div><label>Cargo</label><input id="of_cargo" value="DIRETOR — ${esc((db.config.time||'').toUpperCase())}"></div>
+  </div>
+  <div class="row" style="margin-top:14px"><button class="gold" onclick="geraOficioCertidoes('${evId}')">📜 Gerar Word (.docx)</button><button class="sec" onclick="fecha()">Cancelar</button></div>`);
+}
+async function geraOficioCertidoes(evId){
+  const e=byId(db.eventos,evId); const {sim}=dispListas(evId);
+  toast('📜 Gerando o ofício…');
+  try{
+    await carregaJSZip();
+    const resp=await fetch('oficio-modelo.docx',{cache:'no-store'});
+    if(!resp.ok)throw new Error('modelo do ofício não encontrado');
+    const zip=await JSZip.loadAsync(await resp.arrayBuffer());
+    const docOrig=await zip.file('word/document.xml').async('string');
+    const sect=(docOrig.match(/<w:sectPr[\s\S]*?<\/w:sectPr>/)||[''])[0];
+    const escx=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const P=(t,o)=>{o=o||{};return `<w:p><w:pPr>${o.jc?`<w:jc w:val="${o.jc}"/>`:''}<w:spacing w:after="${o.after||'160'}" w:line="276" w:lineRule="auto"/></w:pPr><w:r>${o.b?'<w:rPr><w:b/></w:rPr>':''}<w:t xml:space="preserve">${escx(t)}</w:t></w:r></w:p>`;};
+    const comp=fval('of_comp'), local=fval('of_local');
+    const corpo1=`Honrado em cumprimentá-lo, venho à presença de Vossa Excelência, na qualidade de coordenador da CATEGORIA MASTER DE FUTEBOL, que há anos vem participando de competições locais, regionais e nacionais futebolísticas, representando a Seccional da OAB do Estado do Pará, solicitar a emissão de CERTIDÃO DE REGULARIDADE E ADIMPLÊNCIA, sem custo aos atletas nominados abaixo, com a finalidade de formalizar a inscrição da equipe no ${comp}, que realizar-se-á ${local}.`;
+    const pars=[
+      P(`OFÍCIO Nº ${fval('of_num')} — URGENTE`,{b:1}),
+      P(`Data: ${fval('of_data')}`),
+      P(`À Sua Excelência ${fval('of_dest')}`),
+      P(`Assunto: PARTICIPAÇÃO DA EQUIPE DE FUTEBOL DA CATEGORIA MASTER NA COMPETIÇÃO ${comp.split(',')[0]} – EMISSÃO DE CERTIDÃO`,{b:1}),
+      P(corpo1,{jc:'both'}),
+      P('Cabe destacar que a Equipe irá representar a OAB Seccional Pará no referido período nos jogos, e contamos desde já com a colaboração e apoio da Ordem dos Advogados do Brasil seção Pará.',{jc:'both'}),
+      ...(fval('of_prazo1')?[P(`Ressalto que o prazo para inscrição se encerra no dia ${fval('of_prazo1')}${fval('of_prazo2')?`, sendo assim precisaríamos dos referidos documentos até o dia ${fval('of_prazo2')}, para evitar imprevistos`:''}.`,{jc:'both'})]:[]),
+      P('LISTA DOS ATLETAS:',{b:1}),
+      ...sim.map((a,i)=>P(`${i+1} - ${a.nome.toUpperCase()} – ${oabFmt(a.oab)}`,{after:'60'})),
+      P(''),P('Atenciosamente,'),P(''),
+      P(fval('of_ass'),{b:1}),
+      P(fval('of_cargo'))
+    ];
+    const novo='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>'+pars.join('')+sect+'</w:body></w:document>';
+    zip.file('word/document.xml',novo);
+    const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    log('docs',`📜 Ofício de certidões gerado (${sim.length} atletas) — ${e?e.titulo:''}`);
+    fecha();
+    baixar('oficio-certidoes-'+(e?e.titulo:'').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,40)+'.docx',blob,'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  }catch(err){ toast('⚠️ '+(err&&err.message?err.message:'Não consegui gerar o ofício')); }
+}
 function cardDisponibilidade(){
   if(db.disponibilidades===null)return gestor()?`<div class="card sect"><h2>🙋 Quem vai?</h2><p class="mut">⚠️ Rode o <strong>SQL v27</strong> no Supabase para ativar a disponibilidade.</p></div>`:'';
   const jogos=proximosJogos(4);
@@ -3939,7 +4001,7 @@ function cardDisponibilidade(){
       ${sim.length?`<p style="font-size:12.5px;margin:6px 0 0">🙋 ${sim.map(x=>esc(pnome(nomeAt(x.atletaId)))).join(', ')}</p>`:''}
       ${nao.length?`<p style="font-size:12.5px;margin:4px 0 0">❌ ${nao.map(x=>esc(pnome(nomeAt(x.atletaId)))+(gestor()&&x.motivo?' ('+esc(x.motivo)+')':'')).join(', ')}</p>`:''}
     </details>
-    ${gestor()?`<div class="row" style="gap:6px;margin-top:6px"><button class="mini gold" onclick="whatsDisponibilidade('${e.id}')">📱 Mandar relação no grupo</button><button class="mini sec" onclick="pdfDisponibilidade('${e.id}')">📄 PDF</button></div>`:''}</div>`;}).join('')}</div>`;
+    ${gestor()?`<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><button class="mini gold" onclick="whatsDisponibilidade('${e.id}')">📱 Mandar relação no grupo</button><button class="mini sec" onclick="pdfDisponibilidade('${e.id}')">📄 PDF</button>${me.role==='diretoria'?`<button class="mini sec" onclick="formOficioCertidoes('${e.id}')">📜 Ofício certidões (Word)</button>`:''}</div>`:''}</div>`;}).join('')}</div>`;
 }
 async function marcaDisp(evId,ok){
   if(!ok){
